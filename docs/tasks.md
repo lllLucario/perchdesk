@@ -36,69 +36,69 @@ session (20-30 minutes).
 
 ### 1.1 Database Models
 
-- [ ] Create SQLAlchemy model: `users` table (id, email, name, hashed_password, role, created_at)
-- [ ] Create SQLAlchemy model: `spaces` table (id, name, type, layout_config, capacity, created_at)
-- [ ] Create SQLAlchemy model: `seats` table (id, space_id FK, label, position, status, attributes)
-- [ ] Create SQLAlchemy model: `bookings` table (id, user_id FK, seat_id FK, start_time, end_time, status, checked_in_at, created_at)
-- [ ] Create SQLAlchemy model: `space_rules` table (id, space_id FK, max_duration_minutes, max_advance_days, time_unit, auto_release_minutes, requires_approval, recurring_rules)
-- [ ] Add PostgreSQL exclusion constraint on bookings for overlap prevention (requires `btree_gist` extension — add `CREATE EXTENSION IF NOT EXISTS btree_gist` in initial migration)
-- [ ] Generate and apply Alembic migration
-- [ ] Write seed data script (`backend/app/core/seed.py`): create sample library space (max_duration=240, max_advance=3, time_unit=hourly, auto_release=15) + office space (max_duration=480, max_advance=7, time_unit=half_day, auto_release=null) with seats
-- [ ] Verify: seed data loads, tables exist, constraints work
+- [x] Create SQLAlchemy model: `users` table (id, email, name, hashed_password, role, created_at)
+- [x] Create SQLAlchemy model: `spaces` table (id, name, type, layout_config, capacity, created_at)
+- [x] Create SQLAlchemy model: `seats` table (id, space_id FK, label, position, status, attributes)
+- [x] Create SQLAlchemy model: `bookings` table (id, user_id FK, seat_id FK, start_time, end_time, status, checked_in_at, created_at)
+- [x] Create SQLAlchemy model: `space_rules` table (id, space_id FK, max_duration_minutes, max_advance_days, time_unit, auto_release_minutes, requires_approval, recurring_rules)
+- [x] Add PostgreSQL exclusion constraint on bookings for overlap prevention (requires `btree_gist` extension — add `CREATE EXTENSION IF NOT EXISTS btree_gist` in initial migration)
+- [x] Generate and apply Alembic migration
+- [x] Write seed data script (`backend/app/core/seed.py`): create sample library space (max_duration=240, max_advance=3, time_unit=hourly, auto_release=15) + office space (max_duration=480, max_advance=7, time_unit=half_day, auto_release=null) with seats
+- [ ] Verify: seed data loads, tables exist, constraints work (requires running PostgreSQL)
 
 ### 1.2 Error Handling
 
-- [ ] Create `app/core/exceptions.py` with base `PerchDeskError` and subclasses (BookingConflictError, BookingRuleViolationError, SeatUnavailableError, UnauthorizedError, ForbiddenError, NotFoundError)
-- [ ] Register global exception handler in `app/main.py`
-- [ ] Write test: verify exception handler returns correct JSON format and status codes
+- [x] Create `app/core/exceptions.py` with base `PerchDeskError` and subclasses (BookingConflictError, BookingRuleViolationError, SeatUnavailableError, UnauthorizedError, ForbiddenError, NotFoundError)
+- [x] Register global exception handler in `app/main.py`
+- [x] Write test: verify exception handler returns correct JSON format and status codes
 
 ### 1.3 Authentication
 
-- [ ] Create Pydantic schemas: `RegisterRequest`, `LoginRequest`, `TokenResponse`, `UserResponse`
-- [ ] Create `app/services/auth.py`: register (hash password, create user), login (verify password, issue JWT)
-- [ ] Create JWT utility functions in `app/core/security.py`: create_access_token, create_refresh_token, decode_token
-- [ ] Create FastAPI dependency: `get_current_user` (decode JWT, load user from DB)
-- [ ] Create FastAPI dependency: `require_admin` (check user.role == 'admin')
-- [ ] Create routes: POST `/auth/register`, POST `/auth/login`, POST `/auth/refresh`, GET `/auth/me`
-- [ ] Write tests: register, login, token refresh, access protected endpoint, reject expired token
-- [ ] Verify: all auth tests pass
+- [x] Create Pydantic schemas: `RegisterRequest`, `LoginRequest`, `TokenResponse`, `UserResponse`
+- [x] Create `app/services/auth.py`: register (hash password, create user), login (verify password, issue JWT)
+- [x] Create JWT utility functions in `app/core/security.py`: create_access_token, create_refresh_token, decode_token
+- [x] Create FastAPI dependency: `get_current_user` (decode JWT, load user from DB)
+- [x] Create FastAPI dependency: `require_admin` (check user.role == 'admin')
+- [x] Create routes: POST `/auth/register`, POST `/auth/login`, POST `/auth/refresh`, GET `/auth/me`
+- [x] Write tests: register, login, token refresh, access protected endpoint, reject expired token
+- [x] Verify: all auth tests pass
 
 ### 1.4 Spaces CRUD (Admin)
 
-- [ ] Create Pydantic schemas: `SpaceCreate`, `SpaceUpdate`, `SpaceResponse`, `SpaceListResponse`
-- [ ] Create `app/services/space.py`: list, get_by_id (include seats), create, update, delete
-- [ ] Create routes: GET/POST `/spaces`, GET/PUT/DELETE `/spaces/:id`
-- [ ] Write tests: CRUD operations, admin-only access, non-admin rejected
-- [ ] Verify: all space tests pass
+- [x] Create Pydantic schemas: `SpaceCreate`, `SpaceUpdate`, `SpaceResponse`, `SpaceListResponse`
+- [x] Create `app/services/space.py`: list, get_by_id (include seats), create, update, delete
+- [x] Create routes: GET/POST `/spaces`, GET/PUT/DELETE `/spaces/:id`
+- [x] Write tests: CRUD operations, admin-only access, non-admin rejected
+- [x] Verify: all space tests pass
 
 ### 1.5 Seats CRUD (Admin)
 
-- [ ] Create Pydantic schemas: `SeatCreate`, `SeatUpdate`, `SeatResponse`, `SeatBatchCreate`
-- [ ] Create `app/services/seat.py`: list_by_space, create, batch_create, update, delete
-- [ ] Create routes: GET/POST `/spaces/:id/seats`, POST `/spaces/:id/seats/batch`, PUT/DELETE `/seats/:id`
-- [ ] Create route: GET `/spaces/:id/availability?start=...&end=...` (returns seats with booking status for time range)
-- [ ] Write tests: CRUD, batch create, availability query
-- [ ] Verify: all seat tests pass
+- [x] Create Pydantic schemas: `SeatCreate`, `SeatUpdate`, `SeatResponse`, `SeatBatchCreate`
+- [x] Create `app/services/seat.py`: list_by_space, create, batch_create, update, delete
+- [x] Create routes: GET/POST `/spaces/:id/seats`, POST `/spaces/:id/seats/batch`, PUT/DELETE `/seats/:id`
+- [x] Create route: GET `/spaces/:id/availability?start=...&end=...` (returns seats with booking status for time range)
+- [x] Write tests: CRUD, batch create, availability query
+- [x] Verify: all seat tests pass
 
 ### 1.6 Core Booking Flow
 
-- [ ] Create Pydantic schemas: `BookingCreate`, `BookingResponse`, `BookingListResponse`
-- [ ] Create `app/services/booking.py`:
-  - [ ] `create_booking()`: validate seat available, load space_rules, check duration/advance limits, check time_unit alignment, check overlap, create booking
-  - [ ] `cancel_booking()`: validate ownership, check cancellation policy, set status='cancelled'
-  - [ ] `check_in()`: validate ownership, validate time window, set status='checked_in' + checked_in_at
-  - [ ] `list_my_bookings()`: filter by current user, ordered by start_time
-- [ ] Create routes: GET/POST `/bookings`, GET `/bookings/:id`, PATCH `/bookings/:id/cancel`, PATCH `/bookings/:id/check-in`
-- [ ] Create admin route: GET `/admin/bookings` (list all, with filters)
-- [ ] Write tests: create booking, conflict rejection, rule violation rejection, cancel, check-in, list
-- [ ] Verify: all booking tests pass
+- [x] Create Pydantic schemas: `BookingCreate`, `BookingResponse`, `BookingListResponse`
+- [x] Create `app/services/booking.py`:
+  - [x] `create_booking()`: validate seat available, load space_rules, check duration/advance limits, check time_unit alignment, check overlap, create booking
+  - [x] `cancel_booking()`: validate ownership, check cancellation policy, set status='cancelled'
+  - [x] `check_in()`: validate ownership, validate time window, set status='checked_in' + checked_in_at
+  - [x] `list_my_bookings()`: filter by current user, ordered by start_time
+- [x] Create routes: GET/POST `/bookings`, GET `/bookings/:id`, PATCH `/bookings/:id/cancel`, PATCH `/bookings/:id/check-in`
+- [x] Create admin route: GET `/admin/bookings` (list all, with filters)
+- [x] Write tests: create booking, conflict rejection, rule violation rejection, cancel, check-in, list
+- [x] Verify: all booking tests pass
 
 ### 1.7 Space Rules (Admin)
 
-- [ ] Create Pydantic schemas: `SpaceRulesResponse`, `SpaceRulesUpdate`
-- [ ] Create routes: GET/PUT `/spaces/:id/rules`
-- [ ] Write tests: get rules, update rules, verify booking service respects updated rules
-- [ ] Verify: all rules tests pass
+- [x] Create Pydantic schemas: `SpaceRulesResponse`, `SpaceRulesUpdate`
+- [x] Create routes: GET/PUT `/spaces/:id/rules`
+- [x] Write tests: get rules, update rules, verify booking service respects updated rules
+- [x] Verify: all rules tests pass
 
 ### 1.8 Frontend — Auth Pages
 

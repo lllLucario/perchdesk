@@ -208,6 +208,8 @@ __marimo__/
 
 # Node.js / Next.js
 node_modules/
+!frontend/lib/
+!frontend/store/
 .next/
 out/
 .vercel/

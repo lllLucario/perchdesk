@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from app.api.v1.router import router as api_router
+from app.core.exceptions import PerchDeskError
 
 app = FastAPI(title="PerchDesk API", version="0.1.0")
 
@@ -10,6 +14,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(api_router)
+
+
+@app.exception_handler(PerchDeskError)
+async def perchdesk_exception_handler(request: Request, exc: PerchDeskError) -> JSONResponse:
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "data": None,
+            "message": exc.detail,
+            "error": {"code": exc.error_code, "detail": exc.detail},
+        },
+    )
 
 
 @app.get("/health")
