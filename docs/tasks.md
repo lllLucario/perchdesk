@@ -11,22 +11,22 @@ session (20-30 minutes).
 - [x] Initialize Git repository, connect to GitHub
 - [x] Create monorepo directory structure (`/frontend`, `/backend`, `/docker`, `/docs`, `/.github/workflows`)
 - [x] Create Python package `__init__.py` files for all backend subdirectories
-- [ ] Copy `CLAUDE.md` and `docs/` files (`architecture.md`, `tasks.md`) into repo
-- [ ] Create `.env.example` with required variables: `DATABASE_URL`, `JWT_SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`
-- [ ] Add `.env` to `.gitignore` (keep `.env.example` tracked)
-- [ ] Backend: create `pyproject.toml`, install dependencies (fastapi, uvicorn, sqlalchemy[asyncio], asyncpg, alembic, passlib[bcrypt], python-jose[cryptography], pydantic-settings, apscheduler, pytest, pytest-asyncio, pytest-cov, httpx, ruff)
-- [ ] Backend: create FastAPI app skeleton (`app/main.py` with health check endpoint `GET /health`)
-- [ ] Backend: configure Alembic for async PostgreSQL (`alembic.ini`, `alembic/env.py`)
-- [ ] Backend: create `app/core/config.py` with Pydantic Settings (load from `.env`)
-- [ ] Backend: create `app/core/database.py` with async engine, async session factory, and `get_db` dependency
-- [ ] Backend: create `backend/tests/conftest.py` with test database setup and async test client fixture
-- [ ] Frontend: initialize Next.js in `/frontend` (`npx create-next-app@latest . --typescript --tailwind --app --src-dir=false`)
-- [ ] Frontend: install Zustand, TanStack Query (`npm install zustand @tanstack/react-query`)
-- [ ] Frontend: configure QueryClientProvider and Zustand in root layout
-- [ ] Frontend: create directories (`/components`, `/lib`, `/store`) and API client base (`lib/api.ts` with fetch wrapper, auth header injection)
-- [ ] Docker: create `docker/Dockerfile.backend` (multi-stage: builder + runtime)
-- [ ] Docker: create `docker/Dockerfile.frontend` (multi-stage: builder + runner)
-- [ ] Docker: create `docker-compose.yml` (frontend + backend + postgres)
+- [x] Copy `CLAUDE.md` and `docs/` files (`architecture.md`, `tasks.md`) into repo
+- [x] Create `.env.example` with required variables: `DATABASE_URL`, `JWT_SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `REFRESH_TOKEN_EXPIRE_DAYS`
+- [x] Add `.env` to `.gitignore` (keep `.env.example` tracked)
+- [x] Backend: create `pyproject.toml`, install dependencies (fastapi, uvicorn, sqlalchemy[asyncio], asyncpg, alembic, passlib[bcrypt], python-jose[cryptography], pydantic-settings, apscheduler, pytest, pytest-asyncio, pytest-cov, httpx, ruff)
+- [x] Backend: create FastAPI app skeleton (`app/main.py` with health check endpoint `GET /health`)
+- [x] Backend: configure Alembic for async PostgreSQL (`alembic.ini`, `alembic/env.py`)
+- [x] Backend: create `app/core/config.py` with Pydantic Settings (load from `.env`)
+- [x] Backend: create `app/core/database.py` with async engine, async session factory, and `get_db` dependency
+- [x] Backend: create `backend/tests/conftest.py` with test database setup and async test client fixture
+- [x] Frontend: initialize Next.js in `/frontend` (`npx create-next-app@latest . --typescript --tailwind --app --src-dir=false`)
+- [x] Frontend: install Zustand, TanStack Query (`npm install zustand @tanstack/react-query`)
+- [x] Frontend: configure QueryClientProvider and Zustand in root layout
+- [x] Frontend: create directories (`/components`, `/lib`, `/store`) and API client base (`lib/api.ts` with fetch wrapper, auth header injection)
+- [x] Docker: create `docker/Dockerfile.backend` (multi-stage: builder + runtime)
+- [x] Docker: create `docker/Dockerfile.frontend` (multi-stage: builder + runner)
+- [x] Docker: create `docker-compose.yml` (frontend + backend + postgres)
 - [ ] Verify: `docker compose up` starts all services, `GET /health` returns 200
 - [ ] Git: commit and push Phase 0 to `main` branch
 
