@@ -28,7 +28,7 @@ session (20-30 minutes).
 - [x] Docker: create `docker/Dockerfile.frontend` (multi-stage: builder + runner)
 - [x] Docker: create `docker-compose.yml` (frontend + backend + postgres)
 - [x] Verify: `docker compose up` starts all services, `GET /health` returns 200
-- [ ] Git: commit and push Phase 0 to `main` branch
+- [x] Git: commit and push Phase 0 to `main` branch
 
 ---
 
@@ -122,9 +122,9 @@ session (20-30 minutes).
 ### Phase 1 Milestone
 
 - [x] Run full backend test suite: `pytest --cov=app --cov-report=term-missing` — all green, coverage >= 80% (91% achieved, 80 tests)
-- [ ] Run frontend tests: `npm test` — all green
+- [ ] Run frontend tests: `npm test` — all green (Jest not yet configured)
 - [ ] Manual end-to-end test: register → login → view spaces → book seat → check in → cancel
-- [ ] Git: merge all Phase 1 feature branches to main
+- [x] Git: merge all Phase 1 feature branches to main
 
 ---
 
@@ -132,31 +132,31 @@ session (20-30 minutes).
 
 ### 2.1 Auto-Release Scheduler
 
-- [ ] Install APScheduler, create `app/scheduler/jobs.py`
-- [ ] Implement `expire_unchecked_bookings()` job: query overdue bookings, set status='expired'
-- [ ] Register scheduler to start on FastAPI lifespan startup, run every 1 minute
-- [ ] Write test: create booking, simulate time passing, verify auto-expiry
-- [ ] Verify: scheduler runs in background without blocking API
+- [x] Install APScheduler, create `app/scheduler/jobs.py`
+- [x] Implement `expire_unchecked_bookings()` job: query overdue bookings, set status='expired'
+- [x] Register scheduler to start on FastAPI lifespan startup, run every 1 minute
+- [x] Write test: create booking, simulate time passing, verify auto-expiry
+- [ ] Verify: scheduler runs in background without blocking API (requires runtime verification)
 
 ### 2.2 Advanced Rule Validation
 
-- [ ] Enforce `time_unit` alignment in BookingService: hourly bookings snap to hour boundaries, half_day/full_day snap to AM/PM or full day
-- [ ] Enforce cancellation deadline: library = before start_time, office = before booking date 00:00 AEST
-- [ ] Add max active bookings per user per space (prevent hoarding)
-- [ ] Write tests for each rule edge case
-- [ ] Verify: all rule tests pass
+- [x] Enforce `time_unit` alignment in BookingService: hourly bookings snap to hour boundaries, half_day/full_day snap to AM/PM or full day
+- [x] Enforce cancellation deadline: library = before start_time, office = before booking date 00:00 AEST
+- [x] Add max active bookings per user per space (prevent hoarding)
+- [x] Write tests for each rule edge case
+- [x] Verify: all rule tests pass (88 tests, 90% coverage)
 
 ### 2.3 Frontend Rule Feedback
 
-- [ ] Time picker respects `time_unit`: show hourly slots for library, half-day/full-day for office
-- [ ] Show auto-release warning on library bookings ("Check in within 15 min or booking expires")
-- [ ] Show booking limit feedback if user has max active bookings
-- [ ] Verify: frontend correctly reflects all rules
+- [x] Time picker respects `time_unit`: show hourly slots for library, half-day/full-day for office
+- [x] Show auto-release warning on library bookings ("Check in within 15 min or booking expires")
+- [x] Show booking limit feedback if user has max active bookings (error message shown after API rejection)
+- [ ] Verify: frontend correctly reflects all rules (requires manual E2E verification)
 
 ### Phase 2 Milestone
 
-- [ ] Full test suite green, coverage >= 80%
-- [ ] Both scenarios working: library (hourly + auto-release) and office (half/full day)
+- [x] Full test suite green, coverage >= 80% (88 tests, 90% coverage)
+- [ ] Both scenarios working: library (hourly + auto-release) and office (half/full day) (requires manual E2E verification)
 - [ ] Git: merge Phase 2 to main
 
 ---
@@ -225,10 +225,10 @@ session (20-30 minutes).
 
 ### 4.3 CI/CD Pipeline
 
-- [ ] Create `.github/workflows/ci.yml`: trigger on push to any branch
-  - [ ] Job 1: Lint (ruff for backend, eslint for frontend)
-  - [ ] Job 2: Test (pytest for backend, jest for frontend)
-  - [ ] Job 3: Build check (docker compose build)
+- [x] Create `.github/workflows/ci.yml`: trigger on push to any branch
+  - [x] Job 1: Lint (ruff for backend, eslint for frontend)
+  - [ ] Job 2: Test (pytest for backend, jest for frontend) (jest not yet configured)
+  - [x] Job 3: Build check (docker compose build)
 - [ ] Create `.github/workflows/deploy.yml`: trigger on push to main
   - [ ] Build Docker images
   - [ ] Push to container registry (Docker Hub or AWS ECR)
