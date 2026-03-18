@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useBookings, useCancelBooking, useCheckIn } from "@/lib/hooks";
 
 function formatDate(iso: string) {
@@ -28,7 +29,7 @@ export default function BookingsPage() {
     <div>
       <h1 className="text-2xl font-bold mb-6">My Bookings</h1>
       {bookings?.length === 0 && (
-        <p className="text-gray-500">No bookings yet. <a href="/spaces" className="text-blue-600 hover:underline">Browse spaces</a></p>
+        <p className="text-gray-500">No bookings yet. <Link href="/spaces" className="text-blue-600 hover:underline">Browse spaces</Link></p>
       )}
       <div className="space-y-3">
         {bookings?.map((booking) => (
