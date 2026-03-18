@@ -9,6 +9,8 @@ import {
   useAddSeat,
   useDeleteSeat,
   useUpdateSeat,
+  useUploadFloorPlan,
+  useDeleteFloorPlan,
   type Seat,
 } from "@/lib/hooks";
 import SeatMapCanvas, { type ToolMode } from "@/components/SeatMap/SeatMapCanvas";
@@ -35,16 +37,44 @@ export default function AdminManagePage() {
   const [newSpaceCapacity, setNewSpaceCapacity] = useState(10);
 
   const [error, setError] = useState("");
+  const [showGrid, setShowGrid] = useState(true);
 
   const seats = (space as unknown as { seats?: Seat[] })?.seats ?? [];
-  const gridSize =
-    (space?.layout_config as { grid_size?: number } | null)?.grid_size ?? 30;
+  const layoutConfig = space?.layout_config as { grid_size?: number; background_image?: string } | null;
+  const gridSize = layoutConfig?.grid_size ?? 30;
+  const backgroundImage = layoutConfig?.background_image ?? null;
 
   const createSpace = useCreateSpace();
   const deleteSpace = useDeleteSpace();
   const addSeat = useAddSeat(selectedSpaceId ?? "");
   const deleteSeat = useDeleteSeat();
   const updateSeat = useUpdateSeat();
+  const uploadFloorPlan = useUploadFloorPlan();
+  const deleteFloorPlan = useDeleteFloorPlan();
+
+  async function handleFloorPlanUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !selectedSpaceId) return;
+    setError("");
+    try {
+      await uploadFloorPlan.mutateAsync({ spaceId: selectedSpaceId, file });
+      setShowGrid(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    }
+    e.target.value = "";
+  }
+
+  async function handleFloorPlanDelete() {
+    if (!selectedSpaceId) return;
+    setError("");
+    try {
+      await deleteFloorPlan.mutateAsync(selectedSpaceId);
+      setShowGrid(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove floor plan");
+    }
+  }
 
   async function handleCreateSpace() {
     if (!newSpaceName.trim()) return;
@@ -259,6 +289,29 @@ export default function AdminManagePage() {
                 <p className="text-xs text-yellow-600 mb-2">Click a seat to edit its label or status</p>
               )}
 
+              {/* Floor plan controls */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <label className={`px-3 py-1 rounded text-xs font-medium border cursor-pointer transition-colors ${uploadFloorPlan.isPending ? "opacity-50" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
+                  {uploadFloorPlan.isPending ? "Uploading…" : "⬆ Upload Floor Plan"}
+                  <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFloorPlanUpload} disabled={uploadFloorPlan.isPending} />
+                </label>
+                {backgroundImage && (
+                  <button
+                    onClick={handleFloorPlanDelete}
+                    disabled={deleteFloorPlan.isPending}
+                    className="px-3 py-1 rounded text-xs font-medium border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    ✕ Remove Floor Plan
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowGrid((v) => !v)}
+                  className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${showGrid ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-gray-400 border-gray-200"}`}
+                >
+                  # Grid {showGrid ? "On" : "Off"}
+                </button>
+              </div>
+
               {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
               <SeatMapCanvas
@@ -267,6 +320,8 @@ export default function AdminManagePage() {
                 toolMode={toolMode}
                 labelPrefix={labelPrefix}
                 gridSize={gridSize}
+                backgroundImage={backgroundImage}
+                showGrid={showGrid}
                 onCanvasClick={handleCanvasClick}
                 onSeatClick={handleSeatClick}
               />

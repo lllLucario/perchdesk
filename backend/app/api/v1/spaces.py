@@ -1,6 +1,7 @@
 import uuid
+from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -10,6 +11,8 @@ from app.schemas.space import SpaceCreate, SpaceResponse, SpaceUpdate
 from app.schemas.space_rules import SpaceRulesResponse, SpaceRulesUpdate
 from app.services import space as space_service
 from app.services import space_rules as rules_service
+
+_FLOOR_PLAN_DIR = Path("uploads/floor_plans")
 
 router = APIRouter(prefix="/spaces", tags=["spaces"])
 
@@ -57,6 +60,41 @@ async def delete_space(
     _: User = Depends(require_admin),
 ) -> None:
     await space_service.delete_space(db, space_id)
+
+
+@router.post("/{space_id}/floor-plan", response_model=SpaceResponse)
+async def upload_floor_plan(
+    space_id: uuid.UUID,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> object:
+    if file.content_type not in ("image/png", "image/jpeg"):
+        raise HTTPException(status_code=400, detail="Only PNG/JPG files are allowed.")
+
+    _FLOOR_PLAN_DIR.mkdir(parents=True, exist_ok=True)
+    ext = "png" if file.content_type == "image/png" else "jpg"
+    filename = f"{space_id}.{ext}"
+    (_FLOOR_PLAN_DIR / filename).write_bytes(await file.read())
+
+    space = await space_service.get_space(db, space_id)
+    config = dict(space.layout_config or {})
+    config["background_image"] = f"/uploads/floor_plans/{filename}"
+    return await space_service.update_space(db, space_id, SpaceUpdate(layout_config=config))
+
+
+@router.delete("/{space_id}/floor-plan", response_model=SpaceResponse)
+async def delete_floor_plan(
+    space_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> object:
+    space = await space_service.get_space(db, space_id)
+    config = dict(space.layout_config or {})
+    img_url: str | None = config.pop("background_image", None)
+    if img_url:
+        Path(img_url.lstrip("/")).unlink(missing_ok=True)
+    return await space_service.update_space(db, space_id, SpaceUpdate(layout_config=config or None))
 
 
 @router.get("/{space_id}/rules", response_model=SpaceRulesResponse)

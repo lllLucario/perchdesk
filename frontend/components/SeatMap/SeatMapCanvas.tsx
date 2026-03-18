@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { Seat } from "@/lib/hooks";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
 export type ToolMode = "add" | "delete" | "edit" | "select";
 
 export interface SeatMapCanvasProps {
@@ -16,6 +18,10 @@ export interface SeatMapCanvasProps {
   width?: number;
   height?: number;
   gridSize?: number;
+  /** Relative path from backend e.g. "/uploads/floor_plans/uuid.png" */
+  backgroundImage?: string | null;
+  /** Show grid overlay (default true) */
+  showGrid?: boolean;
   /** user view: called when a seat is clicked */
   onSeatClick?: (seat: Seat) => void;
   /** admin add mode: called with snapped position and suggested next label */
@@ -48,10 +54,18 @@ export default function SeatMapCanvas({
   width = 800,
   height = 600,
   gridSize = 30,
+  backgroundImage,
+  showGrid = true,
   onSeatClick,
   onCanvasClick,
 }: SeatMapCanvasProps) {
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
+
+  const bgUrl = backgroundImage
+    ? backgroundImage.startsWith("http")
+      ? backgroundImage
+      : `${API_BASE}${backgroundImage}`
+    : null;
 
   function seatColor(seat: Seat): string {
     if (seat.status === "maintenance") return COLOR.maintenance;
@@ -117,7 +131,6 @@ export default function SeatMapCanvas({
       onMouseLeave={onMouseLeave}
       onClick={onCanvasPointerClick}
     >
-      {/* Grid */}
       <defs>
         <pattern id="map-grid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
           <path
@@ -128,7 +141,21 @@ export default function SeatMapCanvas({
           />
         </pattern>
       </defs>
-      <rect width={width} height={height} fill="url(#map-grid)" />
+
+      {/* Floor plan background image */}
+      {bgUrl && (
+        <image
+          href={bgUrl}
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          preserveAspectRatio="xMidYMid meet"
+        />
+      )}
+
+      {/* Grid overlay */}
+      {showGrid && <rect width={width} height={height} fill="url(#map-grid)" />}
 
       {/* Seats */}
       {seats.map((seat) => {

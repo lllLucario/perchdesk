@@ -226,3 +226,27 @@ export function useDeleteSpace() {
     },
   });
 }
+
+export function useUploadFloorPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, file }: { spaceId: string; file: File }) => {
+      const form = new FormData();
+      form.append("file", file);
+      return api.upload<Space>(`/api/v1/spaces/${spaceId}/floor-plan`, form);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["spaces", variables.spaceId] });
+    },
+  });
+}
+
+export function useDeleteFloorPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (spaceId: string) => api.delete<Space>(`/api/v1/spaces/${spaceId}/floor-plan`),
+    onSuccess: (_data, spaceId) => {
+      queryClient.invalidateQueries({ queryKey: ["spaces", spaceId] });
+    },
+  });
+}
