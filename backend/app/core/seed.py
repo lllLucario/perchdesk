@@ -14,7 +14,7 @@ from app.models.user import User
 async def seed(session: AsyncSession) -> None:
     # Admin user
     admin = User(
-        email="admin@perchdesk.local",
+        email="admin@perchdesk.com",
         name="Admin",
         hashed_password=hash_password("admin123"),
         role="admin",
