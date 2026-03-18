@@ -127,3 +127,102 @@ export function useCheckIn() {
     },
   });
 }
+
+// ----- Seat availability (time-range based) -----
+
+export interface SeatAvailability extends Seat {
+  booking_status: "available" | "booked" | "my_booking";
+}
+
+export function useSpaceAvailability(spaceId: string, start: string, end: string) {
+  return useQuery<SeatAvailability[]>({
+    queryKey: ["spaces", spaceId, "availability", start, end],
+    queryFn: () =>
+      api.get<SeatAvailability[]>(
+        `/api/v1/spaces/${spaceId}/availability?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+      ),
+    enabled: !!spaceId && !!start && !!end,
+  });
+}
+
+// ----- Seat mutations -----
+
+export function useAddSeat(spaceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { label: string; position: { x: number; y: number } }) =>
+      api.post<Seat>(`/api/v1/spaces/${spaceId}/seats`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spaces", spaceId] });
+    },
+  });
+}
+
+export function useDeleteSeat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ seatId, spaceId }: { seatId: string; spaceId: string }) =>
+      api.delete<void>(`/api/v1/seats/${seatId}`),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["spaces", variables.spaceId] });
+    },
+  });
+}
+
+export function useUpdateSeat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      seatId,
+      spaceId,
+      data,
+    }: {
+      seatId: string;
+      spaceId: string;
+      data: { label?: string; status?: string; attributes?: Record<string, unknown> };
+    }) => api.put<Seat>(`/api/v1/seats/${seatId}`, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["spaces", variables.spaceId] });
+    },
+  });
+}
+
+// ----- Space mutations -----
+
+export function useCreateSpace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string; type: string; capacity: number }) =>
+      api.post<Space>("/api/v1/spaces", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
+  });
+}
+
+export function useUpdateSpace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      spaceId,
+      data,
+    }: {
+      spaceId: string;
+      data: { name?: string; capacity?: number; layout_config?: Record<string, unknown> };
+    }) => api.put<Space>(`/api/v1/spaces/${spaceId}`, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["spaces", variables.spaceId] });
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
+  });
+}
+
+export function useDeleteSpace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (spaceId: string) => api.delete<void>(`/api/v1/spaces/${spaceId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+    },
+  });
+}

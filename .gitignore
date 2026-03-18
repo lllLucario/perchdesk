@@ -230,3 +230,4 @@ yarn-error.log*
 CLAUDE.md
 docs/tasks.md
 docs/architecture.md
+backend/.env

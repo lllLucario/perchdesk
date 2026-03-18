@@ -1,9 +1,17 @@
 "use client";
 
-import { use, useState } from "react";
-import { useSpace, useSpaceRules, useCreateBooking } from "@/lib/hooks";
+import { use, useState, useMemo } from "react";
+import {
+  useSpace,
+  useSpaceRules,
+  useSpaceAvailability,
+  useCreateBooking,
+  type Seat,
+  type SeatAvailability,
+} from "@/lib/hooks";
 import { useBookingStore } from "@/store/bookingStore";
 import { ApiError } from "@/lib/api";
+import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
 
 /** Round a Date up to the next whole hour. */
 function nextHour(from: Date = new Date()): Date {
@@ -34,10 +42,8 @@ function buildSlots(timeUnit: "half_day" | "full_day", maxAdvanceDays: number) {
       noon.setHours(12);
       const nextDay = new Date(base);
       nextDay.setDate(nextDay.getDate() + 1);
-
       const fmt = (x: Date) =>
         x.toLocaleDateString("en-AU", { weekday: "short", month: "short", day: "numeric" });
-
       slots.push({
         label: `${fmt(base)} AM (00:00–12:00)`,
         start: base.toISOString(),
@@ -49,7 +55,6 @@ function buildSlots(timeUnit: "half_day" | "full_day", maxAdvanceDays: number) {
         end: nextDay.toISOString(),
       });
     } else {
-      // full_day
       const nextDay = new Date(base);
       nextDay.setDate(nextDay.getDate() + 1);
       const fmt = (x: Date) =>
@@ -73,12 +78,45 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
 
   // hourly: free datetime-local inputs
   const [startTime, setStartTime] = useState(() => toLocalInput(nextHour()));
-  const [endTime, setEndTime] = useState(() => toLocalInput(nextHour(new Date(nextHour().getTime() + 3600000))));
+  const [endTime, setEndTime] = useState(() =>
+    toLocalInput(nextHour(new Date(nextHour().getTime() + 3600000)))
+  );
 
   // half_day / full_day: slot picker
   const [selectedSlot, setSelectedSlot] = useState("");
 
   const [message, setMessage] = useState("");
+
+  const timeUnit = rules?.time_unit ?? "hourly";
+  const slots = timeUnit !== "hourly" ? buildSlots(timeUnit, rules?.max_advance_days ?? 7) : [];
+
+  // Resolve start/end for availability query
+  const [availStart, availEnd] = useMemo(() => {
+    if (timeUnit === "hourly") {
+      return [
+        startTime ? new Date(startTime).toISOString() : "",
+        endTime ? new Date(endTime).toISOString() : "",
+      ];
+    }
+    if (selectedSlot) {
+      const slot = JSON.parse(selectedSlot) as { start: string; end: string };
+      return [slot.start, slot.end];
+    }
+    return ["", ""];
+  }, [timeUnit, startTime, endTime, selectedSlot]);
+
+  const { data: availability } = useSpaceAvailability(id, availStart, availEnd);
+
+  const availabilityMap = useMemo(() => {
+    if (!availability) return undefined;
+    return Object.fromEntries(
+      availability.map((s: SeatAvailability) => [s.id, s.booking_status])
+    );
+  }, [availability]);
+
+  const seats = (space as unknown as { seats?: Seat[] })?.seats ?? [];
+  const gridSize =
+    (space?.layout_config as { grid_size?: number } | null)?.grid_size ?? 30;
 
   async function handleBook() {
     if (!selectedSeat) return;
@@ -87,7 +125,7 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
     let start: string;
     let end: string;
 
-    if (rules?.time_unit === "hourly") {
+    if (timeUnit === "hourly") {
       if (!startTime || !endTime) return;
       start = new Date(startTime).toISOString();
       end = new Date(endTime).toISOString();
@@ -104,66 +142,70 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
       selectSeat(null);
       setSelectedSlot("");
     } catch (e) {
-      if (e instanceof ApiError) {
-        setMessage(`Error: ${e.message}`);
-      } else {
-        setMessage("Booking failed.");
-      }
+      setMessage(e instanceof ApiError ? `Error: ${e.message}` : "Booking failed.");
     }
+  }
+
+  function handleSeatClick(seat: Seat) {
+    const avail = availabilityMap?.[seat.id];
+    if (seat.status !== "available" || avail === "booked") return;
+    selectSeat(
+      selectedSeat?.id === seat.id
+        ? null
+        : { id: seat.id, label: seat.label, position: seat.position, status: seat.status }
+    );
   }
 
   if (isLoading) return <p className="text-gray-500">Loading…</p>;
   if (!space) return <p className="text-red-500">Space not found.</p>;
 
-  const timeUnit = rules?.time_unit ?? "hourly";
-  const slots =
-    timeUnit !== "hourly" ? buildSlots(timeUnit, rules?.max_advance_days ?? 7) : [];
-
   return (
     <div>
       <h1 className="text-2xl font-bold mb-2">{space.name}</h1>
-      <p className="text-sm text-gray-500 mb-1 capitalize">{space.type} · {space.capacity} seats</p>
+      <p className="text-sm text-gray-500 mb-1 capitalize">
+        {space.type} · {space.capacity} seats
+      </p>
       {rules && (
         <p className="text-xs text-gray-400 mb-6">
-          Max {rules.max_duration_minutes} min · up to {rules.max_advance_days} days ahead · {rules.time_unit.replace("_", " ")} bookings
+          Max {rules.max_duration_minutes} min · up to {rules.max_advance_days} days ahead ·{" "}
+          {rules.time_unit.replace("_", " ")} bookings
         </p>
       )}
 
-      {/* Auto-release warning for library spaces */}
+      {/* Auto-release warning */}
       {rules?.auto_release_minutes && (
         <div className="mb-4 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-          ⚠ Check in within {rules.auto_release_minutes} minutes of your start time or your booking will be automatically released.
+          ⚠ Check in within {rules.auto_release_minutes} minutes of your start time or your
+          booking will be automatically released.
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Seat grid */}
+        {/* Seat map */}
         <div className="lg:col-span-2">
           <h2 className="font-semibold mb-3">Select a seat</h2>
-          <div className="bg-white border rounded-xl p-4">
-            <div className="flex flex-wrap gap-2">
-              {(space as unknown as { seats?: Array<{ id: string; label: string; status: string }> }).seats?.map((seat) => (
-                <button
-                  key={seat.id}
-                  onClick={() => selectSeat(seat.status === "available" ? { id: seat.id, label: seat.label, position: { x: 0, y: 0 }, status: seat.status } : null)}
-                  disabled={seat.status !== "available"}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                    selectedSeat?.id === seat.id
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : seat.status === "available"
-                      ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                      : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                  }`}
-                >
-                  {seat.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-4 mt-4 text-xs text-gray-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-green-300 inline-block" /> Available</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-blue-500 inline-block" /> Selected</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-gray-300 inline-block" /> Unavailable</span>
-            </div>
+          <SeatMapCanvas
+            seats={seats}
+            mode="user"
+            availabilityMap={availabilityMap}
+            selectedSeatId={selectedSeat?.id}
+            gridSize={gridSize}
+            onSeatClick={handleSeatClick}
+          />
+          {/* Legend */}
+          <div className="flex gap-4 mt-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded inline-block bg-[#1D9E75]" /> Available
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded inline-block bg-[#378ADD]" /> Selected / My booking
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded inline-block bg-[#E24B4A]" /> Booked
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded inline-block bg-[#B4B2A9]" /> Maintenance
+            </span>
           </div>
         </div>
 
@@ -171,9 +213,11 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
         <div className="bg-white border rounded-xl p-4">
           <h2 className="font-semibold mb-3">Book a seat</h2>
           {selectedSeat ? (
-            <p className="text-sm text-blue-600 font-medium mb-3">Seat {selectedSeat.label} selected</p>
+            <p className="text-sm text-blue-600 font-medium mb-3">
+              Seat {selectedSeat.label} selected
+            </p>
           ) : (
-            <p className="text-sm text-gray-400 mb-3">Select a seat from the map</p>
+            <p className="text-sm text-gray-400 mb-3">Click a seat on the map</p>
           )}
 
           <div className="space-y-3">
@@ -219,7 +263,11 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
             )}
 
             {message && (
-              <p className={`text-xs ${message.startsWith("Error") ? "text-red-500" : "text-green-600"}`}>
+              <p
+                className={`text-xs ${
+                  message.startsWith("Error") ? "text-red-500" : "text-green-600"
+                }`}
+              >
                 {message}
               </p>
             )}
