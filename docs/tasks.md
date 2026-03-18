@@ -136,7 +136,7 @@ session (20-30 minutes).
 - [x] Implement `expire_unchecked_bookings()` job: query overdue bookings, set status='expired'
 - [x] Register scheduler to start on FastAPI lifespan startup, run every 1 minute
 - [x] Write test: create booking, simulate time passing, verify auto-expiry
-- [ ] Verify: scheduler runs in background without blocking API (requires runtime verification)
+- [x] Verify: scheduler runs in background without blocking API (requires runtime verification)
 
 ### 2.2 Advanced Rule Validation
 
