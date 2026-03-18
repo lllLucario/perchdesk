@@ -225,3 +225,8 @@ yarn-error.log*
 *.env.development.local
 *.env.test.local
 *.env.production.local
+
+# Internal planning and instructions (not for public repo)
+CLAUDE.md
+docs/tasks.md
+docs/architecture.md
