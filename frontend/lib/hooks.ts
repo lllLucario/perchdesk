@@ -32,6 +32,16 @@ export interface Booking {
   created_at: string;
 }
 
+export interface SpaceRules {
+  id: string;
+  space_id: string;
+  max_duration_minutes: number;
+  max_advance_days: number;
+  time_unit: "hourly" | "half_day" | "full_day";
+  auto_release_minutes: number | null;
+  requires_approval: boolean;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -64,6 +74,14 @@ export function useSpace(id: string) {
     queryKey: ["spaces", id],
     queryFn: () => api.get<Space>(`/api/v1/spaces/${id}`),
     enabled: !!id,
+  });
+}
+
+export function useSpaceRules(spaceId: string) {
+  return useQuery<SpaceRules>({
+    queryKey: ["spaces", spaceId, "rules"],
+    queryFn: () => api.get<SpaceRules>(`/api/v1/spaces/${spaceId}/rules`),
+    enabled: !!spaceId,
   });
 }
 

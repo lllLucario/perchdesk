@@ -1,5 +1,6 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,12 +18,53 @@ from app.models.seat import Seat
 from app.models.space_rules import SpaceRules
 from app.schemas.booking import BookingCreate
 
+AEST = ZoneInfo("Australia/Sydney")
+
 
 def _utc(dt: datetime) -> datetime:
     """Ensure a datetime is UTC-aware (handles SQLite returning naive datetimes)."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=UTC)
     return dt
+
+
+def _validate_time_unit(start: datetime, end: datetime, time_unit: str) -> None:
+    """Validate that start/end times align with the space's time_unit."""
+    start_aest = start.astimezone(AEST)
+    end_aest = end.astimezone(AEST)
+
+    if time_unit == "hourly":
+        if start_aest.minute != 0 or start_aest.second != 0 or start_aest.microsecond != 0:
+            raise BookingRuleViolationError(
+                "Hourly bookings must start on an exact hour (e.g. 09:00, 10:00)."
+            )
+        if end_aest.minute != 0 or end_aest.second != 0 or end_aest.microsecond != 0:
+            raise BookingRuleViolationError(
+                "Hourly bookings must end on an exact hour (e.g. 10:00, 11:00)."
+            )
+
+    elif time_unit == "half_day":
+        if start_aest.hour not in (0, 12) or start_aest.minute != 0 or start_aest.second != 0:
+            raise BookingRuleViolationError(
+                "Half-day bookings must start at midnight (00:00) or noon (12:00) AEST."
+            )
+        if end_aest.hour not in (0, 12) or end_aest.minute != 0 or end_aest.second != 0:
+            raise BookingRuleViolationError(
+                "Half-day bookings must end at midnight (00:00) or noon (12:00) AEST."
+            )
+
+    elif time_unit == "full_day":
+        if start_aest.hour != 0 or start_aest.minute != 0 or start_aest.second != 0:
+            raise BookingRuleViolationError(
+                "Full-day bookings must start at midnight (00:00) AEST."
+            )
+        expected_end = (start_aest + timedelta(days=1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        if end_aest != expected_end:
+            raise BookingRuleViolationError(
+                "Full-day bookings must end exactly 24 hours after midnight (next day 00:00) AEST."
+            )
 
 
 async def create_booking(
@@ -45,7 +87,7 @@ async def create_booking(
 
     now = datetime.now(UTC)
 
-    # 3. Validate time range
+    # 3. Validate time range basics
     if data.start_time <= now:
         raise BookingRuleViolationError("Start time must be in the future.")
     if data.end_time <= data.start_time:
@@ -63,7 +105,27 @@ async def create_booking(
             f"Cannot book more than {rules.max_advance_days} days in advance."
         )
 
-    # 4. Check for conflicts
+    # 4. Validate time_unit alignment
+    _validate_time_unit(data.start_time, data.end_time, rules.time_unit)
+
+    # 5. Check max active bookings per user per space (max 1 active booking per space)
+    active_result = await db.execute(
+        select(Booking)
+        .join(Seat, Booking.seat_id == Seat.id)
+        .where(
+            and_(
+                Booking.user_id == user_id,
+                Seat.space_id == seat.space_id,
+                Booking.status.in_(["confirmed", "checked_in"]),
+            )
+        )
+    )
+    if active_result.scalar_one_or_none() is not None:
+        raise BookingRuleViolationError(
+            "You already have an active booking in this space."
+        )
+
+    # 6. Check for seat-level conflicts
     conflict_result = await db.execute(
         select(Booking).where(
             and_(
@@ -111,13 +173,13 @@ async def cancel_booking(
 
     now = datetime.now(UTC)
     if rules and rules.time_unit in ("half_day", "full_day"):
-        # Office: must cancel before booking date 00:00 local (use UTC midnight as approximation)
-        booking_date_midnight = _utc(booking.start_time).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        if now >= booking_date_midnight:
+        # Office: must cancel before booking date 00:00 AEST
+        start_aest = _utc(booking.start_time).astimezone(AEST)
+        booking_date_midnight_aest = start_aest.replace(hour=0, minute=0, second=0, microsecond=0)
+        booking_date_midnight_utc = booking_date_midnight_aest.astimezone(UTC)
+        if now >= booking_date_midnight_utc:
             raise BookingRuleViolationError(
-                "Office bookings must be cancelled before the booking date."
+                "Office bookings must be cancelled before the booking date (midnight AEST)."
             )
     else:
         # Library: must cancel before start_time
