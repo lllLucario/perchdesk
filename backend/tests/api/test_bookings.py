@@ -9,12 +9,18 @@ from app.models.seat import Seat
 from app.models.user import User
 
 
+def _next_hour() -> datetime:
+    """Return the next whole UTC hour boundary (always in the future)."""
+    now = datetime.now(UTC)
+    return (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+
+
 def future(hours: int = 1) -> str:
-    return (datetime.now(UTC) + timedelta(hours=hours)).isoformat()
+    return (_next_hour() + timedelta(hours=hours - 1)).isoformat()
 
 
 def future_dt(hours: int = 1) -> datetime:
-    return datetime.now(UTC) + timedelta(hours=hours)
+    return _next_hour() + timedelta(hours=hours - 1)
 
 
 @pytest.mark.asyncio
@@ -39,11 +45,11 @@ async def test_create_booking(
 @pytest.mark.asyncio
 async def test_booking_conflict(
     client: AsyncClient, user_token: str, library_seat: Seat, db_session: AsyncSession,
-    regular_user: User
+    admin_user: User
 ):
-    # Create first booking directly
+    # Another user (admin) holds a booking on the same seat/time
     booking = Booking(
-        user_id=regular_user.id,
+        user_id=admin_user.id,
         seat_id=library_seat.id,
         start_time=future_dt(1),
         end_time=future_dt(2),
@@ -52,7 +58,7 @@ async def test_booking_conflict(
     db_session.add(booking)
     await db_session.commit()
 
-    # Try to create overlapping booking
+    # regular_user tries to book the same seat — should conflict (409), not rule violation
     resp = await client.post(
         "/api/v1/bookings",
         json={
@@ -87,8 +93,8 @@ async def test_booking_exceeds_max_duration(
 async def test_booking_too_far_in_advance(
     client: AsyncClient, user_token: str, library_seat: Seat
 ):
-    # Library max is 3 days; try 5 days ahead
-    far_future = datetime.now(UTC) + timedelta(days=5)
+    # Library max is 3 days; try 5 days ahead (aligned to hour boundary)
+    far_future = _next_hour() + timedelta(days=5)
     resp = await client.post(
         "/api/v1/bookings",
         json={

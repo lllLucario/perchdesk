@@ -1,6 +1,7 @@
 """Direct service-level unit tests for better coverage."""
 import uuid
 from datetime import UTC, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,10 +14,12 @@ from app.core.exceptions import (
     SeatUnavailableError,
     UnauthorizedError,
 )
+from app.models.booking import Booking
 from app.models.seat import Seat
 from app.models.space import Space
 from app.models.space_rules import SpaceRules
 from app.models.user import User
+from app.scheduler.jobs import expire_bookings_in_session
 from app.schemas.auth import LoginRequest, RegisterRequest
 from app.schemas.booking import BookingCreate
 from app.schemas.seat import SeatBatchCreate, SeatCreate, SeatUpdate
@@ -28,9 +31,33 @@ from app.services import seat as seat_service
 from app.services import space as space_service
 from app.services import space_rules as rules_service
 
+AEST = ZoneInfo("Australia/Sydney")
+
 
 def _future(hours: int = 1) -> datetime:
-    return datetime.now(UTC) + timedelta(hours=hours)
+    """Return a future UTC datetime aligned to the next whole hour boundary + offset.
+    This ensures compatibility with hourly time_unit validation."""
+    now = datetime.now(UTC)
+    base = (now + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0)
+    return base + timedelta(hours=hours - 1)
+
+
+def _half_day_start(days_ahead: int = 1) -> datetime:
+    """Return midnight AEST on a future day, as UTC (for half_day bookings)."""
+    now_aest = datetime.now(AEST)
+    target = (now_aest + timedelta(days=days_ahead)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    return target.astimezone(UTC)
+
+
+def _half_day_end(days_ahead: int = 1) -> datetime:
+    """Return noon AEST on a future day, as UTC (for half_day bookings)."""
+    now_aest = datetime.now(AEST)
+    target = (now_aest + timedelta(days=days_ahead)).replace(
+        hour=12, minute=0, second=0, microsecond=0
+    )
+    return target.astimezone(UTC)
 
 
 # ─── Auth Service ───────────────────────────────────────────────────────────
@@ -454,10 +481,22 @@ async def test_create_booking_conflict(
         test_user.id,
         BookingCreate(seat_id=available_seat.id, start_time=_future(1), end_time=_future(2)),
     )
+    # A different user trying the same seat/time should hit the seat-level conflict
+    from app.core.security import hash_password
+    other_user = User(
+        email="other_conflict@test.com",
+        name="Other",
+        hashed_password=hash_password("pass"),
+        role="user",
+    )
+    db_session.add(other_user)
+    await db_session.commit()
+    await db_session.refresh(other_user)
+
     with pytest.raises(BookingConflictError):
         await booking_service.create_booking(
             db_session,
-            test_user.id,
+            other_user.id,
             BookingCreate(seat_id=available_seat.id, start_time=_future(1), end_time=_future(2)),
         )
 
@@ -626,3 +665,191 @@ async def test_list_all_bookings(
     )
     all_bookings = await booking_service.list_all_bookings(db_session)
     assert len(all_bookings) >= 1
+
+
+# ─── Phase 2: time_unit alignment ────────────────────────────────────────────
+
+@pytest.fixture
+async def office_space(db_session: AsyncSession) -> Space:
+    space = Space(name="Office", type="office", capacity=5)
+    db_session.add(space)
+    await db_session.flush()
+    rules = SpaceRules(
+        space_id=space.id,
+        max_duration_minutes=720,  # 12 hours to accommodate midnight→noon half-day slots
+        max_advance_days=7,
+        time_unit="half_day",
+        auto_release_minutes=None,
+    )
+    db_session.add(rules)
+    await db_session.commit()
+    await db_session.refresh(space)
+    return space
+
+
+@pytest.fixture
+async def office_seat(db_session: AsyncSession, office_space: Space) -> Seat:
+    seat = Seat(space_id=office_space.id, label="O1", position={"x": 0, "y": 0})
+    db_session.add(seat)
+    await db_session.commit()
+    await db_session.refresh(seat)
+    return seat
+
+
+@pytest.mark.asyncio
+async def test_time_unit_hourly_valid(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Booking exactly on hour boundaries should succeed."""
+    booking = await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(seat_id=available_seat.id, start_time=_future(1), end_time=_future(2)),
+    )
+    assert booking.status == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_time_unit_hourly_invalid_start(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Booking not on an hour boundary should be rejected."""
+    start = datetime.now(UTC) + timedelta(hours=2, minutes=30)
+    end = datetime.now(UTC) + timedelta(hours=3, minutes=30)
+    with pytest.raises(BookingRuleViolationError, match="exact hour"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=available_seat.id, start_time=start, end_time=end),
+        )
+
+
+@pytest.mark.asyncio
+async def test_time_unit_half_day_valid(
+    db_session: AsyncSession, test_user: User, office_seat: Seat
+):
+    """Half-day booking at midnight→noon should succeed."""
+    booking = await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(
+            seat_id=office_seat.id,
+            start_time=_half_day_start(1),
+            end_time=_half_day_end(1),
+        ),
+    )
+    assert booking.status == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_time_unit_half_day_invalid(
+    db_session: AsyncSession, test_user: User, office_seat: Seat
+):
+    """Half-day booking not starting at 00:00 or 12:00 AEST should be rejected."""
+    now_aest = datetime.now(AEST)
+    bad_start = (now_aest + timedelta(days=1)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    ).astimezone(UTC)
+    bad_end = (now_aest + timedelta(days=1)).replace(
+        hour=12, minute=0, second=0, microsecond=0
+    ).astimezone(UTC)
+    with pytest.raises(BookingRuleViolationError, match="midnight.*noon|half.day"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=office_seat.id, start_time=bad_start, end_time=bad_end),
+        )
+
+
+# ─── Phase 2: max active bookings per space ───────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_max_active_bookings_per_space(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    """A user cannot hold two active bookings in the same space."""
+    seat1 = Seat(space_id=space_with_rules.id, label="X1", position={"x": 0, "y": 0})
+    seat2 = Seat(space_id=space_with_rules.id, label="X2", position={"x": 30, "y": 0})
+    db_session.add_all([seat1, seat2])
+    await db_session.commit()
+    await db_session.refresh(seat1)
+    await db_session.refresh(seat2)
+
+    await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(2)),
+    )
+    with pytest.raises(BookingRuleViolationError, match="already have an active booking"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=seat2.id, start_time=_future(2), end_time=_future(3)),
+        )
+
+
+# ─── Phase 2: auto-release scheduler ─────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_expire_bookings_in_session(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Bookings past auto_release_minutes since start_time should be expired."""
+    past_start = datetime.now(UTC) - timedelta(minutes=30)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=available_seat.id,
+        start_time=past_start,
+        end_time=past_start + timedelta(hours=2),
+        status="confirmed",
+    )
+    db_session.add(booking)
+    await db_session.commit()
+    await db_session.refresh(booking)
+
+    expired_count = await expire_bookings_in_session(db_session)
+
+    assert expired_count == 1
+    await db_session.refresh(booking)
+    assert booking.status == "expired"
+
+
+@pytest.mark.asyncio
+async def test_expire_bookings_skips_checked_in(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Already checked-in bookings should not be expired."""
+    past_start = datetime.now(UTC) - timedelta(minutes=30)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=available_seat.id,
+        start_time=past_start,
+        end_time=past_start + timedelta(hours=2),
+        status="checked_in",
+        checked_in_at=past_start,
+    )
+    db_session.add(booking)
+    await db_session.commit()
+
+    expired_count = await expire_bookings_in_session(db_session)
+    assert expired_count == 0
+
+
+@pytest.mark.asyncio
+async def test_expire_bookings_skips_no_auto_release(
+    db_session: AsyncSession, test_user: User, office_seat: Seat
+):
+    """Bookings in a space without auto_release_minutes should never be expired."""
+    past_start = datetime.now(UTC) - timedelta(hours=2)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=office_seat.id,
+        start_time=past_start,
+        end_time=past_start + timedelta(hours=8),
+        status="confirmed",
+    )
+    db_session.add(booking)
+    await db_session.commit()
+
+    expired_count = await expire_bookings_in_session(db_session)
+    assert expired_count == 0
