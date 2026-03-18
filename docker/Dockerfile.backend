@@ -5,7 +5,10 @@ WORKDIR /app
 
 COPY backend/pyproject.toml .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -e .
+    && pip install --no-cache-dir \
+        fastapi uvicorn[standard] sqlalchemy[asyncio] asyncpg alembic \
+        "passlib[bcrypt]" "bcrypt<4.0.0" "python-jose[cryptography]" \
+        pydantic-settings "pydantic[email]" apscheduler python-multipart
 
 # ---- runtime stage ----
 FROM python:3.11-slim AS runtime

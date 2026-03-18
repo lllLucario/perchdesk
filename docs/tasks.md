@@ -27,7 +27,7 @@ session (20-30 minutes).
 - [x] Docker: create `docker/Dockerfile.backend` (multi-stage: builder + runtime)
 - [x] Docker: create `docker/Dockerfile.frontend` (multi-stage: builder + runner)
 - [x] Docker: create `docker-compose.yml` (frontend + backend + postgres)
-- [ ] Verify: `docker compose up` starts all services, `GET /health` returns 200
+- [x] Verify: `docker compose up` starts all services, `GET /health` returns 200
 - [ ] Git: commit and push Phase 0 to `main` branch
 
 ---
@@ -102,26 +102,26 @@ session (20-30 minutes).
 
 ### 1.8 Frontend — Auth Pages
 
-- [ ] Create login page (`/(auth)/login/page.tsx`): email + password form, call POST `/auth/login`, store token in Zustand
-- [ ] Create register page (`/(auth)/register/page.tsx`): name + email + password form
-- [ ] Create `useAuthStore` Zustand store: user, tokens, login(), logout(), isAuthenticated
-- [ ] Create auth middleware/layout: redirect to `/login` if not authenticated
-- [ ] Create TanStack Query hook: `useCurrentUser()` (GET `/auth/me`)
+- [x] Create login page (`/(auth)/login/page.tsx`): email + password form, call POST `/auth/login`, store token in Zustand
+- [x] Create register page (`/(auth)/register/page.tsx`): name + email + password form
+- [x] Create `useAuthStore` Zustand store: user, tokens, login(), logout(), isAuthenticated
+- [x] Create auth middleware/layout: redirect to `/login` if not authenticated
+- [x] Create TanStack Query hook: `useCurrentUser()` (GET `/auth/me`)
 - [ ] Verify: can register, login, see protected page, logout
 
 ### 1.9 Frontend — Spaces & Booking Pages
 
-- [ ] Create spaces list page (`/(dashboard)/spaces/page.tsx`): show all spaces as cards
-- [ ] Create space detail page (`/(dashboard)/spaces/[id]/page.tsx`): show seats as simple grid (Phase 1 — no interactive map yet)
-- [ ] Create booking panel component: select seat → pick time range → confirm → call POST `/bookings`
-- [ ] Create my bookings page (`/(dashboard)/bookings/page.tsx`): list user's bookings, cancel button, check-in button
-- [ ] Create TanStack Query hooks: `useSpaces()`, `useSpace(id)`, `useBookings()`, `useCreateBooking()`, `useCancelBooking()`, `useCheckIn()`
-- [ ] Create `useBookingStore` Zustand store: selectedSeat, selectedTimeRange
+- [x] Create spaces list page (`/(dashboard)/spaces/page.tsx`): show all spaces as cards
+- [x] Create space detail page (`/(dashboard)/spaces/[id]/page.tsx`): show seats as simple grid (Phase 1 — no interactive map yet)
+- [x] Create booking panel component: select seat → pick time range → confirm → call POST `/bookings`
+- [x] Create my bookings page (`/(dashboard)/bookings/page.tsx`): list user's bookings, cancel button, check-in button
+- [x] Create TanStack Query hooks: `useSpaces()`, `useSpace(id)`, `useBookings()`, `useCreateBooking()`, `useCancelBooking()`, `useCheckIn()`
+- [x] Create `useBookingStore` Zustand store: selectedSeat, selectedTimeRange
 - [ ] Verify: full booking flow works end-to-end (select seat → book → see in my bookings → check in → cancel)
 
 ### Phase 1 Milestone
 
-- [ ] Run full backend test suite: `pytest --cov=app --cov-report=term-missing` — all green, coverage >= 80%
+- [x] Run full backend test suite: `pytest --cov=app --cov-report=term-missing` — all green, coverage >= 80% (91% achieved, 80 tests)
 - [ ] Run frontend tests: `npm test` — all green
 - [ ] Manual end-to-end test: register → login → view spaces → book seat → check in → cancel
 - [ ] Git: merge all Phase 1 feature branches to main
