@@ -19,12 +19,12 @@ from app.models.seat import Seat
 from app.models.space import Space
 from app.models.space_rules import SpaceRules
 from app.models.user import User
+from app.scheduler.jobs import expire_bookings_in_session
 from app.schemas.auth import LoginRequest, RegisterRequest
 from app.schemas.booking import BookingCreate
 from app.schemas.seat import SeatBatchCreate, SeatCreate, SeatUpdate
 from app.schemas.space import SpaceCreate, SpaceUpdate
 from app.schemas.space_rules import SpaceRulesUpdate
-from app.scheduler.jobs import expire_bookings_in_session
 from app.services import auth as auth_service
 from app.services import booking as booking_service
 from app.services import seat as seat_service
