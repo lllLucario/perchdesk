@@ -22,6 +22,8 @@ export default function LoginPage() {
         "/api/v1/auth/login",
         { email, password }
       );
+      // Store token first so the /auth/me request carries the Authorization header
+      localStorage.setItem("access_token", tokens.access_token);
       const me = await api.get<{ id: string; email: string; name: string; role: string }>(
         "/api/v1/auth/me"
       );
