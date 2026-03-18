@@ -28,6 +28,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/bookings" className="text-sm text-gray-600 hover:text-gray-900">
             My Bookings
           </Link>
+          {user?.role === "admin" && (
+            <Link href="/spaces/manage" className="text-sm text-purple-600 hover:text-purple-800">
+              Admin
+            </Link>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">{user?.name}</span>
