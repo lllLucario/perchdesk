@@ -52,4 +52,15 @@ export const api = {
       body: body ? JSON.stringify(body) : undefined,
     }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  upload: <T>(path: string, formData: FormData): Promise<T> => {
+    const url = `${API_BASE_URL}${path}`;
+    const headers = { ...getAuthHeader() };
+    return fetch(url, { method: "POST", headers, body: formData }).then(async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new ApiError(res.status, body?.error?.code ?? "UNKNOWN_ERROR", body?.error?.detail ?? res.statusText);
+      }
+      return res.json() as Promise<T>;
+    });
+  },
 };
