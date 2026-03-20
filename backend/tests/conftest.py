@@ -1,6 +1,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.database import Base, get_db
 from app.core.security import hash_password
@@ -12,7 +13,10 @@ from app.models.user import User
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+# NullPool: disable connection pooling so each operation creates a fresh
+# connection bound to the current event loop. Required when pytest-asyncio
+# uses function-scoped event loops (the default) with a module-level engine.
+test_engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 TestSessionLocal = async_sessionmaker(
     test_engine,
     class_=AsyncSession,
@@ -22,6 +26,9 @@ TestSessionLocal = async_sessionmaker(
 
 @pytest.fixture(autouse=True)
 async def setup_db():
+    # Drop first to clean any stale state left by a previous interrupted run.
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
