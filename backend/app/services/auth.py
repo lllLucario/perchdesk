@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError, UnauthorizedError
+from app.core.exceptions import DuplicateError, NotFoundError, UnauthorizedError
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -16,9 +16,7 @@ from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 async def register(db: AsyncSession, data: RegisterRequest) -> User:
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none() is not None:
-        from app.core.exceptions import BookingConflictError
-
-        raise BookingConflictError("Email already registered.")
+        raise DuplicateError("Email already registered.")
 
     user = User(
         email=data.email,

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import (
     BookingConflictError,
     BookingRuleViolationError,
+    DuplicateError,
     ForbiddenError,
     NotFoundError,
     SeatUnavailableError,
@@ -76,7 +77,7 @@ async def test_register_creates_user(db_session: AsyncSession):
 async def test_register_duplicate_raises(db_session: AsyncSession):
     data = RegisterRequest(email="dup@test.com", name="Dup", password="pass1234")
     await auth_service.register(db_session, data)
-    with pytest.raises(BookingConflictError):
+    with pytest.raises(DuplicateError):
         await auth_service.register(db_session, data)
 
 
@@ -293,7 +294,7 @@ async def test_get_availability(db_session: AsyncSession, space_with_rules: Spac
         db_session, space_with_rules.id, _future(1), _future(2)
     )
     assert len(results) == 1
-    assert results[0].is_available is True
+    assert results[0].booking_status == "available"
 
 
 # ─── Space Rules Service ─────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -37,6 +37,6 @@ class SeatAvailabilityResponse(BaseModel):
     position: dict[str, float]
     status: str
     attributes: dict[str, Any] | None
-    is_available: bool
+    booking_status: Literal["available", "booked", "my_booking"]
 
     model_config = {"from_attributes": True}

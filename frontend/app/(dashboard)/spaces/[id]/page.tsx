@@ -114,7 +114,8 @@ export default function SpaceDetailPage({ params }: { params: Promise<{ id: stri
     );
   }, [availability]);
 
-  const seats = (space as unknown as { seats?: Seat[] })?.seats ?? [];
+  // useSpace returns SpaceDetail which includes seats — no cast needed
+  const seats = space?.seats ?? [];
   const gridSize =
     (space?.layout_config as { grid_size?: number } | null)?.grid_size ?? 30;
 

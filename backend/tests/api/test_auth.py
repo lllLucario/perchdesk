@@ -23,6 +23,7 @@ async def test_register_duplicate_email(client: AsyncClient, regular_user: User)
         json={"email": "user@test.com", "name": "Dup", "password": "pass1234"},
     )
     assert resp.status_code == 409
+    assert resp.json()["error"]["code"] == "DUPLICATE"
 
 
 @pytest.mark.asyncio

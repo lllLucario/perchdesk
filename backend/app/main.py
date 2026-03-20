@@ -1,6 +1,6 @@
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
@@ -35,9 +35,7 @@ app.add_middleware(
 
 app.include_router(api_router)
 
-# Serve uploaded floor plan images
-_uploads_dir = Path("uploads")
-_uploads_dir.mkdir(exist_ok=True)
+os.makedirs("uploads/floor_plans", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
