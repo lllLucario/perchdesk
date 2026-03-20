@@ -565,6 +565,28 @@ async def test_cancel_booking_admin_override(
 
 
 @pytest.mark.asyncio
+async def test_check_in_success(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Check-in should succeed when now is between start_time and end_time."""
+    now_utc = datetime.now(UTC)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=available_seat.id,
+        start_time=now_utc - timedelta(minutes=10),
+        end_time=now_utc + timedelta(hours=1),
+        status="confirmed",
+    )
+    db_session.add(booking)
+    await db_session.commit()
+    await db_session.refresh(booking)
+
+    checked_in = await booking_service.check_in(db_session, booking.id, test_user.id)
+    assert checked_in.status == "checked_in"
+    assert checked_in.checked_in_at is not None
+
+
+@pytest.mark.asyncio
 async def test_check_in_before_start_time(
     db_session: AsyncSession, test_user: User, available_seat: Seat
 ):
@@ -588,6 +610,27 @@ async def test_check_in_wrong_user(
     )
     with pytest.raises(ForbiddenError):
         await booking_service.check_in(db_session, booking.id, uuid.uuid4())
+
+
+@pytest.mark.asyncio
+async def test_check_in_after_end_time(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Attempting to check in after the booking has ended should raise BookingRuleViolationError."""
+    now_utc = datetime.now(UTC)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=available_seat.id,
+        start_time=now_utc - timedelta(hours=2),
+        end_time=now_utc - timedelta(hours=1),  # ended in the past
+        status="confirmed",
+    )
+    db_session.add(booking)
+    await db_session.commit()
+    await db_session.refresh(booking)
+
+    with pytest.raises(BookingRuleViolationError, match="ended"):
+        await booking_service.check_in(db_session, booking.id, test_user.id)
 
 
 @pytest.mark.asyncio
@@ -726,6 +769,21 @@ async def test_time_unit_hourly_invalid_start(
 
 
 @pytest.mark.asyncio
+async def test_time_unit_hourly_invalid_end(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Booking with start on the hour but end off the hour should be rejected."""
+    start = _future(2)
+    end = start + timedelta(hours=1, minutes=15)  # not on hour boundary
+    with pytest.raises(BookingRuleViolationError, match="exact hour"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=available_seat.id, start_time=start, end_time=end),
+        )
+
+
+@pytest.mark.asyncio
 async def test_time_unit_half_day_valid(
     db_session: AsyncSession, test_user: User, office_seat: Seat
 ):
@@ -759,6 +817,24 @@ async def test_time_unit_half_day_invalid(
             db_session,
             test_user.id,
             BookingCreate(seat_id=office_seat.id, start_time=bad_start, end_time=bad_end),
+        )
+
+
+@pytest.mark.asyncio
+async def test_time_unit_half_day_invalid_end(
+    db_session: AsyncSession, test_user: User, office_seat: Seat
+):
+    """Half-day booking with valid start but invalid end should be rejected."""
+    start = _half_day_start(1)  # midnight AEST tomorrow
+    now_aest = datetime.now(AEST)
+    bad_end = (now_aest + timedelta(days=1)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    ).astimezone(UTC)
+    with pytest.raises(BookingRuleViolationError, match="midnight.*noon|half.day"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=office_seat.id, start_time=start, end_time=bad_end),
         )
 
 
@@ -854,3 +930,128 @@ async def test_expire_bookings_skips_no_auto_release(
 
     expired_count = await expire_bookings_in_session(db_session)
     assert expired_count == 0
+
+
+# ─── Phase 2: full_day time unit ─────────────────────────────────────────────
+
+@pytest.fixture
+async def full_day_space(db_session: AsyncSession) -> Space:
+    space = Space(name="FullDay Office", type="office", capacity=3)
+    db_session.add(space)
+    await db_session.flush()
+    rules = SpaceRules(
+        space_id=space.id,
+        max_duration_minutes=1440,  # 24 hours
+        max_advance_days=7,
+        time_unit="full_day",
+        auto_release_minutes=None,
+    )
+    db_session.add(rules)
+    await db_session.commit()
+    await db_session.refresh(space)
+    return space
+
+
+@pytest.fixture
+async def full_day_seat(db_session: AsyncSession, full_day_space: Space) -> Seat:
+    seat = Seat(space_id=full_day_space.id, label="FD1", position={"x": 0, "y": 0})
+    db_session.add(seat)
+    await db_session.commit()
+    await db_session.refresh(seat)
+    return seat
+
+
+@pytest.mark.asyncio
+async def test_time_unit_full_day_valid(
+    db_session: AsyncSession, test_user: User, full_day_seat: Seat
+):
+    """Full-day booking from midnight to midnight AEST (24h) should succeed."""
+    start = _half_day_start(2)               # midnight AEST two days ahead
+    end = _half_day_start(3)                 # midnight AEST three days ahead (24h later)
+    booking = await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(seat_id=full_day_seat.id, start_time=start, end_time=end),
+    )
+    assert booking.status == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_time_unit_full_day_invalid(
+    db_session: AsyncSession, test_user: User, full_day_seat: Seat
+):
+    """Full-day booking not starting at midnight AEST should be rejected."""
+    now_aest = datetime.now(AEST)
+    bad_start = (now_aest + timedelta(days=2)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    ).astimezone(UTC)
+    bad_end = (now_aest + timedelta(days=3)).replace(
+        hour=9, minute=0, second=0, microsecond=0
+    ).astimezone(UTC)
+    with pytest.raises(BookingRuleViolationError, match="midnight"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=full_day_seat.id, start_time=bad_start, end_time=bad_end),
+        )
+
+
+@pytest.mark.asyncio
+async def test_time_unit_full_day_invalid_end(
+    db_session: AsyncSession, test_user: User, full_day_seat: Seat
+):
+    """Full-day booking with valid start but end not at next midnight should be rejected."""
+    start = _half_day_start(2)   # midnight AEST two days ahead
+    bad_end = _half_day_end(2)   # noon AEST two days ahead — not 24h later
+    with pytest.raises(BookingRuleViolationError, match="24 hours.*midnight|midnight.*24 hours"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=full_day_seat.id, start_time=start, end_time=bad_end),
+        )
+
+
+# ─── Phase 2: cancellation deadline ──────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_cancel_office_after_midnight_deadline(
+    db_session: AsyncSession, test_user: User, office_seat: Seat
+):
+    """Office bookings cannot be cancelled after midnight AEST on the booking date."""
+    # Insert booking directly to bypass create_booking time checks.
+    # start_time is today in the future — the booking date's midnight has already passed.
+    now_utc = datetime.now(UTC)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=office_seat.id,
+        start_time=now_utc + timedelta(hours=2),
+        end_time=now_utc + timedelta(hours=6),
+        status="confirmed",
+    )
+    db_session.add(booking)
+    await db_session.commit()
+    await db_session.refresh(booking)
+
+    with pytest.raises(BookingRuleViolationError, match="midnight"):
+        await booking_service.cancel_booking(db_session, booking.id, test_user.id)
+
+
+@pytest.mark.asyncio
+async def test_cancel_library_after_start_time(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    """Library bookings cannot be cancelled after the booking has started."""
+    now_utc = datetime.now(UTC)
+    booking = Booking(
+        user_id=test_user.id,
+        seat_id=available_seat.id,
+        start_time=now_utc - timedelta(minutes=30),  # already started
+        end_time=now_utc + timedelta(hours=1),
+        status="confirmed",
+    )
+    db_session.add(booking)
+    await db_session.commit()
+    await db_session.refresh(booking)
+
+    with pytest.raises(BookingRuleViolationError, match="before the start time"):
+        await booking_service.cancel_booking(db_session, booking.id, test_user.id)

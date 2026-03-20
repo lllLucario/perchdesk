@@ -72,3 +72,11 @@ async def test_me(client: AsyncClient, user_token: str):
 async def test_me_no_token(client: AsyncClient):
     resp = await client.get("/api/v1/auth/me")
     assert resp.status_code in (401, 403)  # FastAPI HTTPBearer returns 403 by default
+
+
+@pytest.mark.asyncio
+async def test_me_invalid_token(client: AsyncClient):
+    resp = await client.get(
+        "/api/v1/auth/me", headers={"Authorization": "Bearer not.a.valid.jwt"}
+    )
+    assert resp.status_code == 401

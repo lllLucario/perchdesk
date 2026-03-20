@@ -58,7 +58,14 @@ async def test_get_space_detail_includes_seats(
     )
     assert resp.status_code == 200
     data = resp.json()
+    # Space-level contract fields
     assert data["id"] == str(space_id)
+    assert "name" in data
+    assert "type" in data
+    assert "capacity" in data
+    assert "layout_config" in data
+    assert "created_at" in data
+    # Embedded seats
     assert "seats" in data
     assert isinstance(data["seats"], list)
     assert len(data["seats"]) == 1
