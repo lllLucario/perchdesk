@@ -1019,13 +1019,15 @@ async def test_cancel_office_after_midnight_deadline(
 ):
     """Office bookings cannot be cancelled after midnight AEST on the booking date."""
     # Insert booking directly to bypass create_booking time checks.
-    # start_time is today in the future — the booking date's midnight has already passed.
-    now_utc = datetime.now(UTC)
+    # Use today noon AEST so today's midnight has ALWAYS already passed,
+    # regardless of what time of day this test runs.
+    now_aest = datetime.now(AEST)
+    today_noon_utc = now_aest.replace(hour=12, minute=0, second=0, microsecond=0).astimezone(UTC)
     booking = Booking(
         user_id=test_user.id,
         seat_id=office_seat.id,
-        start_time=now_utc + timedelta(hours=2),
-        end_time=now_utc + timedelta(hours=6),
+        start_time=today_noon_utc,
+        end_time=today_noon_utc + timedelta(hours=4),
         status="confirmed",
     )
     db_session.add(booking)
