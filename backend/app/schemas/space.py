@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from app.schemas.seat import SeatResponse
+
 
 class SpaceCreate(BaseModel):
     name: str
@@ -19,6 +21,8 @@ class SpaceUpdate(BaseModel):
 
 
 class SpaceResponse(BaseModel):
+    """Minimal shape used in list responses."""
+
     id: uuid.UUID
     name: str
     type: str
@@ -27,3 +31,9 @@ class SpaceResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SpaceDetailResponse(SpaceResponse):
+    """Full detail shape including embedded seats."""
+
+    seats: list[SeatResponse] = []

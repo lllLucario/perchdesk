@@ -54,9 +54,9 @@ async def get_availability(
     start: datetime = Query(...),
     end: datetime = Query(...),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list:
-    return await seat_service.get_availability(db, space_id, start, end)
+    return await seat_service.get_availability(db, space_id, start, end, current_user.id)
 
 
 @router.put("/seats/{seat_id}", response_model=SeatResponse)

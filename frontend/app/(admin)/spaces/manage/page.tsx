@@ -39,7 +39,8 @@ export default function AdminManagePage() {
   const [error, setError] = useState("");
   const [showGrid, setShowGrid] = useState(true);
 
-  const seats = (space as unknown as { seats?: Seat[] })?.seats ?? [];
+  // SpaceDetail includes seats directly — no unsafe cast needed
+  const seats = space?.seats ?? [];
   const layoutConfig = space?.layout_config as { grid_size?: number; background_image?: string } | null;
   const gridSize = layoutConfig?.grid_size ?? 30;
   const backgroundImage = layoutConfig?.background_image ?? null;

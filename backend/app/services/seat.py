@@ -82,15 +82,16 @@ async def get_availability(
     space_id: uuid.UUID,
     start_time: datetime,
     end_time: datetime,
+    user_id: uuid.UUID | None = None,
 ) -> list[SeatAvailabilityResponse]:
     await _get_space_or_404(db, space_id)
 
     seats_result = await db.execute(select(Seat).where(Seat.space_id == space_id))
     seats = list(seats_result.scalars().all())
 
-    # Find seat IDs that have conflicting active bookings
+    # Find conflicting active bookings with their owner
     booked_result = await db.execute(
-        select(Booking.seat_id).where(
+        select(Booking.seat_id, Booking.user_id).where(
             and_(
                 Booking.seat_id.in_([s.id for s in seats]),
                 Booking.status.in_(["confirmed", "checked_in"]),
@@ -99,7 +100,16 @@ async def get_availability(
             )
         )
     )
-    booked_seat_ids = {row[0] for row in booked_result.all()}
+    # seat_id -> "my_booking" | "booked"
+    seat_booking_status: dict[uuid.UUID, str] = {}
+    for seat_id, booking_user_id in booked_result.all():
+        if user_id is not None and booking_user_id == user_id:
+            seat_booking_status[seat_id] = "my_booking"
+        else:
+            seat_booking_status.setdefault(seat_id, "booked")
+
+    def _booking_status(seat: Seat) -> str:
+        return seat_booking_status.get(seat.id, "available")
 
     return [
         SeatAvailabilityResponse(
@@ -108,7 +118,7 @@ async def get_availability(
             position=seat.position,
             status=seat.status,
             attributes=seat.attributes,
-            is_available=seat.status == "available" and seat.id not in booked_seat_ids,
+            booking_status=_booking_status(seat),
         )
         for seat in seats
     ]

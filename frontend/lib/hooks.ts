@@ -21,6 +21,11 @@ export interface Seat {
   attributes: Record<string, unknown> | null;
 }
 
+/** Full detail shape returned by GET /spaces/:id — includes embedded seats */
+export interface SpaceDetail extends Space {
+  seats: Seat[];
+}
+
 export interface Booking {
   id: string;
   user_id: string;
@@ -50,6 +55,10 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface SeatAvailability extends Seat {
+  booking_status: "available" | "booked" | "my_booking";
+}
+
 // ----- Auth -----
 
 export function useCurrentUser() {
@@ -70,9 +79,9 @@ export function useSpaces() {
 }
 
 export function useSpace(id: string) {
-  return useQuery<Space>({
+  return useQuery<SpaceDetail>({
     queryKey: ["spaces", id],
-    queryFn: () => api.get<Space>(`/api/v1/spaces/${id}`),
+    queryFn: () => api.get<SpaceDetail>(`/api/v1/spaces/${id}`),
     enabled: !!id,
   });
 }
@@ -129,10 +138,6 @@ export function useCheckIn() {
 }
 
 // ----- Seat availability (time-range based) -----
-
-export interface SeatAvailability extends Seat {
-  booking_status: "available" | "booked" | "my_booking";
-}
 
 export function useSpaceAvailability(spaceId: string, start: string, end: string) {
   return useQuery<SeatAvailability[]>({

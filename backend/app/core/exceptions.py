@@ -53,3 +53,11 @@ class NotFoundError(PerchDeskError):
 
     def __init__(self, detail: str = "Resource not found.") -> None:
         super().__init__(detail)
+
+
+class DuplicateError(PerchDeskError):
+    status_code = 409
+    error_code = "DUPLICATE"
+
+    def __init__(self, detail: str = "Resource already exists.") -> None:
+        super().__init__(detail)
