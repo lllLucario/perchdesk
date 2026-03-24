@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useSpaces } from "@/lib/hooks";
+import { useAuthStore } from "@/store/authStore";
 
 export default function HomePage() {
+  const { isAuthenticated } = useAuthStore();
   const { data: spaces, isLoading } = useSpaces();
 
   const recentSpaces = spaces?.slice(0, 4) ?? [];
@@ -36,7 +38,17 @@ export default function HomePage() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           Recent Spaces
         </h2>
-        {isLoading ? (
+        {!isAuthenticated ? (
+          <div className="bg-white border border-gray-100 rounded-xl px-5 py-6 text-center">
+            <p className="text-sm text-gray-400 mb-3">Sign in to see your recently used spaces</p>
+            <Link
+              href="/login"
+              className="text-sm text-blue-600 hover:underline font-medium"
+            >
+              Sign in
+            </Link>
+          </div>
+        ) : isLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />

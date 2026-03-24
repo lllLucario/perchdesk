@@ -1,5 +1,5 @@
 /**
- * Home page tests: layout, sections, and data wiring.
+ * Home page tests: layout, sections, auth states, and data wiring.
  */
 import React from "react";
 import { screen, waitFor } from "@testing-library/react";
@@ -29,19 +29,26 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
+let mockAuthState = {
+  isAuthenticated: true,
+  user: { name: "Alice", role: "user" },
+  logout: jest.fn(),
+};
+
 jest.mock("@/store/authStore", () => ({
-  useAuthStore: () => ({ isAuthenticated: true, user: { name: "Alice", role: "user" }, logout: jest.fn() }),
+  useAuthStore: () => mockAuthState,
 }));
 
 // ─── HomePage ─────────────────────────────────────────────────────────────────
 
-describe("HomePage", () => {
+describe("HomePage — authenticated", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthState = { isAuthenticated: true, user: { name: "Alice", role: "user" }, logout: jest.fn() };
   });
 
   async function renderHome() {
-    const { default: HomePage } = await import("@/app/(dashboard)/page");
+    const { default: HomePage } = await import("@/app/(public)/page");
     renderWithProviders(<HomePage />);
   }
 
@@ -68,7 +75,6 @@ describe("HomePage", () => {
   test("shows loading skeletons while spaces are loading", async () => {
     mockApi.get.mockReturnValue(new Promise(() => {}));
     await renderHome();
-    // Four skeleton divs present (animate-pulse)
     const skeletons = document.querySelectorAll(".animate-pulse");
     expect(skeletons.length).toBe(4);
   });
@@ -107,5 +113,44 @@ describe("HomePage", () => {
       .getAllByRole("link")
       .filter((l) => l.getAttribute("href") === "/buildings");
     expect(buildingLinks.length).toBeGreaterThan(0);
+  });
+});
+
+describe("HomePage — unauthenticated", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockAuthState = { isAuthenticated: false, user: null as never, logout: jest.fn() };
+  });
+
+  async function renderHome() {
+    const { default: HomePage } = await import("@/app/(public)/page");
+    renderWithProviders(<HomePage />);
+  }
+
+  test("shows sign-in prompt instead of loading spaces", async () => {
+    await renderHome();
+    expect(
+      screen.getByText("Sign in to see your recently used spaces")
+    ).toBeInTheDocument();
+  });
+
+  test("does not show loading skeletons when unauthenticated", async () => {
+    await renderHome();
+    const skeletons = document.querySelectorAll(".animate-pulse");
+    expect(skeletons.length).toBe(0);
+  });
+
+  test("sign-in prompt links to /login", async () => {
+    await renderHome();
+    const loginLinks = screen
+      .getAllByRole("link")
+      .filter((l) => l.getAttribute("href") === "/login");
+    expect(loginLinks.length).toBeGreaterThan(0);
+  });
+
+  test("still renders Nearby Buildings section", async () => {
+    await renderHome();
+    expect(screen.getByText("Nearby Buildings")).toBeInTheDocument();
+    expect(screen.getByText("Central Library")).toBeInTheDocument();
   });
 });
