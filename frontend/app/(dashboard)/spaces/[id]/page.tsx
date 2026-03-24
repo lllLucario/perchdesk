@@ -1,291 +1,253 @@
 "use client";
 
-import { use, useState, useMemo } from "react";
+import { use, useMemo } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useSpace,
   useSpaceRules,
   useSpaceAvailability,
-  useCreateBooking,
   type Seat,
   type SeatAvailability,
 } from "@/lib/hooks";
 import { useBookingStore } from "@/store/bookingStore";
-import { ApiError } from "@/lib/api";
 import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
+import SlotPicker from "@/components/Floorplan/SlotPicker";
+import BookingDraftsPanel from "@/components/Floorplan/BookingDraftsPanel";
 
-/** Round a Date up to the next whole hour. */
-function nextHour(from: Date = new Date()): Date {
-  const d = new Date(from);
-  d.setMinutes(0, 0, 0);
-  d.setHours(d.getHours() + 1);
-  return d;
+/** ISO datetime from a YYYY-MM-DD date and an hour-of-day integer. */
+function toISO(date: string, hour: number): string {
+  return `${date}T${String(hour).padStart(2, "0")}:00:00`;
 }
 
-/** Format a Date as the value expected by <input type="datetime-local">. */
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** Return the slot options for half_day / full_day pickers. */
-function buildSlots(timeUnit: "half_day" | "full_day", maxAdvanceDays: number) {
-  const slots: { label: string; start: string; end: string }[] = [];
-  const now = new Date();
-
-  for (let d = 1; d <= maxAdvanceDays; d++) {
-    const base = new Date(now);
-    base.setDate(base.getDate() + d);
-    base.setHours(0, 0, 0, 0);
-
-    if (timeUnit === "half_day") {
-      const noon = new Date(base);
-      noon.setHours(12);
-      const nextDay = new Date(base);
-      nextDay.setDate(nextDay.getDate() + 1);
-      const fmt = (x: Date) =>
-        x.toLocaleDateString("en-AU", { weekday: "short", month: "short", day: "numeric" });
-      slots.push({
-        label: `${fmt(base)} AM (00:00–12:00)`,
-        start: base.toISOString(),
-        end: noon.toISOString(),
-      });
-      slots.push({
-        label: `${fmt(base)} PM (12:00–00:00)`,
-        start: noon.toISOString(),
-        end: nextDay.toISOString(),
-      });
-    } else {
-      const nextDay = new Date(base);
-      nextDay.setDate(nextDay.getDate() + 1);
-      const fmt = (x: Date) =>
-        x.toLocaleDateString("en-AU", { weekday: "short", month: "short", day: "numeric" });
-      slots.push({
-        label: `${fmt(base)} (full day)`,
-        start: base.toISOString(),
-        end: nextDay.toISOString(),
-      });
-    }
-  }
-  return slots;
-}
-
-export default function SpaceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SpaceFloorplanPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
+  const router = useRouter();
+
   const { data: space, isLoading } = useSpace(id);
   const { data: rules } = useSpaceRules(id);
-  const { selectedSeat, selectSeat } = useBookingStore();
-  const createBooking = useCreateBooking();
 
-  // hourly: free datetime-local inputs
-  const [startTime, setStartTime] = useState(() => toLocalInput(nextHour()));
-  const [endTime, setEndTime] = useState(() =>
-    toLocalInput(nextHour(new Date(nextHour().getTime() + 3600000)))
-  );
+  const {
+    mode,
+    selectedDate,
+    activeSlots,
+    activeSeatId,
+    activeSeatLabel,
+    activeDraftColor,
+    drafts,
+    editingDraftId,
+    setDate,
+    enterCreating,
+    enterEditing,
+    cancelEditing,
+    toggleSlot,
+    setActiveSeat,
+    clearActiveSeat,
+    addDraft,
+    saveChanges,
+    deleteDraft,
+  } = useBookingStore();
 
-  // half_day / full_day: slot picker
-  const [selectedSlot, setSelectedSlot] = useState("");
+  // ── Availability query ────────────────────────────────────────────────────
 
-  const [message, setMessage] = useState("");
-
-  const timeUnit = rules?.time_unit ?? "hourly";
-  const slots = timeUnit !== "hourly" ? buildSlots(timeUnit, rules?.max_advance_days ?? 7) : [];
-
-  // Resolve start/end for availability query
   const [availStart, availEnd] = useMemo(() => {
-    if (timeUnit === "hourly") {
-      return [
-        startTime ? new Date(startTime).toISOString() : "",
-        endTime ? new Date(endTime).toISOString() : "",
-      ];
-    }
-    if (selectedSlot) {
-      const slot = JSON.parse(selectedSlot) as { start: string; end: string };
-      return [slot.start, slot.end];
-    }
-    return ["", ""];
-  }, [timeUnit, startTime, endTime, selectedSlot]);
+    if (activeSlots.length === 0) return ["", ""];
+    const minH = Math.min(...activeSlots);
+    const maxH = Math.max(...activeSlots) + 1;
+    return [toISO(selectedDate, minH), toISO(selectedDate, maxH)];
+  }, [activeSlots, selectedDate]);
 
   const { data: availability } = useSpaceAvailability(id, availStart, availEnd);
 
-  const availabilityMap = useMemo(() => {
+  const availabilityMap = useMemo(():
+    | Record<string, "available" | "booked" | "my_booking">
+    | undefined => {
     if (!availability) return undefined;
     return Object.fromEntries(
       availability.map((s: SeatAvailability) => [s.id, s.booking_status])
     );
   }, [availability]);
 
-  // useSpace returns SpaceDetail which includes seats — no cast needed
-  const seats = space?.seats ?? [];
-  const gridSize =
-    (space?.layout_config as { grid_size?: number } | null)?.grid_size ?? 30;
+  // ── Draft seat map for SeatMapCanvas ─────────────────────────────────────
 
-  async function handleBook() {
-    if (!selectedSeat) return;
-    setMessage("");
+  const draftSeatMap = useMemo((): Record<
+    string,
+    { color: string; isActiveDraft: boolean }
+  > => {
+    const map: Record<string, { color: string; isActiveDraft: boolean }> = {};
 
-    let start: string;
-    let end: string;
-
-    if (timeUnit === "hourly") {
-      if (!startTime || !endTime) return;
-      start = new Date(startTime).toISOString();
-      end = new Date(endTime).toISOString();
-    } else {
-      if (!selectedSlot) return;
-      const slot = JSON.parse(selectedSlot) as { start: string; end: string };
-      start = slot.start;
-      end = slot.end;
+    // Stored drafts
+    for (const draft of drafts) {
+      if (!draft.seatId) continue;
+      map[draft.seatId] = {
+        color: draft.color,
+        isActiveDraft: draft.id === editingDraftId,
+      };
     }
 
-    try {
-      await createBooking.mutateAsync({ seat_id: selectedSeat.id, start_time: start, end_time: end });
-      setMessage("Booking confirmed!");
-      selectSeat(null);
-      setSelectedSlot("");
-    } catch (e) {
-      setMessage(e instanceof ApiError ? `Error: ${e.message}` : "Booking failed.");
+    // Seat being selected in creating mode
+    if (mode === "creating" && activeSeatId) {
+      map[activeSeatId] = { color: activeDraftColor, isActiveDraft: true };
     }
-  }
+
+    return map;
+  }, [drafts, editingDraftId, mode, activeSeatId, activeDraftColor]);
+
+  // ── Constraints ───────────────────────────────────────────────────────────
+
+  // Total hours locked in on this date (excluding the draft being edited)
+  const storedHoursToday = useMemo(
+    () =>
+      drafts
+        .filter((d) => d.date === selectedDate && d.id !== editingDraftId)
+        .reduce((sum, d) => sum + d.slots.length, 0),
+    [drafts, selectedDate, editingDraftId]
+  );
+
+  const canAddMoreSlots = storedHoursToday + activeSlots.length < 8;
+  const isValidDraft = activeSlots.length > 0 && !!activeSeatId;
+
+  // ── Seat click handler ────────────────────────────────────────────────────
 
   function handleSeatClick(seat: Seat) {
-    const avail = availabilityMap?.[seat.id];
-    if (seat.status !== "available" || avail === "booked") return;
-    selectSeat(
-      selectedSeat?.id === seat.id
-        ? null
-        : { id: seat.id, label: seat.label, position: seat.position, status: seat.status }
+    if (mode === "browsing") {
+      // Clicking a draft-owned seat enters editing for that draft
+      const owningDraft = drafts.find((d) => d.seatId === seat.id);
+      if (owningDraft) enterEditing(owningDraft.id);
+      return;
+    }
+
+    // Creating / editing: seats owned by other drafts are locked
+    const isOtherDraft = drafts.some(
+      (d) => d.seatId === seat.id && d.id !== editingDraftId
     );
+    if (isOtherDraft) return;
+    if (seat.status !== "available") return;
+    if (availabilityMap?.[seat.id] === "booked") return;
+
+    if (activeSeatId === seat.id) {
+      clearActiveSeat();
+    } else {
+      setActiveSeat(seat.id, seat.label);
+    }
   }
 
-  if (isLoading) return <p className="text-gray-500">Loading…</p>;
-  if (!space) return <p className="text-red-500">Space not found.</p>;
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  if (isLoading) return <p className="text-gray-500 p-4">Loading…</p>;
+  if (!space) return <p className="text-red-500 p-4">Space not found.</p>;
+
+  const seats = space.seats ?? [];
+  const gridSize =
+    (space.layout_config as { grid_size?: number } | null)?.grid_size ?? 30;
+  const buildingId = space.building_id ?? null;
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-2">{space.name}</h1>
-      <p className="text-sm text-gray-500 mb-1 capitalize">
-        {space.type} · {space.capacity} seats
-      </p>
-      {rules && (
-        <p className="text-xs text-gray-400 mb-6">
-          Max {rules.max_duration_minutes} min · up to {rules.max_advance_days} days ahead ·{" "}
-          {rules.time_unit.replace("_", " ")} bookings
-        </p>
-      )}
+    <div className="flex flex-col gap-4">
+      {/* Breadcrumb */}
+      <nav className="text-sm text-gray-500 flex items-center gap-2">
+        <Link href="/" className="hover:text-gray-700">
+          Home
+        </Link>
+        <span>/</span>
+        <Link href="/buildings" className="hover:text-gray-700">
+          Buildings
+        </Link>
+        {buildingId && (
+          <>
+            <span>/</span>
+            <Link
+              href={`/buildings/${buildingId}`}
+              className="hover:text-gray-700"
+            >
+              Spaces
+            </Link>
+          </>
+        )}
+        <span>/</span>
+        <span className="text-gray-900 font-medium">{space.name}</span>
+      </nav>
 
       {/* Auto-release warning */}
       {rules?.auto_release_minutes && (
-        <div className="mb-4 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-          ⚠ Check in within {rules.auto_release_minutes} minutes of your start time or your
-          booking will be automatically released.
+        <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          ⚠ Check in within {rules.auto_release_minutes} min of your start time
+          or your booking will be automatically released.
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Seat map */}
-        <div className="lg:col-span-2">
-          <h2 className="font-semibold mb-3">Select a seat</h2>
+      {/* Three-column workspace */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(168px,1fr)_2fr_minmax(168px,1fr)] gap-4 items-start">
+        {/* Left: Date + Slot picker + draft actions */}
+        <SlotPicker
+          selectedDate={selectedDate}
+          activeSlots={activeSlots}
+          drafts={drafts}
+          editingDraftId={editingDraftId}
+          activeDraftColor={activeDraftColor}
+          canAddMoreSlots={canAddMoreSlots}
+          mode={mode}
+          isValidDraft={isValidDraft}
+          hasDrafts={drafts.length > 0}
+          onDateChange={setDate}
+          onToggleSlot={toggleSlot}
+          onNewDraft={enterCreating}
+          onAddDraft={addDraft}
+          onSaveChanges={saveChanges}
+          onCancelEditing={cancelEditing}
+          onDeleteDraft={() => editingDraftId && deleteDraft(editingDraftId)}
+          onCheckout={() => router.push("/confirm")}
+        />
+
+        {/* Center: Seat map */}
+        <div className="flex flex-col gap-3">
           <SeatMapCanvas
             seats={seats}
             mode="user"
             availabilityMap={availabilityMap}
-            selectedSeatId={selectedSeat?.id}
+            draftSeatMap={draftSeatMap}
             gridSize={gridSize}
             onSeatClick={handleSeatClick}
           />
-          {/* Legend */}
-          <div className="flex gap-4 mt-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded inline-block bg-[#1D9E75]" /> Available
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded inline-block bg-[#378ADD]" /> Selected / My booking
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded inline-block bg-[#E24B4A]" /> Booked
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded inline-block bg-[#B4B2A9]" /> Maintenance
-            </span>
-          </div>
-        </div>
 
-        {/* Booking panel */}
-        <div className="bg-white border rounded-xl p-4">
-          <h2 className="font-semibold mb-3">Book a seat</h2>
-          {selectedSeat ? (
-            <p className="text-sm text-blue-600 font-medium mb-3">
-              Seat {selectedSeat.label} selected
+          {/* Seat selection hint */}
+          {(mode === "creating" || mode === "editing") && (
+            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+              {activeSeatId
+                ? `Seat ${activeSeatLabel} selected — click to deselect`
+                : "Click a seat on the map to include it in this draft"}
             </p>
-          ) : (
-            <p className="text-sm text-gray-400 mb-3">Click a seat on the map</p>
           )}
 
-          <div className="space-y-3">
-            {timeUnit === "hourly" ? (
-              <>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Start time (on the hour)</label>
-                  <input
-                    type="datetime-local"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full border rounded px-2 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">End time (on the hour)</label>
-                  <input
-                    type="datetime-local"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full border rounded px-2 py-1.5 text-sm"
-                  />
-                </div>
-              </>
-            ) : (
-              <div>
-                <label className="block text-xs font-medium mb-1">
-                  {timeUnit === "half_day" ? "Select half-day slot" : "Select day"}
-                </label>
-                <select
-                  value={selectedSlot}
-                  onChange={(e) => setSelectedSlot(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm"
-                >
-                  <option value="">Choose a slot…</option>
-                  {slots.map((s) => (
-                    <option key={s.start} value={JSON.stringify({ start: s.start, end: s.end })}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {message && (
-              <p
-                className={`text-xs ${
-                  message.startsWith("Error") ? "text-red-500" : "text-green-600"
-                }`}
-              >
-                {message}
-              </p>
-            )}
-
-            <button
-              onClick={handleBook}
-              disabled={
-                !selectedSeat ||
-                (timeUnit === "hourly" ? !startTime || !endTime : !selectedSlot) ||
-                createBooking.isPending
-              }
-              className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {createBooking.isPending ? "Booking…" : "Confirm Booking"}
-            </button>
+          {/* Legend */}
+          <div className="flex gap-4 text-xs text-gray-500 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-[#1D9E75] inline-block" />
+              Available
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-[#E24B4A] inline-block" />
+              Booked
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-[#B4B2A9] inline-block" />
+              Maintenance
+            </span>
           </div>
         </div>
+
+        {/* Right: Booking Drafts panel */}
+        <BookingDraftsPanel
+          drafts={drafts}
+          editingDraftId={editingDraftId}
+          mode={mode}
+          onEditDraft={enterEditing}
+          onDeleteDraft={deleteDraft}
+        />
       </div>
     </div>
   );
