@@ -92,7 +92,6 @@ export default function BuildingsPage() {
       {selectedBuilding && (
         <BuildingModal
           building={selectedBuilding}
-          spaceCount={0}
           onClose={() => setSelectedBuilding(null)}
         />
       )}
