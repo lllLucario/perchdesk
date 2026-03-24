@@ -28,7 +28,7 @@ export default function LoginPage() {
         "/api/v1/auth/me"
       );
       login(tokens.access_token, tokens.refresh_token, me);
-      router.push("/spaces");
+      router.push("/");
     } catch {
       setError("Invalid email or password.");
     } finally {
