@@ -6,6 +6,7 @@ from sqlalchemy.pool import NullPool
 from app.core.database import Base, get_db
 from app.core.security import hash_password
 from app.main import app
+from app.models.building import Building
 from app.models.seat import Seat
 from app.models.space import Space
 from app.models.space_rules import SpaceRules
@@ -102,6 +103,21 @@ async def user_token(client: AsyncClient, regular_user: User) -> str:
         json={"email": "user@test.com", "password": "password123"},
     )
     return resp.json()["access_token"]
+
+
+@pytest.fixture
+async def building(db_session: AsyncSession) -> Building:
+    b = Building(
+        name="Test Building",
+        address="1 Test St, Sydney NSW 2000",
+        description="A test building.",
+        opening_hours={"weekday": "08:00–20:00"},
+        facilities=["Wifi"],
+    )
+    db_session.add(b)
+    await db_session.commit()
+    await db_session.refresh(b)
+    return b
 
 
 @pytest.fixture

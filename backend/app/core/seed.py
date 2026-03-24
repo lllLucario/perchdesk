@@ -1,10 +1,11 @@
-"""Seed script: creates sample spaces with rules and seats."""
+"""Seed script: creates sample buildings, spaces with rules and seats."""
 import asyncio
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.core.security import hash_password
+from app.models.building import Building
 from app.models.seat import Seat
 from app.models.space import Space
 from app.models.space_rules import SpaceRules
@@ -21,8 +22,33 @@ async def seed(session: AsyncSession) -> None:
     )
     session.add(admin)
 
-    # Library space
-    library = Space(name="Central Library", type="library", capacity=20)
+    # Buildings
+    city_campus = Building(
+        name="City Campus",
+        address="1 University Ave, Sydney NSW 2000",
+        description="Main campus building with library and collaborative study spaces.",
+        opening_hours={"weekday": "07:00–22:00", "weekend": "09:00–18:00"},
+        facilities=["Wifi", "Printing", "Cafeteria", "Accessible"],
+    )
+    tech_park = Building(
+        name="Tech Park",
+        address="42 Innovation Drive, Pyrmont NSW 2009",
+        description="Modern co-working building designed for tech teams and startups.",
+        opening_hours={"weekday": "08:00–20:00", "weekend": "10:00–16:00"},
+        facilities=["Wifi", "Standing desks", "Meeting rooms", "Bike storage"],
+    )
+    session.add(city_campus)
+    session.add(tech_park)
+    await session.flush()
+
+    # Library space — City Campus
+    library = Space(
+        name="Central Library",
+        type="library",
+        capacity=20,
+        building_id=city_campus.id,
+        description="Quiet study space with individual desks and ample natural light.",
+    )
     session.add(library)
     await session.flush()
 
@@ -45,8 +71,14 @@ async def seed(session: AsyncSession) -> None:
             )
             session.add(seat)
 
-    # Office space
-    office = Space(name="Innovation Hub", type="office", capacity=10)
+    # Office space — Tech Park
+    office = Space(
+        name="Innovation Hub",
+        type="office",
+        capacity=10,
+        building_id=tech_park.id,
+        description="Open-plan hot-desk area with high-speed internet and monitor setups.",
+    )
     session.add(office)
     await session.flush()
 
