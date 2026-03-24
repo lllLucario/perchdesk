@@ -78,7 +78,7 @@ describe("LoginPage", () => {
       });
       expect(window.localStorage.setItem).toHaveBeenCalledWith("access_token", "tok123");
       expect(mockLogin).toHaveBeenCalled();
-      expect(mockRouter.push).toHaveBeenCalledWith("/spaces");
+      expect(mockRouter.push).toHaveBeenCalledWith("/");
     });
   });
 

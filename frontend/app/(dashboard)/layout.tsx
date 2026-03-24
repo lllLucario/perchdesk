@@ -21,9 +21,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <span className="font-bold text-lg text-blue-600">PerchDesk</span>
-          <Link href="/spaces" className="text-sm text-gray-600 hover:text-gray-900">
-            Spaces
+          <Link href="/" className="font-bold text-lg text-blue-600 hover:text-blue-700">
+            PerchDesk
+          </Link>
+          <Link href="/buildings" className="text-sm text-gray-600 hover:text-gray-900">
+            Buildings
           </Link>
           <Link href="/bookings" className="text-sm text-gray-600 hover:text-gray-900">
             My Bookings
