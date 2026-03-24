@@ -3,10 +3,22 @@ import { api } from "./api";
 
 // ----- Types -----
 
-export interface Space {
+export interface Building {
   id: string;
   name: string;
+  address: string;
+  description: string | null;
+  opening_hours: Record<string, string> | null;
+  facilities: string[] | null;
+  created_at: string;
+}
+
+export interface Space {
+  id: string;
+  building_id: string | null;
+  name: string;
   type: string;
+  description: string | null;
   capacity: number;
   layout_config: Record<string, unknown> | null;
   created_at: string;
@@ -57,6 +69,31 @@ export interface UserProfile {
 
 export interface SeatAvailability extends Seat {
   booking_status: "available" | "booked" | "my_booking";
+}
+
+// ----- Buildings -----
+
+export function useBuildings() {
+  return useQuery<Building[]>({
+    queryKey: ["buildings"],
+    queryFn: () => api.get<Building[]>("/api/v1/buildings"),
+  });
+}
+
+export function useBuilding(id: string | null) {
+  return useQuery<Building>({
+    queryKey: ["buildings", id],
+    queryFn: () => api.get<Building>(`/api/v1/buildings/${id}`),
+    enabled: !!id,
+  });
+}
+
+export function useBuildingSpaces(buildingId: string | null) {
+  return useQuery<Space[]>({
+    queryKey: ["buildings", buildingId, "spaces"],
+    queryFn: () => api.get<Space[]>(`/api/v1/buildings/${buildingId}/spaces`),
+    enabled: !!buildingId,
+  });
 }
 
 // ----- Auth -----

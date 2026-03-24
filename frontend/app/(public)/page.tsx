@@ -1,22 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useSpaces } from "@/lib/hooks";
+import { useSpaces, useBuildings } from "@/lib/hooks";
 import { useAuthStore } from "@/store/authStore";
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthStore();
   const { data: spaces, isLoading } = useSpaces();
+  const { data: buildingsData } = useBuildings();
 
   const recentSpaces = spaces?.slice(0, 4) ?? [];
-
-  // Placeholder buildings — no backend entity yet; will be wired up in PR 2
-  const nearbyBuildings = [
-    { id: "1", name: "Central Library", address: "123 Main Street", distance: "0.2 km" },
-    { id: "2", name: "Tech Hub", address: "456 Innovation Ave", distance: "0.5 km" },
-    { id: "3", name: "Business Centre", address: "789 Commerce Rd", distance: "1.1 km" },
-    { id: "4", name: "Creative Quarter", address: "321 Arts Lane", distance: "1.4 km" },
-  ];
+  const buildings = buildingsData?.slice(0, 4) ?? [];
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -79,19 +73,38 @@ export default function HomePage() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           Nearby Buildings
         </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {nearbyBuildings.map((building) => (
-            <Link
-              key={building.id}
-              href="/buildings"
-              className="block bg-white border border-gray-100 rounded-xl px-5 py-4 hover:border-blue-200 hover:shadow-sm transition-all"
-            >
-              <p className="font-medium text-gray-900 text-sm">{building.name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{building.address}</p>
-              <p className="text-xs text-gray-300 mt-0.5">{building.distance}</p>
-            </Link>
-          ))}
-        </div>
+        {buildings.length === 0 ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { name: "Central Library", address: "123 Main Street" },
+              { name: "Tech Hub", address: "456 Innovation Ave" },
+              { name: "Business Centre", address: "789 Commerce Rd" },
+              { name: "Creative Quarter", address: "321 Arts Lane" },
+            ].map((b) => (
+              <Link
+                key={b.name}
+                href="/buildings"
+                className="block bg-white border border-gray-100 rounded-xl px-5 py-4 hover:border-blue-200 hover:shadow-sm transition-all"
+              >
+                <p className="font-medium text-gray-900 text-sm">{b.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{b.address}</p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {buildings.map((building) => (
+              <Link
+                key={building.id}
+                href={`/buildings/${building.id}`}
+                className="block bg-white border border-gray-100 rounded-xl px-5 py-4 hover:border-blue-200 hover:shadow-sm transition-all"
+              >
+                <p className="font-medium text-gray-900 text-sm">{building.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{building.address}</p>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

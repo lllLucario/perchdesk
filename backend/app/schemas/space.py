@@ -24,8 +24,10 @@ class SpaceResponse(BaseModel):
     """Minimal shape used in list responses."""
 
     id: uuid.UUID
+    building_id: uuid.UUID | None
     name: str
     type: str
+    description: str | None
     capacity: int
     layout_config: dict[str, Any] | None
     created_at: datetime

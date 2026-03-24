@@ -80,10 +80,13 @@ describe("HomePage — authenticated", () => {
   });
 
   test("renders space cards after load", async () => {
-    mockApi.get.mockResolvedValue([
-      { id: "s1", name: "Library A", type: "library", capacity: 20, layout_config: null, created_at: "" },
-      { id: "s2", name: "Office B", type: "office", capacity: 10, layout_config: null, created_at: "" },
-    ]);
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.includes("buildings")) return Promise.resolve([]);
+      return Promise.resolve([
+        { id: "s1", name: "Library A", type: "library", capacity: 20, building_id: null, description: null, layout_config: null, created_at: "" },
+        { id: "s2", name: "Office B", type: "office", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "" },
+      ]);
+    });
     await renderHome();
     await waitFor(() => {
       expect(screen.getByText("Library A")).toBeInTheDocument();
