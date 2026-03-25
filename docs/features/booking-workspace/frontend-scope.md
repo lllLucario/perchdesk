@@ -200,6 +200,15 @@ but should keep shapes aligned with the product direction.
 Agents should not silently invent final data contracts that conflict with
 `docs/architecture.md`.
 
+Current implementation note:
+
+- the active booking workspace assumes an hourly slot model for both `library`
+  and `office`
+- `office` remains a distinct scenario through rule values such as longer
+  maximum duration and advance-booking window
+- do not reintroduce `half_day` or `full_day` picker behavior in the current
+  workspace without an explicit product decision
+
 ## Non-Goals for the First Frontend Pass
 
 - cross-day slot selection

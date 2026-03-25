@@ -202,7 +202,15 @@ This is not required for the current baseline design.
 ### Booking unit
 
 - Booking selection unit is `1 hour`.
-- 
+- Current temporary strategy: both `library` and `office` use an hourly slot
+  model in the user-facing booking flow.
+- For `office`, this is a deliberate temporary simplification to keep the
+  booking workspace, drafts, confirm modal, and result flow on one consistent
+  slot-based interaction model.
+- `office` still differs through business limits such as longer maximum
+  duration and advance-booking window.
+- More flexible admin-defined office booking modes may be introduced later, but
+  they are out of scope for the current implementation phase.
 
 ### Day boundary
 

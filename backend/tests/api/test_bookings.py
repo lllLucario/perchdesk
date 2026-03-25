@@ -19,6 +19,10 @@ def future(hours: int = 1) -> str:
     return (_next_hour() + timedelta(hours=hours - 1)).isoformat()
 
 
+def future_naive(hours: int = 1) -> str:
+    return (_next_hour() + timedelta(hours=hours - 1)).replace(tzinfo=None).isoformat()
+
+
 def future_dt(hours: int = 1) -> datetime:
     return _next_hour() + timedelta(hours=hours - 1)
 
@@ -33,6 +37,25 @@ async def test_create_booking(
             "seat_id": str(library_seat.id),
             "start_time": future(1),
             "end_time": future(2),
+        },
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["status"] == "confirmed"
+    assert data["seat_id"] == str(library_seat.id)
+
+
+@pytest.mark.asyncio
+async def test_create_booking_with_naive_datetimes(
+    client: AsyncClient, user_token: str, library_seat: Seat
+):
+    resp = await client.post(
+        "/api/v1/bookings",
+        json={
+            "seat_id": str(library_seat.id),
+            "start_time": future_naive(1),
+            "end_time": future_naive(2),
         },
         headers={"Authorization": f"Bearer {user_token}"},
     )

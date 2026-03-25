@@ -70,6 +70,9 @@ def _validate_time_unit(start: datetime, end: datetime, time_unit: str) -> None:
 async def create_booking(
     db: AsyncSession, user_id: uuid.UUID, data: BookingCreate
 ) -> Booking:
+    start_time = _utc(data.start_time)
+    end_time = _utc(data.end_time)
+
     # 1. Load seat
     seat = await db.get(Seat, data.seat_id)
     if seat is None:
@@ -88,25 +91,25 @@ async def create_booking(
     now = datetime.now(UTC)
 
     # 3. Validate time range basics
-    if data.start_time <= now:
+    if start_time <= now:
         raise BookingRuleViolationError("Start time must be in the future.")
-    if data.end_time <= data.start_time:
+    if end_time <= start_time:
         raise BookingRuleViolationError("End time must be after start time.")
 
-    duration_minutes = (data.end_time - data.start_time).total_seconds() / 60
+    duration_minutes = (end_time - start_time).total_seconds() / 60
     if duration_minutes > rules.max_duration_minutes:
         raise BookingRuleViolationError(
             f"Booking duration exceeds maximum of {rules.max_duration_minutes} minutes."
         )
 
-    advance_seconds = (data.start_time - now).total_seconds()
+    advance_seconds = (start_time - now).total_seconds()
     if advance_seconds > rules.max_advance_days * 86400:
         raise BookingRuleViolationError(
             f"Cannot book more than {rules.max_advance_days} days in advance."
         )
 
     # 4. Validate time_unit alignment
-    _validate_time_unit(data.start_time, data.end_time, rules.time_unit)
+    _validate_time_unit(start_time, end_time, rules.time_unit)
 
     # 5. Check max active bookings per user per space (max 1 active booking per space)
     active_result = await db.execute(
@@ -131,8 +134,8 @@ async def create_booking(
             and_(
                 Booking.seat_id == data.seat_id,
                 Booking.status.in_(["confirmed", "checked_in"]),
-                Booking.start_time < data.end_time,
-                Booking.end_time > data.start_time,
+                Booking.start_time < end_time,
+                Booking.end_time > start_time,
             )
         )
     )
@@ -142,8 +145,8 @@ async def create_booking(
     booking = Booking(
         user_id=user_id,
         seat_id=data.seat_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_time=start_time,
+        end_time=end_time,
         status="confirmed",
     )
     db.add(booking)

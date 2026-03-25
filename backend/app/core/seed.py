@@ -86,7 +86,7 @@ async def seed(session: AsyncSession) -> None:
         space_id=office.id,
         max_duration_minutes=480,
         max_advance_days=7,
-        time_unit="half_day",
+        time_unit="hourly",
         auto_release_minutes=None,
     )
     session.add(office_rules)
