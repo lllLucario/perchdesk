@@ -5,7 +5,7 @@ import { Building } from "@/lib/hooks";
 
 interface Props {
   building: Building;
-  spaceCount: number;
+  spaceCount?: number;
   onClose: () => void;
 }
 
@@ -47,22 +47,26 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
             <p className="text-sm text-gray-600 mb-4">{building.description}</p>
           )}
 
-          <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-            {building.opening_hours && (
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Opening Hours</p>
-                {Object.entries(building.opening_hours).map(([k, v]) => (
-                  <p key={k} className="text-gray-700 capitalize">
-                    {k}: {v}
-                  </p>
-                ))}
-              </div>
-            )}
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Spaces</p>
-              <p className="text-gray-700">{spaceCount} available</p>
+          {(building.opening_hours || spaceCount !== undefined) && (
+            <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+              {building.opening_hours && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Opening Hours</p>
+                  {Object.entries(building.opening_hours).map(([k, v]) => (
+                    <p key={k} className="text-gray-700 capitalize">
+                      {k}: {v}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {spaceCount !== undefined && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Spaces</p>
+                  <p className="text-gray-700">{spaceCount} spaces</p>
+                </div>
+              )}
             </div>
-          </div>
+          )}
 
           {building.facilities && building.facilities.length > 0 && (
             <div className="mb-5">
