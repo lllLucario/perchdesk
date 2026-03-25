@@ -482,42 +482,42 @@ workspace visible.
 - click `Cancel Editing` to revert changes and return to `Browsing State`
 - click `Delete Draft` to remove the draft and return to `Browsing State`
 
-## Confirm
+## Confirm Modal
 
 ### Goal
 
-The Confirm page explains what will be submitted and what real bookings will be
-created from the current drafts.
+The confirm step should stay inside the floorplan flow as a modal.
+
+It should explain what will be submitted and what real bookings will be created
+from the current drafts without forcing the user onto a separate full page.
 
 ### Structure
 
 ```text
-+----------------------------------------------------------------------------------+
-| Confirm Booking(s)                                                               |
-+----------------------------------------------------------------------------------+
-
-+----------------------------------------------------------------------------------+
-| Draft 1                                                                          |
-| Seat A12                                                                         |
-| 08:00-12:00, 18:00-20:00                                                         |
-| Will create 2 bookings                                                           |
-+----------------------------------------------------------------------------------+
-
-+----------------------------------------------------------------------------------+
-| Draft 2                                                                          |
-| Seat B03                                                                         |
-| 13:00-15:00                                                                      |
-| Will create 1 booking                                                            |
-+----------------------------------------------------------------------------------+
-
-| [ Checkout ]                                                                     |
++--------------------------------------------------------------+
+| Confirm Booking(s)                                     [X]   |
++--------------------------------------------------------------+
+| Draft 1                                                      |
+| Seat A12                                                     |
+| 08:00-12:00, 18:00-20:00                                     |
+| Will create 2 bookings                                       |
++--------------------------------------------------------------+
+| Draft 2                                                      |
+| Seat B03                                                     |
+| 13:00-15:00                                                  |
+| Will create 1 booking                                        |
++--------------------------------------------------------------+
+| [ Cancel ]                                  [ Confirm ]      |
++--------------------------------------------------------------+
 ```
 
 ### Notes
 
+- this should be a lightweight confirmation step, not a duplicate review page
 - one draft is not always equal to one real booking
 - drafts with gaps may expand into multiple bookings
-- checkout may partially succeed under concurrency
+- the modal should preserve the user's floorplan context until submission
+  begins
 
 ## Result
 

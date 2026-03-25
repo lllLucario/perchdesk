@@ -22,6 +22,9 @@ export const DRAFT_COLORS = ["#7C3AED", "#D97706", "#0891B2", "#BE185D", "#15803
 /** Max total hours bookable in one space per day (across all drafts). */
 export const MAX_DAILY_HOURS = 8;
 
+const SLOT_START_HOUR = 8;
+const SLOT_END_HOUR = 21;
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function pickNextColor(drafts: Draft[]): string {
@@ -31,6 +34,50 @@ function pickNextColor(drafts: Draft[]): string {
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function dateISO(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function defaultWorkspaceSelection(now = new Date()) {
+  const currentHour = now.getHours();
+  const exactHour =
+    now.getMinutes() === 0 && now.getSeconds() === 0 && now.getMilliseconds() === 0;
+
+  if (currentHour < SLOT_START_HOUR) {
+    return {
+      selectedDate: dateISO(now),
+      activeSlots: [SLOT_START_HOUR],
+    };
+  }
+
+  if (currentHour > SLOT_END_HOUR || (currentHour === SLOT_END_HOUR && !exactHour)) {
+    return {
+      selectedDate: dateISO(addDays(now, 1)),
+      activeSlots: [SLOT_START_HOUR],
+    };
+  }
+
+  const slotHour = exactHour ? currentHour : currentHour + 1;
+
+  if (slotHour > SLOT_END_HOUR) {
+    return {
+      selectedDate: dateISO(addDays(now, 1)),
+      activeSlots: [SLOT_START_HOUR],
+    };
+  }
+
+  return {
+    selectedDate: dateISO(now),
+    activeSlots: [slotHour],
+  };
 }
 
 function uid(): string {
@@ -73,10 +120,9 @@ interface BookingState {
 // ─── Store ───────────────────────────────────────────────────────────────────
 
 export const useBookingStore = create<BookingState>()((set, get) => ({
+  ...defaultWorkspaceSelection(),
   mode: "browsing",
   editingDraftId: null,
-  selectedDate: todayISO(),
-  activeSlots: [],
   activeSeatId: null,
   activeSeatLabel: null,
   activeDraftColor: DRAFT_COLORS[0],
@@ -103,6 +149,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
     set({
       mode: "editing",
       editingDraftId: draftId,
+      selectedDate: draft.date,
       activeSlots: [...draft.slots],
       activeSeatId: draft.seatId,
       activeSeatLabel: draft.seatLabel,
@@ -187,10 +234,9 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
 
   reset: () =>
     set({
+      ...defaultWorkspaceSelection(),
       mode: "browsing",
       editingDraftId: null,
-      selectedDate: todayISO(),
-      activeSlots: [],
       activeSeatId: null,
       activeSeatLabel: null,
       activeDraftColor: DRAFT_COLORS[0],

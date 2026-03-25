@@ -78,6 +78,12 @@ describe("bookingStore", () => {
     expect(useBookingStore.getState().mode).toBe("browsing");
   });
 
+  test("reset restores a default upcoming slot in browsing mode", () => {
+    const state = useBookingStore.getState();
+    expect(state.mode).toBe("browsing");
+    expect(state.activeSlots.length).toBe(1);
+  });
+
   test("enterCreating switches mode and assigns a color", () => {
     useBookingStore.getState().enterCreating();
     const { mode, activeDraftColor } = useBookingStore.getState();
@@ -126,16 +132,20 @@ describe("bookingStore", () => {
   test("enterEditing loads draft into active state", () => {
     // Create a draft first
     useBookingStore.getState().enterCreating();
+    useBookingStore.getState().setDate("2026-03-26");
     useBookingStore.getState().toggleSlot(8);
     useBookingStore.getState().setActiveSeat("s1", "A1");
     useBookingStore.getState().addDraft();
 
+    useBookingStore.getState().setDate("2026-03-27");
+
     const draftId = useBookingStore.getState().drafts[0].id;
     useBookingStore.getState().enterEditing(draftId);
 
-    const { mode, editingDraftId, activeSlots, activeSeatId } = useBookingStore.getState();
+    const { mode, editingDraftId, activeSlots, activeSeatId, selectedDate } = useBookingStore.getState();
     expect(mode).toBe("editing");
     expect(editingDraftId).toBe(draftId);
+    expect(selectedDate).toBe("2026-03-26");
     expect(activeSlots).toEqual([8]);
     expect(activeSeatId).toBe("s1");
   });
@@ -497,6 +507,13 @@ describe("SpaceFloorplanPage", () => {
     mockApi.get.mockImplementation((url: string) => {
       if (url === "/api/v1/spaces/sp1") return Promise.resolve(SAMPLE_SPACE);
       if (url === "/api/v1/spaces/sp1/rules") return Promise.resolve(SAMPLE_RULES);
+      if (url.includes("/api/v1/spaces/sp1/availability")) {
+        return Promise.resolve([
+          { ...SAMPLE_SPACE.seats[0], booking_status: "available" },
+          { ...SAMPLE_SPACE.seats[1], booking_status: "booked" },
+          { ...SAMPLE_SPACE.seats[2], booking_status: "available" },
+        ]);
+      }
       return Promise.resolve([]);
     });
   }
@@ -523,6 +540,18 @@ describe("SpaceFloorplanPage", () => {
     await renderFloorplan();
     await waitFor(() => {
       expect(screen.getByText(/Check in within 15 min/i)).toBeInTheDocument();
+    });
+  });
+
+  test("browsing state loads with a default slot and triggers availability query", async () => {
+    setupApiMocks();
+    await renderFloorplan();
+    await waitFor(() => {
+      expect(
+        mockApi.get.mock.calls.some(([url]) =>
+          String(url).includes("/api/v1/spaces/sp1/availability")
+        )
+      ).toBe(true);
     });
   });
 
@@ -623,5 +652,25 @@ describe("SpaceFloorplanPage", () => {
     await waitFor(() => screen.getByRole("button", { name: "Checkout" }));
     fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
     expect(mockRouter.push).toHaveBeenCalledWith("/confirm");
+  });
+
+  test("discrete slot selections trigger separate availability queries", async () => {
+    setupApiMocks();
+    await renderFloorplan();
+    await waitFor(() => screen.getByText("New Draft"));
+
+    fireEvent.click(screen.getByText("New Draft"));
+    await waitFor(() => screen.getByRole("button", { name: "Add Draft" }));
+
+    fireEvent.click(screen.getAllByRole("option")[0]); // 08:00–09:00
+    fireEvent.click(screen.getAllByRole("option")[2]); // 10:00–11:00
+
+    await waitFor(() => {
+      const availabilityCalls = mockApi.get.mock.calls
+        .map(([url]) => String(url))
+        .filter((url) => url.includes("/api/v1/spaces/sp1/availability"));
+      expect(availabilityCalls.some((url) => url.includes("08%3A00%3A00"))).toBe(true);
+      expect(availabilityCalls.some((url) => url.includes("10%3A00%3A00"))).toBe(true);
+    });
   });
 });

@@ -3,13 +3,14 @@
 import { use, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueries } from "@tanstack/react-query";
 import {
   useSpace,
   useSpaceRules,
-  useSpaceAvailability,
   type Seat,
   type SeatAvailability,
 } from "@/lib/hooks";
+import { api } from "@/lib/api";
 import { useBookingStore } from "@/store/bookingStore";
 import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
 import SlotPicker from "@/components/Floorplan/SlotPicker";
@@ -18,6 +19,28 @@ import BookingDraftsPanel from "@/components/Floorplan/BookingDraftsPanel";
 /** ISO datetime from a YYYY-MM-DD date and an hour-of-day integer. */
 function toISO(date: string, hour: number): string {
   return `${date}T${String(hour).padStart(2, "0")}:00:00`;
+}
+
+function slotRanges(date: string, slots: number[]) {
+  if (slots.length === 0) return [];
+
+  const sorted = [...slots].sort((a, b) => a - b);
+  const ranges: { start: string; end: string }[] = [];
+  let start = sorted[0];
+  let end = sorted[0];
+
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === end + 1) {
+      end = sorted[i];
+    } else {
+      ranges.push({ start: toISO(date, start), end: toISO(date, end + 1) });
+      start = sorted[i];
+      end = sorted[i];
+    }
+  }
+
+  ranges.push({ start: toISO(date, start), end: toISO(date, end + 1) });
+  return ranges;
 }
 
 export default function SpaceFloorplanPage({
@@ -54,22 +77,48 @@ export default function SpaceFloorplanPage({
 
   // ── Availability query ────────────────────────────────────────────────────
 
-  const [availStart, availEnd] = useMemo(() => {
-    if (activeSlots.length === 0) return ["", ""];
-    const minH = Math.min(...activeSlots);
-    const maxH = Math.max(...activeSlots) + 1;
-    return [toISO(selectedDate, minH), toISO(selectedDate, maxH)];
-  }, [activeSlots, selectedDate]);
+  const availabilityRanges = useMemo(
+    () => slotRanges(selectedDate, activeSlots),
+    [selectedDate, activeSlots]
+  );
 
-  const { data: availability } = useSpaceAvailability(id, availStart, availEnd);
+  const availabilityQueries = useQueries({
+    queries: availabilityRanges.map(({ start, end }) => ({
+      queryKey: ["spaces", id, "availability", start, end],
+      queryFn: () =>
+        api.get<SeatAvailability[]>(
+          `/api/v1/spaces/${id}/availability?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+        ),
+      enabled: !!id,
+    })),
+  });
+
+  const isAvailabilityLoading = availabilityQueries.some((q) => q.isLoading);
+  const availability = availabilityQueries
+    .map((q) => q.data)
+    .filter((result): result is SeatAvailability[] => !!result);
 
   const availabilityMap = useMemo(():
     | Record<string, "available" | "booked" | "my_booking">
     | undefined => {
-    if (!availability) return undefined;
-    return Object.fromEntries(
-      availability.map((s: SeatAvailability) => [s.id, s.booking_status])
-    );
+    if (availability.length === 0) return undefined;
+
+    const merged: Record<string, "available" | "booked" | "my_booking"> = {};
+
+    for (const result of availability) {
+      for (const seat of result) {
+        const current = merged[seat.id];
+        if (seat.booking_status === "booked" || current === "booked") {
+          merged[seat.id] = "booked";
+        } else if (seat.booking_status === "my_booking" || current === "my_booking") {
+          merged[seat.id] = "my_booking";
+        } else {
+          merged[seat.id] = "available";
+        }
+      }
+    }
+
+    return merged;
   }, [availability]);
 
   // ── Draft seat map for SeatMapCanvas ─────────────────────────────────────
@@ -138,7 +187,7 @@ export default function SpaceFloorplanPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (isLoading) return <p className="text-gray-500 p-4">Loading…</p>;
+  if (isLoading || isAvailabilityLoading) return <p className="text-gray-500 p-4">Loading…</p>;
   if (!space) return <p className="text-red-500 p-4">Space not found.</p>;
 
   const seats = space.seats ?? [];

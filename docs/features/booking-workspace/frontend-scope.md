@@ -20,7 +20,7 @@ The frontend booking experience currently spans these user-facing pages:
 - `Buildings`
 - `Spaces in Building`
 - `Floorplan`
-- `Confirm`
+- `Confirm Modal`
 - `Result`
 
 ## Page Responsibilities
@@ -87,13 +87,13 @@ Desktop layout:
 - center column: floorplan
 - right column: `Booking Drafts`
 
-### Confirm
+### Confirm Modal
 
 Responsibilities:
 
 - summarize the selected drafts
 - clarify draft-to-booking expansion
-- prepare the user for submission
+- prepare the user for submission without leaving the floorplan flow
 
 ### Result
 

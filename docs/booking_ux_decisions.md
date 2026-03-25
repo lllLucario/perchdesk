@@ -19,7 +19,7 @@ It focuses on:
 
 The current agreed primary flow is:
 
-`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm`
+`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm Modal -> Result`
 
 Notes:
 
@@ -119,13 +119,25 @@ Recommended width balance:
 The floorplan should remain the dominant visual area because it is the main
 interactive canvas for seat selection.
 
-#### Confirm
+#### Confirm Modal
 
-The confirm page should:
+The confirm step should be implemented as a modal rather than a standalone
+page.
+
+The confirm modal should:
 
 - show the concrete seat/time selections that will be submitted
 - clarify how many real bookings will be created
-- surface the result of checkout per booking if partial success occurs
+- allow the user to explicitly confirm checkout without leaving the floorplan
+  context
+
+Rationale:
+
+- the right-side `Booking Drafts` panel already exposes most pre-checkout
+  information
+- a standalone confirm page would duplicate too much of the workspace context
+- a modal keeps the flow lightweight while still giving checkout an explicit
+  confirmation step
 
 ### Modal detail strategy
 
@@ -458,6 +470,11 @@ Current button direction:
 - `Checkout`
 
 ## Confirm and Result Expectations
+
+The checkout flow should use:
+
+- a confirm modal before submission
+- a result page after submission
 
 The final flow should make it clear that:
 
