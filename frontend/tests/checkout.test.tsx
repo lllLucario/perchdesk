@@ -1,12 +1,12 @@
 /**
  * Checkout flow tests: slotRanges utility, bookingStore checkoutResults,
- * ConfirmPage, and ResultPage.
+ * ConfirmModal, and ResultPage.
  */
 import React from "react";
 import { screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { renderWithProviders, mockRouter } from "./test-utils";
 import { useBookingStore } from "@/store/bookingStore";
-import { slotRanges } from "@/app/(dashboard)/confirm/page";
+import { slotRanges } from "@/lib/booking";
 
 // ─── API mock ─────────────────────────────────────────────────────────────────
 // jest.mock is hoisted before const declarations; use jest.requireMock to get
@@ -41,27 +41,6 @@ jest.mock("@/store/authStore", () => ({
     logout: jest.fn(),
   }),
 }));
-
-// ─── Fixtures ─────────────────────────────────────────────────────────────────
-
-function makeDraft(overrides: Partial<{
-  id: string;
-  color: string;
-  seatId: string;
-  seatLabel: string;
-  slots: number[];
-  date: string;
-}> = {}) {
-  return {
-    id: "d1",
-    color: "#7C3AED",
-    seatId: "s1",
-    seatLabel: "A1",
-    slots: [9, 10],
-    date: "2026-04-01",
-    ...overrides,
-  };
-}
 
 // ─── slotRanges unit tests ────────────────────────────────────────────────────
 
@@ -117,7 +96,6 @@ describe("bookingStore — checkoutResults", () => {
   });
 
   test("setCheckoutResults stores results and clears drafts", () => {
-    // Set up a draft first
     act(() => {
       const store = useBookingStore.getState();
       store.enterCreating();
@@ -162,144 +140,142 @@ describe("bookingStore — checkoutResults", () => {
   });
 });
 
-// ─── ConfirmPage tests ────────────────────────────────────────────────────────
+// ─── ConfirmModal tests ───────────────────────────────────────────────────────
 
-describe("ConfirmPage", () => {
+describe("ConfirmModal", () => {
   beforeEach(() => {
     useBookingStore.getState().reset();
     mockApi.post.mockReset();
     jest.clearAllMocks();
   });
 
-  async function loadConfirmPage() {
-    const { default: ConfirmPage } = await import(
-      "@/app/(dashboard)/confirm/page"
+  async function loadConfirmModal() {
+    const { default: ConfirmModal } = await import(
+      "@/components/Floorplan/ConfirmModal"
     );
-    return ConfirmPage;
+    return ConfirmModal;
   }
 
-  test("shows empty state when no drafts exist", async () => {
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
-    expect(screen.getByText("No drafts to confirm")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Browse Spaces" })).toBeInTheDocument();
-  });
+  const singleDraft = {
+    id: "d1",
+    color: "#7C3AED",
+    seatId: "s1",
+    seatLabel: "A1",
+    slots: [9, 10],
+    date: "2026-04-01",
+  };
 
-  test("shows draft preview with seat label and date", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(9);
-      store.toggleSlot(10);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
+  const gappedDraft = {
+    id: "d2",
+    color: "#D97706",
+    seatId: "s2",
+    seatLabel: "B2",
+    slots: [8, 10], // gap at 9
+    date: "2026-04-01",
+  };
 
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
-
+  test("renders seat label and slot range for a draft", async () => {
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+    );
     expect(screen.getByText("Seat A1")).toBeInTheDocument();
-    expect(screen.getByText("2026-04-01")).toBeInTheDocument();
-    // Contiguous 9+10 = one range 09:00-11:00
+    // [9, 10] → contiguous → 09:00–11:00
     expect(screen.getByText("09:00–11:00")).toBeInTheDocument();
+    expect(screen.getByText(/Will create 1 booking/)).toBeInTheDocument();
   });
 
-  test("shows gap warning when draft has non-contiguous slots", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(8);
-      store.toggleSlot(10); // gap at 9
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
-
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
-
-    expect(screen.getByText(/2 separate bookings/)).toBeInTheDocument();
+  test("shows plural heading for multiple bookings", async () => {
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[gappedDraft]} onClose={jest.fn()} />
+    );
+    // [8, 10] → 2 ranges → heading says "Confirm Bookings"
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText(/Confirm Bookings/)).toBeInTheDocument();
   });
 
-  test("does not show gap warning for contiguous slots", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(9);
-      store.toggleSlot(10);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
-
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
-
-    expect(screen.queryByText(/separate bookings/)).not.toBeInTheDocument();
+  test("shows non-contiguous note for gapped draft", async () => {
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[gappedDraft]} onClose={jest.fn()} />
+    );
+    expect(screen.getByText(/non-contiguous slots/)).toBeInTheDocument();
+    expect(screen.getByText(/Will create 2 bookings/)).toBeInTheDocument();
   });
 
-  test("confirm button shows booking count", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(9);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
-
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
-    expect(screen.getByRole("button", { name: "Confirm Booking" })).toBeInTheDocument();
+  test("does not show non-contiguous note for contiguous slots", async () => {
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+    );
+    expect(screen.queryByText(/non-contiguous/)).not.toBeInTheDocument();
   });
 
-  test("submits booking via API and navigates to /result on success", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(9);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
+  test("Cancel button calls onClose", async () => {
+    const onClose = jest.fn();
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(<ConfirmModal drafts={[singleDraft]} onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 
+  test("Close (×) button calls onClose", async () => {
+    const onClose = jest.fn();
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(<ConfirmModal drafts={[singleDraft]} onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  test("Confirm submits booking via API with correct payload", async () => {
     mockApi.post.mockResolvedValueOnce({ id: "booking-abc" });
 
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+    );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Confirm Booking" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     });
 
     await waitFor(() => {
       expect(mockApi.post).toHaveBeenCalledWith("/api/v1/bookings", {
         seat_id: "s1",
         start_time: "2026-04-01T09:00:00",
-        end_time: "2026-04-01T10:00:00",
+        end_time: "2026-04-01T11:00:00",
       });
+    });
+  });
+
+  test("navigates to /result after submission", async () => {
+    mockApi.post.mockResolvedValueOnce({ id: "booking-abc" });
+
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    });
+
+    await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith("/result");
     });
   });
 
   test("stores success result in bookingStore after submission", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(9);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
-
     mockApi.post.mockResolvedValueOnce({ id: "booking-xyz" });
 
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+    );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Confirm Booking" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     });
 
     await waitFor(() => {
@@ -311,22 +287,15 @@ describe("ConfirmPage", () => {
   });
 
   test("stores error result when API call fails", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(9);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
-
     mockApi.post.mockRejectedValueOnce(new Error("Conflict"));
 
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+    );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Confirm Booking" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     });
 
     await waitFor(() => {
@@ -337,32 +306,95 @@ describe("ConfirmPage", () => {
     });
   });
 
-  test("gap in draft creates two API calls", async () => {
-    act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.setDate("2026-04-01");
-      store.toggleSlot(8);
-      store.toggleSlot(10); // gap at 9
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
-    });
-
+  test("gapped draft creates two API calls", async () => {
     mockApi.post
       .mockResolvedValueOnce({ id: "b1" })
       .mockResolvedValueOnce({ id: "b2" });
 
-    const ConfirmPage = await loadConfirmPage();
-    renderWithProviders(<ConfirmPage />);
+    const ConfirmModal = await loadConfirmModal();
+    renderWithProviders(
+      <ConfirmModal drafts={[gappedDraft]} onClose={jest.fn()} />
+    );
 
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Confirm Bookings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     });
 
     await waitFor(() => {
       expect(mockApi.post).toHaveBeenCalledTimes(2);
-      const results = useBookingStore.getState().checkoutResults;
-      expect(results).toHaveLength(2);
+      expect(mockApi.post).toHaveBeenCalledWith("/api/v1/bookings", {
+        seat_id: "s2",
+        start_time: "2026-04-01T08:00:00",
+        end_time: "2026-04-01T09:00:00",
+      });
+      expect(mockApi.post).toHaveBeenCalledWith("/api/v1/bookings", {
+        seat_id: "s2",
+        start_time: "2026-04-01T10:00:00",
+        end_time: "2026-04-01T11:00:00",
+      });
+    });
+  });
+
+  test("floorplan Checkout button opens the modal", async () => {
+    jest.mock("@/lib/api", () => ({
+      api: mockApi,
+    }));
+
+    const mockGet = mockApi.get;
+    mockGet.mockImplementation((url: string) => {
+      if (url === "/api/v1/spaces/sp1") {
+        return Promise.resolve({
+          id: "sp1",
+          building_id: "b1",
+          name: "Central Library",
+          type: "library",
+          description: null,
+          capacity: 4,
+          layout_config: { grid_size: 30 },
+          created_at: "",
+          seats: [
+            { id: "s1", space_id: "sp1", label: "A1", position: { x: 60, y: 60 }, status: "available", attributes: null },
+          ],
+        });
+      }
+      if (url === "/api/v1/spaces/sp1/rules") {
+        return Promise.resolve({
+          id: "r1", space_id: "sp1", max_duration_minutes: 240,
+          max_advance_days: 3, time_unit: "hourly",
+          auto_release_minutes: null, requires_approval: false,
+        });
+      }
+      if (url.includes("/availability")) return Promise.resolve([]);
+      return Promise.resolve([]);
+    });
+
+    // Seed a draft directly in the store so Checkout button is visible
+    act(() => {
+      const store = useBookingStore.getState();
+      store.enterCreating();
+      store.toggleSlot(9);
+      store.setActiveSeat("s1", "A1");
+      store.addDraft();
+    });
+
+    const { default: SpaceFloorplanPage } = await import(
+      "@/app/(dashboard)/spaces/[id]/page"
+    );
+    const { Suspense } = await import("react");
+
+    await act(async () => {
+      renderWithProviders(
+        <Suspense fallback={<div>loading…</div>}>
+          <SpaceFloorplanPage params={Promise.resolve({ id: "sp1" })} />
+        </Suspense>
+      );
+    });
+
+    await waitFor(() => screen.getByRole("button", { name: "Checkout" }));
+    fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
   });
 });
@@ -512,7 +544,7 @@ describe("ResultPage", () => {
     expect(useBookingStore.getState().checkoutResults).toBeNull();
   });
 
-  test("Book Another Space button is present and resets on click", async () => {
+  test("Book Another Space resets store and navigates to /buildings", async () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
@@ -556,6 +588,8 @@ describe("ResultPage", () => {
     const ResultPage = await loadResultPage();
     renderWithProviders(<ResultPage />);
 
-    expect(screen.queryByRole("button", { name: "View My Bookings" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "View My Bookings" })
+    ).not.toBeInTheDocument();
   });
 });
