@@ -1,17 +1,9 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import Link from "next/link";
-
+/**
+ * The confirm step is now a modal inside the floorplan workspace.
+ * This route is no longer part of the primary booking flow.
+ */
 export default function ConfirmPage() {
-  return (
-    <div>
-      <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
-        <Link href="/" className="hover:text-gray-700">Home</Link>
-        <span>/</span>
-        <span className="text-gray-900 font-medium">Confirm Booking</span>
-      </nav>
-      <h1 className="text-xl font-semibold text-gray-900 mb-2">Confirm Booking</h1>
-      <p className="text-sm text-gray-400">Booking confirmation — coming in PR 4.</p>
-    </div>
-  );
+  redirect("/buildings");
 }

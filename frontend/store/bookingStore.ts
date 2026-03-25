@@ -84,6 +84,22 @@ function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
+// ─── Checkout result types ────────────────────────────────────────────────────
+
+export interface BookingResult {
+  /** The draft this booking came from. */
+  draftId: string;
+  draftColor: string;
+  seatLabel: string | null;
+  /** ISO datetime range for this individual booking. */
+  start: string;
+  end: string;
+  /** Filled on success. */
+  bookingId: string | null;
+  status: "success" | "error";
+  errorMessage: string | null;
+}
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface BookingState {
@@ -103,6 +119,13 @@ interface BookingState {
   /** All saved drafts for this session. */
   drafts: Draft[];
 
+  /**
+   * Results from the most recent checkout submission.
+   * Populated by the confirm page after API calls complete.
+   * Null means no checkout has been attempted yet.
+   */
+  checkoutResults: BookingResult[] | null;
+
   // ── Actions ──
   setDate: (date: string) => void;
   enterCreating: () => void;
@@ -114,6 +137,7 @@ interface BookingState {
   addDraft: () => void;
   saveChanges: () => void;
   deleteDraft: (draftId: string) => void;
+  setCheckoutResults: (results: BookingResult[]) => void;
   reset: () => void;
 }
 
@@ -127,6 +151,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
   activeSeatLabel: null,
   activeDraftColor: DRAFT_COLORS[0],
   drafts: [],
+  checkoutResults: null,
 
   setDate: (date) => set({ selectedDate: date }),
 
@@ -232,6 +257,8 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
     });
   },
 
+  setCheckoutResults: (results) => set({ checkoutResults: results, drafts: [] }),
+
   reset: () =>
     set({
       ...defaultWorkspaceSelection(),
@@ -241,5 +268,6 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
       activeSeatLabel: null,
       activeDraftColor: DRAFT_COLORS[0],
       drafts: [],
+      checkoutResults: null,
     }),
 }));

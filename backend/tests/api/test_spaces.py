@@ -38,6 +38,29 @@ async def test_create_space_admin(client: AsyncClient, admin_token: str):
 
 
 @pytest.mark.asyncio
+async def test_create_office_space_defaults_to_hourly_rules(
+    client: AsyncClient, admin_token: str
+):
+    create_resp = await client.post(
+        "/api/v1/spaces",
+        json={"name": "New Office", "type": "office", "capacity": 12},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert create_resp.status_code == 201
+    space_id = create_resp.json()["id"]
+
+    rules_resp = await client.get(
+        f"/api/v1/spaces/{space_id}/rules",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert rules_resp.status_code == 200
+    rules = rules_resp.json()
+    assert rules["time_unit"] == "hourly"
+    assert rules["max_duration_minutes"] == 480
+    assert rules["max_advance_days"] == 7
+
+
+@pytest.mark.asyncio
 async def test_create_space_non_admin_forbidden(client: AsyncClient, user_token: str):
     resp = await client.post(
         "/api/v1/spaces",

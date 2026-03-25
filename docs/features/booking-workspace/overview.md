@@ -52,6 +52,11 @@ This flow should:
 ### Current core UX assumptions
 
 - booking unit is `1 hour`
+- both `library` and `office` currently use the same hourly slot-based booking
+  interaction model
+- `office` differs through rule values such as longer maximum duration and
+  advance-booking window, not through a separate half-day picker in the current
+  phase
 - cross-day booking is out of scope for now
 - one draft binds one seat
 - one draft may contain continuous or discrete slots

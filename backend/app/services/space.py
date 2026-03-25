@@ -51,7 +51,7 @@ async def create_space(db: AsyncSession, data: SpaceCreate) -> Space:
             space_id=space.id,
             max_duration_minutes=480,
             max_advance_days=7,
-            time_unit="half_day",
+            time_unit="hourly",
             auto_release_minutes=None,
         )
 

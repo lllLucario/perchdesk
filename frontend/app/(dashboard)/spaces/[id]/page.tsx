@@ -1,8 +1,7 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import {
   useSpace,
@@ -15,6 +14,7 @@ import { useBookingStore } from "@/store/bookingStore";
 import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
 import SlotPicker from "@/components/Floorplan/SlotPicker";
 import BookingDraftsPanel from "@/components/Floorplan/BookingDraftsPanel";
+import ConfirmModal from "@/components/Floorplan/ConfirmModal";
 
 /** ISO datetime from a YYYY-MM-DD date and an hour-of-day integer. */
 function toISO(date: string, hour: number): string {
@@ -49,7 +49,7 @@ export default function SpaceFloorplanPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const { data: space, isLoading } = useSpace(id);
   const { data: rules } = useSpaceRules(id);
@@ -93,7 +93,6 @@ export default function SpaceFloorplanPage({
     })),
   });
 
-  const isAvailabilityLoading = availabilityQueries.some((q) => q.isLoading);
   const availability = availabilityQueries
     .map((q) => q.data)
     .filter((result): result is SeatAvailability[] => !!result);
@@ -187,7 +186,7 @@ export default function SpaceFloorplanPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (isLoading || isAvailabilityLoading) return <p className="text-gray-500 p-4">Loading…</p>;
+  if (isLoading) return <p className="text-gray-500 p-4">Loading…</p>;
   if (!space) return <p className="text-red-500 p-4">Space not found.</p>;
 
   const seats = space.seats ?? [];
@@ -249,7 +248,7 @@ export default function SpaceFloorplanPage({
           onSaveChanges={saveChanges}
           onCancelEditing={cancelEditing}
           onDeleteDraft={() => editingDraftId && deleteDraft(editingDraftId)}
-          onCheckout={() => router.push("/confirm")}
+          onCheckout={() => setIsConfirmOpen(true)}
         />
 
         {/* Center: Seat map */}
@@ -298,6 +297,14 @@ export default function SpaceFloorplanPage({
           onDeleteDraft={deleteDraft}
         />
       </div>
+
+      {/* Confirm modal — rendered inside the floorplan to preserve workspace context */}
+      {isConfirmOpen && (
+        <ConfirmModal
+          drafts={drafts}
+          onClose={() => setIsConfirmOpen(false)}
+        />
+      )}
     </div>
   );
 }

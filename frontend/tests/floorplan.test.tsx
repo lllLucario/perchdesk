@@ -642,7 +642,7 @@ describe("SpaceFloorplanPage", () => {
     });
   });
 
-  test("Checkout navigates to /confirm", async () => {
+  test("Checkout opens the confirm modal", async () => {
     setupApiMocks();
     await renderFloorplan();
     await waitFor(() => screen.getByText("New Draft"));
@@ -651,7 +651,10 @@ describe("SpaceFloorplanPage", () => {
 
     await waitFor(() => screen.getByRole("button", { name: "Checkout" }));
     fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
-    expect(mockRouter.push).toHaveBeenCalledWith("/confirm");
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
   });
 
   test("discrete slot selections trigger separate availability queries", async () => {
