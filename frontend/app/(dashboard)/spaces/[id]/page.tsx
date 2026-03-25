@@ -93,7 +93,6 @@ export default function SpaceFloorplanPage({
     })),
   });
 
-  const isAvailabilityLoading = availabilityQueries.some((q) => q.isLoading);
   const availability = availabilityQueries
     .map((q) => q.data)
     .filter((result): result is SeatAvailability[] => !!result);
@@ -187,7 +186,7 @@ export default function SpaceFloorplanPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (isLoading || isAvailabilityLoading) return <p className="text-gray-500 p-4">Loading…</p>;
+  if (isLoading) return <p className="text-gray-500 p-4">Loading…</p>;
   if (!space) return <p className="text-red-500 p-4">Space not found.</p>;
 
   const seats = space.seats ?? [];
