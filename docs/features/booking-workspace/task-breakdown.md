@@ -84,7 +84,7 @@ entirely.
 Define or refactor the frontend routes/pages so the user-facing flow maps to the
 current product direction:
 
-`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm -> Result`
+`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm Modal -> Result`
 
 ### Likely areas
 
@@ -415,25 +415,29 @@ Implement the visual and interaction rules for draft ownership.
 
 ---
 
-## Task 12: Implement Confirm Page
+## Task 12: Implement Confirm Modal
 
 **Effort: S**
 
 ### Goal
 
-Show the user exactly what will be submitted before checkout.
+Show the user exactly what will be submitted before checkout without forcing a
+separate full-page transition.
 
 ### Includes
 
+- modal triggered from checkout
 - draft summary
 - seat summary
 - selected slot summary
 - note when one draft will expand into multiple bookings
+- explicit confirm/cancel actions
 
 ### Acceptance criteria
 
-- confirm page makes draft-to-booking expansion understandable
+- confirm modal makes draft-to-booking expansion understandable
 - user can review the booking set before submission
+- user can cancel and return directly to the floorplan workspace
 
 ### Suggested verification
 
@@ -664,20 +668,20 @@ Recommended additions if state logic changes are substantial:
 
 ---
 
-### PR 4 — Checkout: Confirm, Result, State, and Tests (Tasks 12–15)
+### PR 4 — Checkout: Confirm Modal, Result, State, and Tests (Tasks 12–15)
 
 **Estimated effort: ~2.5 days**
 
 | Task | Title                               | Effort |
 |------|-------------------------------------|--------|
-| 12   | Implement Confirm Page              | S      |
+| 12   | Implement Confirm Modal             | S      |
 | 13   | Implement Result Page               | S      |
 | 14   | Align Frontend State and API Calls  | M      |
 | 15   | Testing and Verification            | M      |
 
 **Rationale:**
-Tasks 12–13 are the checkout pages and are straightforward display work.
-Task 14 wires up the state model and API calls that the entire workspace
+Task 12 adds a lightweight confirm modal inside the floorplan flow. Task 13
+adds the post-submission result page. Task 14 wires up the state model and API calls that the entire workspace
 depends on — it is placed here rather than earlier because the full interaction
 model only becomes clear after PR 3. Task 15 adds test coverage across the
 whole feature and is a natural final step before the feature branch is merged

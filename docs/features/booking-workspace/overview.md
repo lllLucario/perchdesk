@@ -18,7 +18,7 @@ It should be read together with:
 The current goal is to evolve the user booking experience into a task-oriented
 flow:
 
-`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm -> Result`
+`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm Modal -> Result`
 
 This flow should:
 
@@ -37,6 +37,7 @@ This flow should:
 - `Spaces in Building` selection page
 - modal-based detail for buildings and spaces
 - floorplan workspace with three-column layout
+- confirm modal for pre-checkout confirmation
 
 ### Booking workspace behavior
 
@@ -45,7 +46,7 @@ This flow should:
 - seat selection
 - `Booking Drafts`
 - `Browsing`, `Creating Draft`, and `Editing Draft` states
-- confirm page
+- confirm modal
 - result page
 
 ### Current core UX assumptions

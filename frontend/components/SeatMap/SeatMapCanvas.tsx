@@ -13,7 +13,15 @@ export interface SeatMapCanvasProps {
   toolMode?: ToolMode;
   /** seat_id → "available" | "booked" | "my_booking" (user view, time-based) */
   availabilityMap?: Record<string, "available" | "booked" | "my_booking">;
+  /** Legacy single-seat selection (user view). Prefer draftSeatMap for workspace. */
   selectedSeatId?: string | null;
+  /**
+   * Draft-based seat coloring for the booking workspace.
+   * seat_id → { color: hex, isActiveDraft: boolean }
+   * - isActiveDraft=true  → full opacity + checkmark (active/editing draft)
+   * - isActiveDraft=false → 45% opacity (stored draft, visually secondary)
+   */
+  draftSeatMap?: Record<string, { color: string; isActiveDraft: boolean }>;
   labelPrefix?: string;
   width?: number;
   height?: number;
@@ -50,6 +58,7 @@ export default function SeatMapCanvas({
   toolMode = "select",
   availabilityMap,
   selectedSeatId,
+  draftSeatMap,
   labelPrefix = "A",
   width = 800,
   height = 600,
@@ -69,6 +78,9 @@ export default function SeatMapCanvas({
 
   function seatColor(seat: Seat): string {
     if (seat.status === "maintenance") return COLOR.maintenance;
+    // Draft-based coloring takes priority over availability map
+    const draftInfo = draftSeatMap?.[seat.id];
+    if (draftInfo) return draftInfo.color;
     if (mode === "user") {
       if (seat.id === selectedSeatId) return COLOR.my_booking;
       const avail = availabilityMap?.[seat.id];
@@ -76,6 +88,12 @@ export default function SeatMapCanvas({
       if (avail === "booked") return COLOR.booked;
     }
     return COLOR.available;
+  }
+
+  function seatOpacity(seat: Seat): number {
+    const draftInfo = draftSeatMap?.[seat.id];
+    if (draftInfo && !draftInfo.isActiveDraft) return 0.45;
+    return 1;
   }
 
   function isClickable(seat: Seat): boolean {
@@ -164,11 +182,17 @@ export default function SeatMapCanvas({
         const color = seatColor(seat);
         const clickable = isClickable(seat);
         const isSelected = seat.id === selectedSeatId;
+        const draftInfo = draftSeatMap?.[seat.id];
+        const opacity = mode === "admin" && toolMode === "delete"
+          ? 0.7
+          : seatOpacity(seat);
+        const showCheckmark = !!draftInfo?.isActiveDraft;
 
         return (
           <g
             key={seat.id}
             style={{ cursor: clickable ? "pointer" : "default" }}
+            opacity={opacity}
             onClick={(e) => {
               e.stopPropagation();
               if (clickable) onSeatClick?.(seat);
@@ -181,21 +205,34 @@ export default function SeatMapCanvas({
               height={SEAT_SIZE}
               rx={4}
               fill={color}
-              stroke={isSelected ? "#1E5FA8" : "white"}
+              stroke={isSelected ? "#1E5FA8" : draftInfo?.isActiveDraft ? "white" : "white"}
               strokeWidth={isSelected ? 2 : 1}
-              opacity={mode === "admin" && toolMode === "delete" ? 0.7 : 1}
             />
-            <text
-              x={cx}
-              y={cy + 4}
-              textAnchor="middle"
-              fontSize={8}
-              fill="white"
-              fontWeight="bold"
-              style={{ pointerEvents: "none", userSelect: "none" }}
-            >
-              {seat.label}
-            </text>
+            {showCheckmark ? (
+              <text
+                x={cx}
+                y={cy + 4}
+                textAnchor="middle"
+                fontSize={10}
+                fill="white"
+                fontWeight="bold"
+                style={{ pointerEvents: "none", userSelect: "none" }}
+              >
+                ✓
+              </text>
+            ) : (
+              <text
+                x={cx}
+                y={cy + 4}
+                textAnchor="middle"
+                fontSize={8}
+                fill="white"
+                fontWeight="bold"
+                style={{ pointerEvents: "none", userSelect: "none" }}
+              >
+                {seat.label}
+              </text>
+            )}
           </g>
         );
       })}
