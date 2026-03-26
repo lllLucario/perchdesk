@@ -67,7 +67,7 @@ const SAMPLE_SPACE = {
 const SAMPLE_RULES = {
   id: "r1",
   space_id: "sp1",
-  max_duration_minutes: 240,
+  max_duration_minutes: 480,
   max_advance_days: 3,
   time_unit: "hourly",
   auto_release_minutes: 15,

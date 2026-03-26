@@ -354,7 +354,7 @@ describe("ConfirmModal", () => {
       }
       if (url === "/api/v1/spaces/sp1/rules") {
         return Promise.resolve({
-          id: "r1", space_id: "sp1", max_duration_minutes: 240,
+          id: "r1", space_id: "sp1", max_duration_minutes: 480,
           max_advance_days: 3, time_unit: "hourly",
           auto_release_minutes: null, requires_approval: false,
         });

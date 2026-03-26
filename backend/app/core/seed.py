@@ -54,7 +54,7 @@ async def seed(session: AsyncSession) -> None:
 
     library_rules = SpaceRules(
         space_id=library.id,
-        max_duration_minutes=240,
+        max_duration_minutes=480,
         max_advance_days=3,
         time_unit="hourly",
         auto_release_minutes=15,

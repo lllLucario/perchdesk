@@ -106,7 +106,7 @@ High-level layout:
 
 - left column: date and time selection controls
 - center column: floorplan SVG
-- right column: `Booking Drafts`
+- right column: `Booking List`
 
 The workspace should use a three-column layout.
 
@@ -133,7 +133,7 @@ The confirm modal should:
 
 Rationale:
 
-- the right-side `Booking Drafts` panel already exposes most pre-checkout
+- the right-side `Booking List` panel already exposes most pre-checkout
   information
 - a standalone confirm page would duplicate too much of the workspace context
 - a modal keeps the flow lightweight while still giving checkout an explicit
@@ -237,6 +237,11 @@ If the user has not selected a time yet:
 
 - default to the nearest valid upcoming slot after the current time
 - do not default to an already-started slot
+- when the page first loads, the slot picker should automatically scroll or
+  focus to the preselected slot so it is visible without requiring manual
+  searching
+- when the selected date is today, slots that are already in the past should be
+  greyed out and unselectable
 
 ### Multi-slot selection
 
@@ -255,11 +260,24 @@ Product intent:
 For the current design direction:
 
 - a user may reserve at most `8 hours` in the same space per day
+- this `8 hour` limit currently applies to both `library` and `office` in the
+  active product direction
+- future admin-defined per-space duration overrides are intentionally deferred
+  until after the current booking workspace flow is stable
 
 When the user reaches the maximum:
 
 - already selected slots remain selected
 - unselected slots become disabled/greyed out
+
+### Multiple bookings in the same space
+
+The system should allow the user to create more than one booking in the same
+space on the same day, provided the bookings do not overlap and do not exceed
+the total daily duration constraint.
+
+The system should not reject all additional bookings in a space simply because
+the user already has one active booking there.
 
 ### Seat rendering rule for selected slots
 
@@ -271,6 +289,18 @@ slots
 unavailable
 
 This is an intentional intersection rule.
+
+### Existing user booking visibility
+
+If the current user already has a successful booking in this space for the
+selected date and time:
+
+- the floorplan should visually distinguish that seat as the user's own booking
+- this should be a dedicated `my booking` state rather than a generic disabled
+  or unavailable state
+- the slot picker should also reflect that the user already holds that time in
+  this space
+- the legend should explain this state clearly
 
 ### Check-in rule direction
 
@@ -310,6 +340,19 @@ Secondary expression:
 
 The product should avoid heavy or noisy capacity heatmaps in the slot picker.
 
+### Time-of-day grouping
+
+The slot picker should include lightweight English dividers to help users scan
+the day more quickly.
+
+Current direction:
+
+- `Morning`
+- `Afternoon`
+- `Evening`
+
+These labels are navigational aids, not separate booking modes.
+
 ### Capacity display rule
 
 Capacity numbers are only emphasized when seat supply is low.
@@ -344,17 +387,37 @@ Seat-specific availability area:
 
 This seat detail UI is supplementary. The main booking flow remains time-first.
 
-## Booking Drafts
+## Booking List and Modes
 
-### Concept
+### User-facing naming
 
-The agreed name is:
+User-facing language should prefer:
 
-- `Booking Drafts`
+- `Booking`
+- `Current Booking`
+- `Booking List`
 
-A booking draft is an intent container used before checkout.
+The word `draft` should not be the primary user-facing term.
 
-A draft may contain:
+### Current Booking vs Booking List
+
+The workspace contains two layers:
+
+- `Current Booking`
+- `Booking List`
+
+`Current Booking` means the booking currently being assembled or edited in the
+left/center workspace.
+
+`Booking List` means the set of bookings already added to the right-side list
+and waiting for final submission.
+
+The right-side list should not render an empty placeholder card just because
+the page is currently in `Creating`.
+
+### Booking object before submit
+
+A booking in the current workspace may contain:
 
 - one seat
 - one or more selected time slots
@@ -362,97 +425,113 @@ A draft may contain:
 
 At checkout time:
 
-- a single draft may expand into multiple real bookings if there are gaps
-between selected time groups
+- one booking may expand into multiple real bookings if there are gaps between
+  selected time groups
 
 Example:
 
-- one draft for Seat A with `08:00-12:00` and `18:00-20:00`
+- one booking for Seat A with `08:00-12:00` and `18:00-20:00`
 - checkout creates two real bookings
-
-### Why drafts exist
-
-Drafts exist to support cases where the user wants to plan multiple bookings in
-one session, such as:
-
-- Seat A for one time range
-- Seat B for another time range
-
-This behaves more like batch planning than a single booking object.
 
 ### Panel placement
 
-`Booking Drafts` should live in the right column of the floorplan workspace.
+`Booking List` should live in the right column of the floorplan workspace.
 
-It should be treated as a first-class part of the booking workspace rather than
-as a hidden or surprising overlay.
+It should remain a first-class, visible part of the workspace rather than a
+surprising overlay.
 
-Rationale:
+### Interaction modes
 
-- drafts affect current page state
-- drafts affect seat and slot selection states
-- drafts should remain visible while the user plans multiple bookings
+The floorplan should use two primary modes:
 
-The right column may still support collapse/expand behavior later, but the
-current direction is a visible three-column workspace rather than an
-auto-opening drawer.
+- `Creating`
+- `Editing`
 
-### Draft creation flow
+There should not be a separate `Browsing` mode in the current design
+direction.
 
-Default page mode after loading:
+### Creating mode
 
-- viewing mode, not editing mode
+This is the default mode when:
 
-To begin creating a new draft:
+- the page first loads
+- the user finishes adding a booking
+- the user finishes editing a booking
+- the user cancels editing
 
-- user clicks `New Draft`
+Behavior:
 
-To save a new draft:
+- the page immediately supports time and seat selection
+- the system preselects the nearest valid upcoming slot
+- the user may change slots and choose a seat without first clicking a `New`
+  button
+- the current workspace selection is the `Current Booking`
+- the user clicks `Add Booking` to add the current booking to the right-side
+  `Booking List`
+- after `Add Booking`, the page returns to a fresh `Creating` state
 
-- user clicks `Add Draft`
+### Editing mode
 
-After adding a draft:
+This mode is entered only when the user explicitly clicks `Edit` on an existing
+booking in the `Booking List`.
 
-- the page returns to viewing mode
-- it does not automatically enter creation of another draft
+Behavior:
 
-### Draft editing flow
+- the selected booking is loaded back into the workspace
+- its seat and slot assignments become the active editable selection
+- `Save Changes` updates the booking in the list
+- `Cancel Editing` discards the changes and returns to `Creating`
 
-To edit an existing draft:
+### Seat and slot synchronization
 
-- click an already draft-selected seat or time slot to enter editing for that
-draft
+In both `Creating` and `Editing`:
 
-Current intended behavior:
+- selected time slots determine which seats are available
+- selected seat also constrains which time slots remain available
 
-- draft-selected seats/slots act as entry points to the existing draft
+When a seat is selected:
 
-### Draft visual states
+- left-side time slots should update according to that seat's availability
+- unavailable slots should become greyed out and unselectable
+- if a now-unavailable slot had already been selected, it should be removed
+  automatically
+- the UI should provide lightweight feedback when selected slots are removed
+  due to seat availability changes
 
-Each draft gets its own color.
+### Visual states
 
-Selected slot blocks and selected seats for the same draft must share the same
-color.
+Each booking gets its own color.
+
+Selected slot blocks and selected seats for the same booking must share the
+same color.
 
 Visual distinction:
 
-- currently edited draft: solid fill
-- non-edited drafts: weaker / lighter background treatment
+- currently edited booking: solid fill
+- non-edited bookings in the list: weaker / lighter background treatment
 
 Selected items should also show a checkmark.
 
-### Draft selection constraints
+### Selection constraints
 
-Once a seat or time slot has been assigned to a draft:
+Once a seat or time slot has been assigned to a booking already in the list:
 
-- it should not be selectable for another draft in the current planning state
+- it should not be selectable for another booking in the current planning state
 
-Intent behind this rule:
+### Button direction
 
-- if the user wants the same seat for more time ranges, that should usually be
-handled by extending the same draft rather than creating a second one
+Current button direction:
 
-### Draft checkout behavior
+- `Add Booking`
+- `Edit`
+- `Save Changes`
+- `Cancel Editing`
+- `Submit`
+
+`New Draft` and `Start Another Draft` should not be part of the current
+interaction model.
+
+### Checkout behavior
 
 Checkout should process each resulting booking independently.
 
@@ -460,22 +539,6 @@ Concurrency behavior:
 
 - partial success is acceptable
 - the post-checkout result page should report the real outcome clearly
-
-## Editing Modes
-
-The flow conceptually contains these modes:
-
-- viewing mode
-- creating a new draft
-- editing an existing draft
-
-Current button direction:
-
-- `New Draft`
-- `Add Draft`
-- `Save Changes`
-- `Cancel Editing`
-- `Checkout`
 
 ## Confirm and Result Expectations
 
@@ -486,8 +549,8 @@ The checkout flow should use:
 
 The final flow should make it clear that:
 
-- one draft is not always equal to one booking
-- a draft may expand into multiple real bookings
+- one booking in the list is not always equal to one real submitted booking
+- a single booking may expand into multiple real bookings
 - checkout may partially succeed under concurrent conditions
 
 The result page should therefore reflect actual submission results rather than

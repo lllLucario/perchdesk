@@ -204,7 +204,7 @@ async def space_with_rules(db_session: AsyncSession) -> Space:
     await db_session.flush()
     rules = SpaceRules(
         space_id=space.id,
-        max_duration_minutes=240,
+        max_duration_minutes=480,
         max_advance_days=3,
         time_unit="hourly",
         auto_release_minutes=15,
@@ -302,7 +302,7 @@ async def test_get_availability(db_session: AsyncSession, space_with_rules: Spac
 @pytest.mark.asyncio
 async def test_get_rules(db_session: AsyncSession, space_with_rules: Space):
     rules = await rules_service.get_rules(db_session, space_with_rules.id)
-    assert rules.max_duration_minutes == 240
+    assert rules.max_duration_minutes == 480
 
 
 @pytest.mark.asyncio
@@ -452,7 +452,7 @@ async def test_create_booking_exceeds_max_duration(
             BookingCreate(
                 seat_id=available_seat.id,
                 start_time=_future(1),
-                end_time=_future(10),  # 9 hours > 240 min limit
+                end_time=_future(10),  # 9 hours > 480 min limit
             ),
         )
 
@@ -897,7 +897,7 @@ async def test_daily_duration_limit_enforced(
     db_session: AsyncSession, test_user: User, space_with_rules: Space
 ):
     """A user cannot exceed the space's max_duration_minutes total per day."""
-    # space_with_rules has max_duration_minutes=240 (4 hours)
+    # space_with_rules has max_duration_minutes=480 (8 hours)
     seat1 = Seat(space_id=space_with_rules.id, label="Z1", position={"x": 0, "y": 0})
     seat2 = Seat(space_id=space_with_rules.id, label="Z2", position={"x": 30, "y": 0})
     db_session.add_all([seat1, seat2])
@@ -905,18 +905,18 @@ async def test_daily_duration_limit_enforced(
     await db_session.refresh(seat1)
     await db_session.refresh(seat2)
 
-    # Book 4 hours on seat1 (hits the 240-min limit exactly)
+    # Book 8 hours on seat1 (hits the 480-min limit exactly)
     await booking_service.create_booking(
         db_session,
         test_user.id,
-        BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(5)),
+        BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(9)),
     )
     # Any additional booking on the same day should fail
     with pytest.raises(BookingRuleViolationError, match="daily limit"):
         await booking_service.create_booking(
             db_session,
             test_user.id,
-            BookingCreate(seat_id=seat2.id, start_time=_future(5), end_time=_future(6)),
+            BookingCreate(seat_id=seat2.id, start_time=_future(9), end_time=_future(10)),
         )
 
 

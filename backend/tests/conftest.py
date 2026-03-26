@@ -127,7 +127,7 @@ async def library_space(db_session: AsyncSession) -> Space:
     await db_session.flush()
     rules = SpaceRules(
         space_id=space.id,
-        max_duration_minutes=240,
+        max_duration_minutes=480,
         max_advance_days=3,
         time_unit="hourly",
         auto_release_minutes=15,

@@ -54,9 +54,11 @@ This flow should:
 - booking unit is `1 hour`
 - both `library` and `office` currently use the same hourly slot-based booking
   interaction model
-- `office` differs through rule values such as longer maximum duration and
-  advance-booking window, not through a separate half-day picker in the current
-  phase
+- both `library` and `office` currently align to an `8 hour` per-day booking
+  cap in the active product direction
+- scenario differences should currently come from values such as
+  `max_advance_days` and `auto_release_minutes`, not from a separate
+  half-day/full-day picker in the current phase
 - cross-day booking is out of scope for now
 - one draft binds one seat
 - one draft may contain continuous or discrete slots
