@@ -90,6 +90,7 @@ describe("bookingStore", () => {
   });
 
   test("toggleSlot adds and removes a slot", () => {
+    useBookingStore.setState({ activeSlots: [] }); // start from known empty state
     useBookingStore.getState().toggleSlot(9);
     expect(useBookingStore.getState().activeSlots).toContain(9);
     useBookingStore.getState().toggleSlot(9);
@@ -108,7 +109,7 @@ describe("bookingStore", () => {
   });
 
   test("addBooking saves booking and returns to creating", () => {
-    useBookingStore.getState().toggleSlot(9);
+    useBookingStore.setState({ activeSlots: [9] });
     useBookingStore.getState().setActiveSeat("s1", "A1");
     useBookingStore.getState().addBooking();
 
@@ -129,7 +130,7 @@ describe("bookingStore", () => {
 
   test("enterEditing loads booking into active state", () => {
     useBookingStore.getState().setDate("2026-03-26");
-    useBookingStore.getState().toggleSlot(8);
+    useBookingStore.setState({ activeSlots: [8] });
     useBookingStore.getState().setActiveSeat("s1", "A1");
     useBookingStore.getState().addBooking();
 
@@ -148,7 +149,7 @@ describe("bookingStore", () => {
   });
 
   test("cancelEditing returns to creating and clears active state", () => {
-    useBookingStore.getState().toggleSlot(9);
+    useBookingStore.setState({ activeSlots: [9] });
     useBookingStore.getState().cancelEditing();
 
     const { mode, activeSeatId } = useBookingStore.getState();
@@ -157,7 +158,7 @@ describe("bookingStore", () => {
   });
 
   test("saveChanges updates booking and returns to creating", () => {
-    useBookingStore.getState().toggleSlot(8);
+    useBookingStore.setState({ activeSlots: [8] });
     useBookingStore.getState().setActiveSeat("s1", "A1");
     useBookingStore.getState().addBooking();
 
@@ -173,7 +174,7 @@ describe("bookingStore", () => {
   });
 
   test("deleteBooking removes it from list", () => {
-    useBookingStore.getState().toggleSlot(10);
+    useBookingStore.setState({ activeSlots: [10] });
     useBookingStore.getState().setActiveSeat("s2", "A2");
     useBookingStore.getState().addBooking();
 
@@ -183,7 +184,7 @@ describe("bookingStore", () => {
   });
 
   test("deleteBooking while editing returns to creating", () => {
-    useBookingStore.getState().toggleSlot(10);
+    useBookingStore.setState({ activeSlots: [10] });
     useBookingStore.getState().setActiveSeat("s2", "A2");
     useBookingStore.getState().addBooking();
 

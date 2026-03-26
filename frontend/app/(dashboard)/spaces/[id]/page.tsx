@@ -181,12 +181,13 @@ export default function SpaceFloorplanPage({
 
     removeSlotsFromActive(toRemove);
 
+    // Defer the React setState call to avoid triggering cascading renders
+    // from within the effect body (react-hooks/set-state-in-effect).
     const removed = toRemove
       .map((h) => `${String(h).padStart(2, "0")}:00`)
       .join(", ");
-    setRemovedSlotsFeedback(
-      `${toRemove.length === 1 ? "Slot" : "Slots"} ${removed} removed — not available for this seat.`
-    );
+    const msg = `${toRemove.length === 1 ? "Slot" : "Slots"} ${removed} removed — not available for this seat.`;
+    setTimeout(() => setRemovedSlotsFeedback(msg), 0);
   }, [activeSeatId, seatBlockedSlots, activeSlots, removeSlotsFromActive]);
 
   // Auto-clear feedback after 4 seconds
@@ -220,7 +221,7 @@ export default function SpaceFloorplanPage({
     }
 
     return map;
-  }, [bookings, editingBookingId, activeSeatId, activeBookingColor]);
+  }, [bookings, editingBookingId, activeSeatId, activeBookingColor, selectedDate]);
 
   // ── Constraints ───────────────────────────────────────────────────────────
 
