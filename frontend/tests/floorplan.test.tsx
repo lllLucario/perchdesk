@@ -220,6 +220,24 @@ describe("bookingStore", () => {
   test("MAX_DAILY_HOURS constant is 8", () => {
     expect(MAX_DAILY_HOURS).toBe(8);
   });
+
+  test("same seat can be selected on a different date", () => {
+    // Add booking for seat s1 on 2026-03-26
+    useBookingStore.getState().setDate("2026-03-26");
+    useBookingStore.setState({ activeSlots: [9] });
+    useBookingStore.getState().setActiveSeat("s1", "A1");
+    useBookingStore.getState().addBooking();
+
+    // Switch to 2026-03-27 — s1 should not be locked
+    useBookingStore.getState().setDate("2026-03-27");
+
+    const state = useBookingStore.getState();
+    // bookings for 2026-03-26 must not block s1 on 2026-03-27
+    const isLockedOnOtherDate = state.bookings.some(
+      (b) => b.seatId === "s1" && b.date === "2026-03-27"
+    );
+    expect(isLockedOnOtherDate).toBe(false);
+  });
 });
 
 // ─── SlotPicker component tests ───────────────────────────────────────────────

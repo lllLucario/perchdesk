@@ -204,9 +204,10 @@ export default function SpaceFloorplanPage({
   > => {
     const map: Record<string, { color: string; isActiveDraft: boolean }> = {};
 
-    // Stored bookings
+    // Stored bookings — only paint seats for the currently selected date
     for (const booking of bookings) {
       if (!booking.seatId) continue;
+      if (booking.date !== selectedDate) continue;
       map[booking.seatId] = {
         color: booking.color,
         isActiveDraft: booking.id === editingBookingId,
@@ -238,9 +239,9 @@ export default function SpaceFloorplanPage({
   // ── Seat click handler ────────────────────────────────────────────────────
 
   function handleSeatClick(seat: Seat) {
-    // Seats owned by other bookings are locked
+    // Seats owned by other bookings on the same date are locked
     const isOtherBooking = bookings.some(
-      (b) => b.seatId === seat.id && b.id !== editingBookingId
+      (b) => b.seatId === seat.id && b.id !== editingBookingId && b.date === selectedDate
     );
     if (isOtherBooking) return;
     if (seat.status !== "available") return;
