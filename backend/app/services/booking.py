@@ -204,12 +204,6 @@ async def cancel_booking(
     if booking.status not in ("confirmed", "checked_in"):
         raise BookingRuleViolationError(f"Cannot cancel a booking with status '{booking.status}'.")
 
-    # Load rules for cancellation policy
-    rules_result = await db.execute(
-        select(SpaceRules).where(SpaceRules.space_id == booking.seat.space_id)
-    )
-    rules = rules_result.scalar_one_or_none()
-
     now = datetime.now(UTC)
     space_type = booking.seat.space.type if booking.seat and booking.seat.space else None
     if space_type == "office":
