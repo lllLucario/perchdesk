@@ -1,11 +1,11 @@
 /**
- * Floorplan workspace tests: bookingStore logic, SlotPicker, BookingDraftsPanel,
+ * Floorplan workspace tests: bookingStore logic, SlotPicker, BookingListPanel,
  * and the SpaceFloorplanPage three-column layout.
  */
 import React, { Suspense } from "react";
 import { screen, waitFor, fireEvent, act } from "@testing-library/react";
-import { renderWithProviders, mockRouter } from "./test-utils";
-import { useBookingStore, DRAFT_COLORS, MAX_DAILY_HOURS } from "@/store/bookingStore";
+import { renderWithProviders } from "./test-utils";
+import { useBookingStore, BOOKING_COLORS, MAX_DAILY_HOURS } from "@/store/bookingStore";
 
 // ─── API mock ─────────────────────────────────────────────────────────────────
 
@@ -74,141 +74,145 @@ describe("bookingStore", () => {
     useBookingStore.getState().reset();
   });
 
-  test("initial mode is browsing", () => {
-    expect(useBookingStore.getState().mode).toBe("browsing");
+  test("initial mode is creating", () => {
+    expect(useBookingStore.getState().mode).toBe("creating");
   });
 
-  test("reset restores a default upcoming slot in browsing mode", () => {
+  test("reset starts in creating mode with a default upcoming slot", () => {
     const state = useBookingStore.getState();
-    expect(state.mode).toBe("browsing");
+    expect(state.mode).toBe("creating");
     expect(state.activeSlots.length).toBe(1);
   });
 
-  test("enterCreating switches mode and assigns a color", () => {
-    useBookingStore.getState().enterCreating();
-    const { mode, activeDraftColor } = useBookingStore.getState();
-    expect(mode).toBe("creating");
-    expect(DRAFT_COLORS).toContain(activeDraftColor);
+  test("initial activeBookingColor is the first BOOKING_COLOR", () => {
+    const { activeBookingColor } = useBookingStore.getState();
+    expect(BOOKING_COLORS).toContain(activeBookingColor);
   });
 
   test("toggleSlot adds and removes a slot", () => {
-    useBookingStore.getState().enterCreating();
     useBookingStore.getState().toggleSlot(9);
-    expect(useBookingStore.getState().activeSlots).toEqual([9]);
+    expect(useBookingStore.getState().activeSlots).toContain(9);
     useBookingStore.getState().toggleSlot(9);
-    expect(useBookingStore.getState().activeSlots).toEqual([]);
+    expect(useBookingStore.getState().activeSlots).not.toContain(9);
   });
 
   test("toggleSlot keeps slots sorted", () => {
-    useBookingStore.getState().enterCreating();
     useBookingStore.getState().toggleSlot(11);
     useBookingStore.getState().toggleSlot(8);
     useBookingStore.getState().toggleSlot(10);
-    expect(useBookingStore.getState().activeSlots).toEqual([8, 10, 11]);
+    // activeSlots may already have a default slot; check that added slots are sorted
+    const slots = useBookingStore.getState().activeSlots;
+    for (let i = 1; i < slots.length; i++) {
+      expect(slots[i]).toBeGreaterThan(slots[i - 1]);
+    }
   });
 
-  test("addDraft saves draft and returns to browsing", () => {
-    useBookingStore.getState().enterCreating();
+  test("addBooking saves booking and returns to creating", () => {
     useBookingStore.getState().toggleSlot(9);
     useBookingStore.getState().setActiveSeat("s1", "A1");
-    useBookingStore.getState().addDraft();
+    useBookingStore.getState().addBooking();
 
-    const { drafts, mode, activeSlots, activeSeatId } = useBookingStore.getState();
-    expect(drafts).toHaveLength(1);
-    expect(drafts[0].seatId).toBe("s1");
-    expect(drafts[0].slots).toEqual([9]);
-    expect(mode).toBe("browsing");
-    expect(activeSlots).toEqual([]);
+    const { bookings, mode, activeSeatId } = useBookingStore.getState();
+    expect(bookings).toHaveLength(1);
+    expect(bookings[0].seatId).toBe("s1");
+    expect(bookings[0].slots).toContain(9);
+    expect(mode).toBe("creating");
     expect(activeSeatId).toBeNull();
   });
 
-  test("addDraft is a no-op when draft is invalid", () => {
-    useBookingStore.getState().enterCreating();
-    // No seat, no slot
-    useBookingStore.getState().addDraft();
-    expect(useBookingStore.getState().drafts).toHaveLength(0);
+  test("addBooking is a no-op when booking is invalid", () => {
+    // No seat, no slot beyond what the default pre-selects — remove any default slots
+    useBookingStore.setState({ activeSlots: [] });
+    useBookingStore.getState().addBooking();
+    expect(useBookingStore.getState().bookings).toHaveLength(0);
   });
 
-  test("enterEditing loads draft into active state", () => {
-    // Create a draft first
-    useBookingStore.getState().enterCreating();
+  test("enterEditing loads booking into active state", () => {
     useBookingStore.getState().setDate("2026-03-26");
     useBookingStore.getState().toggleSlot(8);
     useBookingStore.getState().setActiveSeat("s1", "A1");
-    useBookingStore.getState().addDraft();
+    useBookingStore.getState().addBooking();
 
     useBookingStore.getState().setDate("2026-03-27");
 
-    const draftId = useBookingStore.getState().drafts[0].id;
-    useBookingStore.getState().enterEditing(draftId);
+    const bookingId = useBookingStore.getState().bookings[0].id;
+    useBookingStore.getState().enterEditing(bookingId);
 
-    const { mode, editingDraftId, activeSlots, activeSeatId, selectedDate } = useBookingStore.getState();
+    const { mode, editingBookingId, activeSlots, activeSeatId, selectedDate } =
+      useBookingStore.getState();
     expect(mode).toBe("editing");
-    expect(editingDraftId).toBe(draftId);
+    expect(editingBookingId).toBe(bookingId);
     expect(selectedDate).toBe("2026-03-26");
-    expect(activeSlots).toEqual([8]);
+    expect(activeSlots).toContain(8);
     expect(activeSeatId).toBe("s1");
   });
 
-  test("cancelEditing returns to browsing and clears active state", () => {
-    useBookingStore.getState().enterCreating();
+  test("cancelEditing returns to creating and clears active state", () => {
     useBookingStore.getState().toggleSlot(9);
     useBookingStore.getState().cancelEditing();
 
-    const { mode, activeSlots, activeSeatId } = useBookingStore.getState();
-    expect(mode).toBe("browsing");
-    expect(activeSlots).toEqual([]);
+    const { mode, activeSeatId } = useBookingStore.getState();
+    expect(mode).toBe("creating");
     expect(activeSeatId).toBeNull();
   });
 
-  test("saveChanges updates draft and returns to browsing", () => {
-    useBookingStore.getState().enterCreating();
+  test("saveChanges updates booking and returns to creating", () => {
     useBookingStore.getState().toggleSlot(8);
     useBookingStore.getState().setActiveSeat("s1", "A1");
-    useBookingStore.getState().addDraft();
+    useBookingStore.getState().addBooking();
 
-    const draftId = useBookingStore.getState().drafts[0].id;
-    useBookingStore.getState().enterEditing(draftId);
+    const bookingId = useBookingStore.getState().bookings[0].id;
+    useBookingStore.getState().enterEditing(bookingId);
     useBookingStore.getState().toggleSlot(9); // add slot 9
     useBookingStore.getState().saveChanges();
 
-    const { drafts, mode } = useBookingStore.getState();
-    expect(mode).toBe("browsing");
-    expect(drafts[0].slots).toEqual([8, 9]);
+    const { bookings, mode } = useBookingStore.getState();
+    expect(mode).toBe("creating");
+    expect(bookings[0].slots).toContain(8);
+    expect(bookings[0].slots).toContain(9);
   });
 
-  test("deleteDraft removes it from list", () => {
-    useBookingStore.getState().enterCreating();
+  test("deleteBooking removes it from list", () => {
     useBookingStore.getState().toggleSlot(10);
     useBookingStore.getState().setActiveSeat("s2", "A2");
-    useBookingStore.getState().addDraft();
+    useBookingStore.getState().addBooking();
 
-    const draftId = useBookingStore.getState().drafts[0].id;
-    useBookingStore.getState().deleteDraft(draftId);
-    expect(useBookingStore.getState().drafts).toHaveLength(0);
+    const bookingId = useBookingStore.getState().bookings[0].id;
+    useBookingStore.getState().deleteBooking(bookingId);
+    expect(useBookingStore.getState().bookings).toHaveLength(0);
   });
 
-  test("deleteDraft while editing returns to browsing", () => {
-    useBookingStore.getState().enterCreating();
+  test("deleteBooking while editing returns to creating", () => {
     useBookingStore.getState().toggleSlot(10);
     useBookingStore.getState().setActiveSeat("s2", "A2");
-    useBookingStore.getState().addDraft();
+    useBookingStore.getState().addBooking();
 
-    const draftId = useBookingStore.getState().drafts[0].id;
-    useBookingStore.getState().enterEditing(draftId);
-    useBookingStore.getState().deleteDraft(draftId);
-    expect(useBookingStore.getState().mode).toBe("browsing");
-    expect(useBookingStore.getState().editingDraftId).toBeNull();
+    const bookingId = useBookingStore.getState().bookings[0].id;
+    useBookingStore.getState().enterEditing(bookingId);
+    useBookingStore.getState().deleteBooking(bookingId);
+    expect(useBookingStore.getState().mode).toBe("creating");
+    expect(useBookingStore.getState().editingBookingId).toBeNull();
   });
 
-  test("successive drafts pick different colors", () => {
+  test("removeSlotsFromActive removes specified slots", () => {
+    useBookingStore.setState({ activeSlots: [8, 9, 10, 11] });
+    useBookingStore.getState().removeSlotsFromActive([9, 11]);
+    expect(useBookingStore.getState().activeSlots).toEqual([8, 10]);
+  });
+
+  test("removeSlotsFromActive is a no-op for slots not in active", () => {
+    useBookingStore.setState({ activeSlots: [8, 9] });
+    useBookingStore.getState().removeSlotsFromActive([14, 15]);
+    expect(useBookingStore.getState().activeSlots).toEqual([8, 9]);
+  });
+
+  test("successive bookings pick different colors", () => {
     for (let i = 0; i < 3; i++) {
-      useBookingStore.getState().enterCreating();
-      useBookingStore.getState().toggleSlot(8 + i);
+      useBookingStore.setState({ activeSlots: [8 + i] });
       useBookingStore.getState().setActiveSeat(`s${i}`, `A${i}`);
-      useBookingStore.getState().addDraft();
+      useBookingStore.getState().addBooking();
     }
-    const colors = useBookingStore.getState().drafts.map((d) => d.color);
+    const colors = useBookingStore.getState().bookings.map((b) => b.color);
     const uniqueColors = new Set(colors);
     expect(uniqueColors.size).toBe(3);
   });
@@ -225,193 +229,126 @@ describe("SlotPicker", () => {
     useBookingStore.getState().reset();
   });
 
-  async function renderSlotPicker() {
-    const { default: SlotPicker } = await import("@/components/Floorplan/SlotPicker");
+  function makeSlotPickerProps(overrides: Partial<Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]> = {}) {
     const today = new Date().toISOString().slice(0, 10);
-    renderWithProviders(
-      <SlotPicker
-        selectedDate={today}
-        activeSlots={[]}
-        drafts={[]}
-        editingDraftId={null}
-        activeDraftColor="#7C3AED"
-        canAddMoreSlots={true}
-        mode="browsing"
-        isValidDraft={false}
-        hasDrafts={false}
-        onDateChange={jest.fn()}
-        onToggleSlot={jest.fn()}
-        onNewDraft={jest.fn()}
-        onAddDraft={jest.fn()}
-        onSaveChanges={jest.fn()}
-        onCancelEditing={jest.fn()}
-        onDeleteDraft={jest.fn()}
-        onCheckout={jest.fn()}
-      />
-    );
+    return {
+      selectedDate: today,
+      activeSlots: [] as number[],
+      bookings: [] as Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]["bookings"],
+      editingBookingId: null as string | null,
+      activeBookingColor: "#7C3AED",
+      canAddMoreSlots: true,
+      mode: "creating" as const,
+      isValidBooking: false,
+      hasBookings: false,
+      seatBlockedSlots: new Set<number>(),
+      removedSlotsFeedback: null as string | null,
+      onDateChange: jest.fn(),
+      onToggleSlot: jest.fn(),
+      onAddBooking: jest.fn(),
+      onSaveChanges: jest.fn(),
+      onCancelEditing: jest.fn(),
+      onDeleteBooking: jest.fn(),
+      onCheckout: jest.fn(),
+      ...overrides,
+    };
+  }
+
+  async function renderSlotPicker(
+    overrides: Partial<Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]> = {}
+  ) {
+    const { default: SlotPicker } = await import("@/components/Floorplan/SlotPicker");
+    renderWithProviders(<SlotPicker {...makeSlotPickerProps(overrides)} />);
   }
 
   test("renders 14 hourly slot blocks (08:00–22:00)", async () => {
     await renderSlotPicker();
-    // 14 slots from 08:00-09:00 to 21:00-22:00
     const slots = screen.getAllByRole("option");
     expect(slots).toHaveLength(14);
     expect(screen.getByText("08:00–09:00")).toBeInTheDocument();
     expect(screen.getByText("21:00–22:00")).toBeInTheDocument();
   });
 
-  test("shows New Draft button in browsing mode", async () => {
-    await renderSlotPicker();
-    expect(screen.getByRole("button", { name: "New Draft" })).toBeInTheDocument();
+  test("shows Add Booking and no Submit in creating mode with no bookings", async () => {
+    await renderSlotPicker({ mode: "creating", hasBookings: false });
+    expect(screen.getByRole("button", { name: "Add Booking" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Submit" })).not.toBeInTheDocument();
   });
 
-  test("does not show Checkout button when no drafts", async () => {
-    await renderSlotPicker();
-    expect(screen.queryByRole("button", { name: "Checkout" })).not.toBeInTheDocument();
+  test("shows Submit when hasBookings=true in creating mode", async () => {
+    await renderSlotPicker({ mode: "creating", hasBookings: true });
+    expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
   });
 
-  test("shows Checkout when hasDrafts=true", async () => {
-    const { default: SlotPicker } = await import("@/components/Floorplan/SlotPicker");
-    const today = new Date().toISOString().slice(0, 10);
-    renderWithProviders(
-      <SlotPicker
-        selectedDate={today}
-        activeSlots={[]}
-        drafts={[]}
-        editingDraftId={null}
-        activeDraftColor="#7C3AED"
-        canAddMoreSlots={true}
-        mode="browsing"
-        isValidDraft={false}
-        hasDrafts={true}
-        onDateChange={jest.fn()}
-        onToggleSlot={jest.fn()}
-        onNewDraft={jest.fn()}
-        onAddDraft={jest.fn()}
-        onSaveChanges={jest.fn()}
-        onCancelEditing={jest.fn()}
-        onDeleteDraft={jest.fn()}
-        onCheckout={jest.fn()}
-      />
-    );
-    expect(screen.getByRole("button", { name: "Checkout" })).toBeInTheDocument();
+  test("Add Booking is disabled when isValidBooking=false", async () => {
+    await renderSlotPicker({ mode: "creating", isValidBooking: false });
+    expect(screen.getByRole("button", { name: "Add Booking" })).toBeDisabled();
   });
 
-  test("shows Add Draft and Cancel in creating mode", async () => {
-    const { default: SlotPicker } = await import("@/components/Floorplan/SlotPicker");
-    const today = new Date().toISOString().slice(0, 10);
-    renderWithProviders(
-      <SlotPicker
-        selectedDate={today}
-        activeSlots={[]}
-        drafts={[]}
-        editingDraftId={null}
-        activeDraftColor="#7C3AED"
-        canAddMoreSlots={true}
-        mode="creating"
-        isValidDraft={false}
-        hasDrafts={false}
-        onDateChange={jest.fn()}
-        onToggleSlot={jest.fn()}
-        onNewDraft={jest.fn()}
-        onAddDraft={jest.fn()}
-        onSaveChanges={jest.fn()}
-        onCancelEditing={jest.fn()}
-        onDeleteDraft={jest.fn()}
-        onCheckout={jest.fn()}
-      />
-    );
-    expect(screen.getByRole("button", { name: "Add Draft" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  test("Add Booking is enabled when isValidBooking=true", async () => {
+    await renderSlotPicker({ mode: "creating", isValidBooking: true });
+    expect(screen.getByRole("button", { name: "Add Booking" })).not.toBeDisabled();
   });
 
-  test("Add Draft is disabled when isValidDraft=false", async () => {
-    const { default: SlotPicker } = await import("@/components/Floorplan/SlotPicker");
-    const today = new Date().toISOString().slice(0, 10);
-    renderWithProviders(
-      <SlotPicker
-        selectedDate={today}
-        activeSlots={[]}
-        drafts={[]}
-        editingDraftId={null}
-        activeDraftColor="#7C3AED"
-        canAddMoreSlots={true}
-        mode="creating"
-        isValidDraft={false}
-        hasDrafts={false}
-        onDateChange={jest.fn()}
-        onToggleSlot={jest.fn()}
-        onNewDraft={jest.fn()}
-        onAddDraft={jest.fn()}
-        onSaveChanges={jest.fn()}
-        onCancelEditing={jest.fn()}
-        onDeleteDraft={jest.fn()}
-        onCheckout={jest.fn()}
-      />
-    );
-    expect(screen.getByRole("button", { name: "Add Draft" })).toBeDisabled();
-  });
-
-  test("shows Save Changes, Cancel, Delete Draft in editing mode", async () => {
-    const { default: SlotPicker } = await import("@/components/Floorplan/SlotPicker");
-    const today = new Date().toISOString().slice(0, 10);
-    renderWithProviders(
-      <SlotPicker
-        selectedDate={today}
-        activeSlots={[9]}
-        drafts={[]}
-        editingDraftId="d1"
-        activeDraftColor="#7C3AED"
-        canAddMoreSlots={true}
-        mode="editing"
-        isValidDraft={true}
-        hasDrafts={true}
-        onDateChange={jest.fn()}
-        onToggleSlot={jest.fn()}
-        onNewDraft={jest.fn()}
-        onAddDraft={jest.fn()}
-        onSaveChanges={jest.fn()}
-        onCancelEditing={jest.fn()}
-        onDeleteDraft={jest.fn()}
-        onCheckout={jest.fn()}
-      />
-    );
+  test("shows Save Changes, Cancel Editing, Delete in editing mode", async () => {
+    await renderSlotPicker({
+      activeSlots: [9],
+      editingBookingId: "b1",
+      mode: "editing",
+      isValidBooking: true,
+    });
     expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Delete Draft" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel Editing" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+  });
+
+  test("slot blocked by seatBlockedSlots is disabled", async () => {
+    await renderSlotPicker({ seatBlockedSlots: new Set([9]) });
+    const slotBtn = screen.getAllByRole("option")[1]; // index 1 = 09:00–10:00
+    expect(slotBtn).toBeDisabled();
+  });
+
+  test("shows removedSlotsFeedback message when set", async () => {
+    await renderSlotPicker({ removedSlotsFeedback: "Slot 09:00 removed — not available for this seat." });
+    expect(screen.getByText(/Slot 09:00 removed/)).toBeInTheDocument();
   });
 });
 
-// ─── BookingDraftsPanel component tests ──────────────────────────────────────
+// ─── BookingListPanel component tests ─────────────────────────────────────────
 
-describe("BookingDraftsPanel", () => {
+describe("BookingListPanel", () => {
   async function renderPanel(
-    drafts = [] as Parameters<typeof import("@/components/Floorplan/BookingDraftsPanel")["default"]>[0]["drafts"],
-    mode = "browsing" as Parameters<typeof import("@/components/Floorplan/BookingDraftsPanel")["default"]>[0]["mode"]
+    bookings = [] as Parameters<typeof import("@/components/Floorplan/BookingListPanel")["default"]>[0]["bookings"],
+    mode: "creating" | "editing" = "creating"
   ) {
-    const { default: BookingDraftsPanel } = await import(
-      "@/components/Floorplan/BookingDraftsPanel"
+    const { default: BookingListPanel } = await import(
+      "@/components/Floorplan/BookingListPanel"
     );
     renderWithProviders(
-      <BookingDraftsPanel
-        drafts={drafts}
-        editingDraftId={null}
+      <BookingListPanel
+        bookings={bookings}
+        editingBookingId={null}
         mode={mode}
-        onEditDraft={jest.fn()}
-        onDeleteDraft={jest.fn()}
+        onEditBooking={jest.fn()}
+        onDeleteBooking={jest.fn()}
       />
     );
   }
 
-  test("shows empty state when no drafts", async () => {
+  test("shows empty state when no bookings", async () => {
     await renderPanel();
-    expect(screen.getByText(/No drafts yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/No bookings yet/i)).toBeInTheDocument();
   });
 
-  test("shows draft card with seat label", async () => {
+  test("shows 'Booking List' heading", async () => {
+    await renderPanel();
+    expect(screen.getByText(/Booking List/i)).toBeInTheDocument();
+  });
+
+  test("shows booking card with seat label", async () => {
     await renderPanel([
       {
-        id: "d1",
+        id: "b1",
         color: "#7C3AED",
         seatId: "s1",
         seatLabel: "A1",
@@ -425,7 +362,7 @@ describe("BookingDraftsPanel", () => {
   test("shows continuous slot range correctly", async () => {
     await renderPanel([
       {
-        id: "d1",
+        id: "b1",
         color: "#7C3AED",
         seatId: "s1",
         seatLabel: "A1",
@@ -439,7 +376,7 @@ describe("BookingDraftsPanel", () => {
   test("shows discrete slot ranges with comma", async () => {
     await renderPanel([
       {
-        id: "d1",
+        id: "b1",
         color: "#7C3AED",
         seatId: "s1",
         seatLabel: "A1",
@@ -453,7 +390,7 @@ describe("BookingDraftsPanel", () => {
   test("shows duration in hours", async () => {
     await renderPanel([
       {
-        id: "d1",
+        id: "b1",
         color: "#7C3AED",
         seatId: "s1",
         seatLabel: "A1",
@@ -464,18 +401,18 @@ describe("BookingDraftsPanel", () => {
     expect(screen.getByText("3h total")).toBeInTheDocument();
   });
 
-  test("shows Edit and Delete in browsing mode", async () => {
+  test("shows Edit and Delete buttons in creating mode", async () => {
     await renderPanel([
-      { id: "d1", color: "#7C3AED", seatId: "s1", seatLabel: "A1", slots: [9], date: "2026-03-25" },
+      { id: "b1", color: "#7C3AED", seatId: "s1", seatLabel: "A1", slots: [9], date: "2026-03-25" },
     ]);
     expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 
-  test("hides Edit/Delete in creating mode", async () => {
+  test("hides Edit/Delete in editing mode", async () => {
     await renderPanel(
-      [{ id: "d1", color: "#7C3AED", seatId: "s1", seatLabel: "A1", slots: [9], date: "2026-03-25" }],
-      "creating"
+      [{ id: "b1", color: "#7C3AED", seatId: "s1", seatLabel: "A1", slots: [9], date: "2026-03-25" }],
+      "editing"
     );
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
@@ -518,12 +455,12 @@ describe("SpaceFloorplanPage", () => {
     });
   }
 
-  test("renders three-column layout: slot picker, seat map, drafts panel", async () => {
+  test("renders three-column layout: slot picker, seat map, booking list panel", async () => {
     setupApiMocks();
     await renderFloorplan();
     await waitFor(() => {
-      expect(screen.getByText("New Draft")).toBeInTheDocument();
-      expect(screen.getByText(/Booking Drafts/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add Booking" })).toBeInTheDocument();
+      expect(screen.getByText(/Booking List/i)).toBeInTheDocument();
     });
   });
 
@@ -543,7 +480,7 @@ describe("SpaceFloorplanPage", () => {
     });
   });
 
-  test("browsing state loads with a default slot and triggers availability query", async () => {
+  test("page loads in creating state and triggers availability query", async () => {
     setupApiMocks();
     await renderFloorplan();
     await waitFor(() => {
@@ -555,102 +492,72 @@ describe("SpaceFloorplanPage", () => {
     });
   });
 
-  test("New Draft button switches to creating mode", async () => {
+  test("Add Booking is disabled until slot and seat are selected", async () => {
     setupApiMocks();
     await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
-    fireEvent.click(screen.getByText("New Draft"));
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
+    // The default slot is pre-selected but no seat — button should be disabled
+    // Force clear slots to ensure invalid state
+    act(() => useBookingStore.setState({ activeSlots: [], activeSeatId: null }));
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Add Draft" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add Booking" })).toBeDisabled();
     });
   });
 
-  test("Add Draft is disabled until slot and seat are selected", async () => {
+  test("Submit button not shown when no bookings in list", async () => {
     setupApiMocks();
     await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
-    fireEvent.click(screen.getByText("New Draft"));
-    await waitFor(() => screen.getByRole("button", { name: "Add Draft" }));
-    expect(screen.getByRole("button", { name: "Add Draft" })).toBeDisabled();
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
+    expect(screen.queryByRole("button", { name: "Submit" })).not.toBeInTheDocument();
   });
 
-  test("Cancel in creating mode returns to browsing", async () => {
-    setupApiMocks();
-    await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
-    fireEvent.click(screen.getByText("New Draft"));
-    await waitFor(() => screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "New Draft" })).toBeInTheDocument();
-    });
-  });
-
-  test("Checkout button not shown when no drafts", async () => {
-    setupApiMocks();
-    await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
-    expect(screen.queryByRole("button", { name: "Checkout" })).not.toBeInTheDocument();
-  });
-
-  /** Helper: enter creating mode, pick slot 09:00, assign seat A1, submit draft. */
-  async function addOneDraft() {
-    fireEvent.click(screen.getByText("New Draft"));
-    // Wait for creating mode (Add Draft button renders only in creating mode)
-    await waitFor(() => screen.getByRole("button", { name: "Add Draft" }));
-
-    // Click the 09:00–10:00 slot (index 1 in the 14-slot list starting at 08:00)
-    fireEvent.click(screen.getAllByRole("option")[1]);
-
-    // Set seat directly — SVG click not available in JSDOM
-    // Call via act so React flushes the update before we continue
+  /** Helper: add one booking via store + UI. */
+  async function addOneBooking() {
+    // Clear default slots and set a known slot
+    act(() => useBookingStore.setState({ activeSlots: [9], activeSeatId: null }));
     await act(async () => {
       useBookingStore.getState().setActiveSeat("s1", "A1");
     });
-
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Add Draft" })).not.toBeDisabled()
+      expect(screen.getByRole("button", { name: "Add Booking" })).not.toBeDisabled()
     );
-    fireEvent.click(screen.getByRole("button", { name: "Add Draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Booking" }));
   }
 
-  test("draft appears in panel after add", async () => {
+  test("booking appears in panel after add", async () => {
     setupApiMocks();
     await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
 
-    await addOneDraft();
+    await addOneBooking();
 
     await waitFor(() => {
-      // "Seat A1" is unique to the drafts panel (slot label in SlotPicker doesn't say "Seat …")
       expect(screen.getByText("Seat A1")).toBeInTheDocument();
-      // "1h total" only appears in BookingDraftsPanel
       expect(screen.getByText("1h total")).toBeInTheDocument();
     });
   });
 
-  test("Checkout button appears after draft is added", async () => {
+  test("Submit button appears after booking is added", async () => {
     setupApiMocks();
     await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
 
-    await addOneDraft();
+    await addOneBooking();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Checkout" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
     });
   });
 
-  test("Checkout opens the confirm modal", async () => {
+  test("Submit opens the confirm modal", async () => {
     setupApiMocks();
     await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
 
-    await addOneDraft();
+    await addOneBooking();
 
-    await waitFor(() => screen.getByRole("button", { name: "Checkout" }));
-    fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
+    await waitFor(() => screen.getByRole("button", { name: "Submit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -660,11 +567,10 @@ describe("SpaceFloorplanPage", () => {
   test("discrete slot selections trigger separate availability queries", async () => {
     setupApiMocks();
     await renderFloorplan();
-    await waitFor(() => screen.getByText("New Draft"));
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
 
-    fireEvent.click(screen.getByText("New Draft"));
-    await waitFor(() => screen.getByRole("button", { name: "Add Draft" }));
-
+    // Clear default and click two non-contiguous slots
+    act(() => useBookingStore.setState({ activeSlots: [] }));
     fireEvent.click(screen.getAllByRole("option")[0]); // 08:00–09:00
     fireEvent.click(screen.getAllByRole("option")[2]); // 10:00–11:00
 
