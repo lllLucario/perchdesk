@@ -47,7 +47,7 @@ function ResultRow({ result }: { result: BookingResult }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span
             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: result.draftColor }}
+            style={{ backgroundColor: result.planColor }}
           />
           <span className="text-sm font-medium text-gray-900">
             Seat {result.seatLabel ?? "—"}
@@ -177,7 +177,7 @@ export default function ResultPage() {
       {/* Individual results */}
       <div className="flex flex-col gap-2">
         {checkoutResults.map((result, i) => (
-          <ResultRow key={`${result.draftId}-${i}`} result={result} />
+          <ResultRow key={`${result.planId}-${i}`} result={result} />
         ))}
       </div>
 
