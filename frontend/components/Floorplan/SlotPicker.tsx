@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { localDateISO } from "@/lib/booking";
 import type { Booking, WorkspaceMode } from "@/store/bookingStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SlotPickerProps {
   selectedDate: string;
+  maxDate?: string;
   activeSlots: number[];
   bookings: Booking[];
   editingBookingId: string | null;
@@ -62,6 +64,7 @@ function getTimeOfDay(hour: number): "Morning" | "Afternoon" | "Evening" {
 
 export default function SlotPicker({
   selectedDate,
+  maxDate,
   activeSlots,
   bookings,
   editingBookingId,
@@ -83,7 +86,7 @@ export default function SlotPicker({
 }: SlotPickerProps) {
   const now = new Date();
   // Use local calendar date, not UTC, so "today" matches what the user sees.
-  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const todayISO = localDateISO(now);
   const currentHour = now.getHours();
   // Mirrors the store's `exactHour` check: when the user lands exactly on the
   // hour boundary the slot for that hour is still valid (it just started).
@@ -127,6 +130,7 @@ export default function SlotPicker({
           type="date"
           value={selectedDate}
           min={todayISO}
+          max={maxDate}
           onChange={(e) => onDateChange(e.target.value)}
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

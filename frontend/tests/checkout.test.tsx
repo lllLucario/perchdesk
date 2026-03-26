@@ -6,7 +6,7 @@ import React from "react";
 import { screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { renderWithProviders, mockRouter } from "./test-utils";
 import { useBookingStore } from "@/store/bookingStore";
-import { slotRanges } from "@/lib/booking";
+import { slotRanges, toISO } from "@/lib/booking";
 
 // ─── API mock ─────────────────────────────────────────────────────────────────
 // jest.mock is hoisted before const declarations; use jest.requireMock to get
@@ -81,6 +81,16 @@ describe("slotRanges", () => {
       { start: 11, end: 12 },
       { start: 14, end: 15 },
     ]);
+  });
+
+  test("toISO converts a Sydney wall-clock hour to explicit UTC in DST", () => {
+    expect(toISO("2026-04-01", 9)).toBe("2026-03-31T22:00:00.000Z");
+    expect(toISO("2026-04-01", 11)).toBe("2026-04-01T00:00:00.000Z");
+  });
+
+  test("toISO converts a Sydney wall-clock hour to explicit UTC outside DST", () => {
+    expect(toISO("2026-06-01", 8)).toBe("2026-05-31T22:00:00.000Z");
+    expect(toISO("2026-06-01", 10)).toBe("2026-06-01T00:00:00.000Z");
   });
 });
 
@@ -242,8 +252,8 @@ describe("ConfirmModal", () => {
     await waitFor(() => {
       expect(mockApi.post).toHaveBeenCalledWith("/api/v1/bookings", {
         seat_id: "s1",
-        start_time: "2026-04-01T09:00:00",
-        end_time: "2026-04-01T11:00:00",
+        start_time: "2026-03-31T22:00:00.000Z",
+        end_time: "2026-04-01T00:00:00.000Z",
       });
     });
   });
@@ -323,13 +333,13 @@ describe("ConfirmModal", () => {
       expect(mockApi.post).toHaveBeenCalledTimes(2);
       expect(mockApi.post).toHaveBeenCalledWith("/api/v1/bookings", {
         seat_id: "s2",
-        start_time: "2026-04-01T08:00:00",
-        end_time: "2026-04-01T09:00:00",
+        start_time: "2026-03-31T21:00:00.000Z",
+        end_time: "2026-03-31T22:00:00.000Z",
       });
       expect(mockApi.post).toHaveBeenCalledWith("/api/v1/bookings", {
         seat_id: "s2",
-        start_time: "2026-04-01T10:00:00",
-        end_time: "2026-04-01T11:00:00",
+        start_time: "2026-03-31T23:00:00.000Z",
+        end_time: "2026-04-01T00:00:00.000Z",
       });
     });
   });

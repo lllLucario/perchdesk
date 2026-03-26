@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
@@ -1070,9 +1071,17 @@ async def test_time_unit_full_day_invalid_end(
 
 @pytest.mark.asyncio
 async def test_cancel_office_after_midnight_deadline(
-    db_session: AsyncSession, test_user: User, office_seat: Seat
+    db_session: AsyncSession, test_user: User, office_space: Space, office_seat: Seat
 ):
     """Office bookings cannot be cancelled after midnight AEST on the booking date."""
+    rules = await db_session.scalar(
+        select(SpaceRules).where(SpaceRules.space_id == office_space.id)
+    )
+    assert rules is not None
+    rules.time_unit = "hourly"
+    rules.max_duration_minutes = 480
+    await db_session.commit()
+
     # Insert booking directly to bypass create_booking time checks.
     # Use today noon AEST so today's midnight has ALWAYS already passed,
     # regardless of what time of day this test runs.

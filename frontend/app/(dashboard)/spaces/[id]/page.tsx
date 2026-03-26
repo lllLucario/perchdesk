@@ -10,16 +10,12 @@ import {
   type SeatAvailability,
 } from "@/lib/hooks";
 import { api } from "@/lib/api";
+import { addLocalDays, localDateISO, toISO } from "@/lib/booking";
 import { useBookingStore } from "@/store/bookingStore";
 import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
 import SlotPicker from "@/components/Floorplan/SlotPicker";
 import BookingListPanel from "@/components/Floorplan/BookingListPanel";
 import ConfirmModal from "@/components/Floorplan/ConfirmModal";
-
-/** ISO datetime from a YYYY-MM-DD date and an hour-of-day integer. */
-function toISO(date: string, hour: number): string {
-  return `${date}T${String(hour).padStart(2, "0")}:00:00`;
-}
 
 function slotRanges(date: string, slots: number[]) {
   if (slots.length === 0) return [];
@@ -248,6 +244,15 @@ export default function SpaceFloorplanPage({
 
   const canAddMoreSlots = storedHoursToday + activeSlots.length < 8;
   const isValidBooking = activeSlots.length > 0 && !!activeSeatId;
+  const todayISO = localDateISO();
+  const maxDate = rules ? addLocalDays(todayISO, rules.max_advance_days) : undefined;
+
+  useEffect(() => {
+    if (!maxDate) return;
+    if (selectedDate > maxDate) {
+      setDate(maxDate);
+    }
+  }, [selectedDate, maxDate, setDate]);
 
   // ── Seat click handler ────────────────────────────────────────────────────
 
@@ -330,6 +335,7 @@ export default function SpaceFloorplanPage({
           seatBlockedSlots={seatBlockedSlots}
           myBookingSlots={myBookingSlots}
           removedSlotsFeedback={removedSlotsFeedback}
+          maxDate={maxDate}
           onDateChange={setDate}
           onToggleSlot={toggleSlot}
           onAddBooking={addBooking}

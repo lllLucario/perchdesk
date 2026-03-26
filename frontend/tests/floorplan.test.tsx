@@ -4,15 +4,9 @@
  */
 import React, { Suspense } from "react";
 import { screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { addLocalDays, localDateISO, toISO } from "@/lib/booking";
 import { renderWithProviders } from "./test-utils";
 import { useBookingStore, BOOKING_COLORS, MAX_DAILY_HOURS } from "@/store/bookingStore";
-
-// ─── Local date helper (matches store + SlotPicker semantics) ─────────────────
-
-/** Returns YYYY-MM-DD in the local calendar, not UTC. */
-function localDateISO(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 // ─── API mock ─────────────────────────────────────────────────────────────────
 
@@ -259,6 +253,7 @@ describe("SlotPicker", () => {
     const today = localDateISO();
     return {
       selectedDate: today,
+      maxDate: undefined as string | undefined,
       activeSlots: [] as number[],
       bookings: [] as Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]["bookings"],
       editingBookingId: null as string | null,
@@ -305,6 +300,14 @@ describe("SlotPicker", () => {
   test("shows Submit when hasBookings=true in creating mode", async () => {
     await renderSlotPicker({ mode: "creating", hasBookings: true });
     expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
+  });
+
+  test("date input applies max date from max_advance_days", async () => {
+    const today = localDateISO();
+    const maxDate = addLocalDays(today, 3);
+    await renderSlotPicker({ selectedDate: today, maxDate });
+    const dateInput = screen.getByDisplayValue(today);
+    expect(dateInput).toHaveAttribute("max", maxDate);
   });
 
   test("Add Booking is disabled when isValidBooking=false", async () => {
@@ -658,6 +661,23 @@ describe("SpaceFloorplanPage", () => {
     });
   });
 
+  test("selectedDate is clamped to the latest allowed advance date", async () => {
+    setupApiMocks();
+    const today = localDateISO();
+    const maxDate = addLocalDays(today, SAMPLE_RULES.max_advance_days);
+
+    act(() => {
+      useBookingStore.getState().setDate(addLocalDays(today, 10));
+    });
+
+    await renderFloorplan();
+
+    await waitFor(() => {
+      const dateInput = screen.getByDisplayValue(maxDate);
+      expect(dateInput).toHaveAttribute("max", maxDate);
+    });
+  });
+
   test("my_booking seat cannot be selected as a new booking seat", async () => {
     mockApi.get.mockImplementation((url: string) => {
       if (url === "/api/v1/spaces/sp1") return Promise.resolve(SAMPLE_SPACE);
@@ -711,11 +731,14 @@ describe("SpaceFloorplanPage", () => {
     fireEvent.click(screen.getAllByRole("option")[2]); // 10:00–11:00
 
     await waitFor(() => {
+      const selectedDate = useBookingStore.getState().selectedDate;
+      const eightToNine = encodeURIComponent(toISO(selectedDate, 8));
+      const tenToEleven = encodeURIComponent(toISO(selectedDate, 10));
       const availabilityCalls = mockApi.get.mock.calls
         .map(([url]) => String(url))
         .filter((url) => url.includes("/api/v1/spaces/sp1/availability"));
-      expect(availabilityCalls.some((url) => url.includes("08%3A00%3A00"))).toBe(true);
-      expect(availabilityCalls.some((url) => url.includes("10%3A00%3A00"))).toBe(true);
+      expect(availabilityCalls.some((url) => url.includes(eightToNine))).toBe(true);
+      expect(availabilityCalls.some((url) => url.includes(tenToEleven))).toBe(true);
     });
   });
 });

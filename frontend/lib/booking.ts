@@ -2,9 +2,66 @@
  * Shared booking utility functions used by the confirm modal and checkout flow.
  */
 
-/** ISO datetime string from a YYYY-MM-DD date and an hour integer. */
+const SYDNEY_TIME_ZONE = "Australia/Sydney";
+
+function parseOffsetMinutes(offsetText: string): number {
+  if (offsetText === "GMT" || offsetText === "UTC") return 0;
+
+  const match = offsetText.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!match) {
+    throw new Error(`Unsupported timezone offset: ${offsetText}`);
+  }
+
+  const [, sign, hours, minutes = "00"] = match;
+  const totalMinutes = Number(hours) * 60 + Number(minutes);
+  return sign === "-" ? -totalMinutes : totalMinutes;
+}
+
+function getSydneyOffsetMinutes(instant: Date): number {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: SYDNEY_TIME_ZONE,
+    timeZoneName: "shortOffset",
+  }).formatToParts(instant);
+
+  const offsetText = parts.find((part) => part.type === "timeZoneName")?.value;
+  if (!offsetText) {
+    throw new Error("Unable to determine Australia/Sydney offset.");
+  }
+
+  return parseOffsetMinutes(offsetText);
+}
+
+/** Returns YYYY-MM-DD in the user's local calendar, not UTC. */
+export function localDateISO(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** Adds calendar days to a local YYYY-MM-DD string. */
+export function addLocalDays(dateISO: string, days: number): string {
+  const [year, month, day] = dateISO.split("-").map(Number);
+  return localDateISO(new Date(year, month - 1, day + days));
+}
+
+/**
+ * Converts a Sydney wall-clock hour selection into an explicit UTC ISO string.
+ * The backend stores and validates booking datetimes in UTC.
+ */
 export function toISO(date: string, hour: number): string {
-  return `${date}T${String(hour).padStart(2, "0")}:00:00`;
+  const [year, month, day] = date.split("-").map(Number);
+  const wallClockUtc = Date.UTC(year, month - 1, day, hour, 0, 0, 0);
+
+  let guess = wallClockUtc;
+  for (let i = 0; i < 3; i++) {
+    const offsetMinutes = getSydneyOffsetMinutes(new Date(guess));
+    const corrected = wallClockUtc - offsetMinutes * 60_000;
+    if (corrected === guess) break;
+    guess = corrected;
+  }
+
+  return new Date(guess).toISOString();
 }
 
 /**
