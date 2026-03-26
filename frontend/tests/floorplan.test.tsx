@@ -358,6 +358,47 @@ describe("SlotPicker", () => {
       expect(slotBtns[0]).toBeDisabled();
     }
   });
+
+  test("exact-on-hour: current-hour slot remains usable at HH:00:00.000", async () => {
+    // Freeze time to 10:00:00.000 LOCAL so the exact-hour branch is taken.
+    jest.useFakeTimers();
+    try {
+      jest.setSystemTime(new Date(2026, 2, 27, 10, 0, 0, 0)); // local 10:00:00.000
+      // todayISO inside the component is derived from the same frozen Date
+      const todayForTest = new Date().toISOString().slice(0, 10);
+
+      await renderSlotPicker({ selectedDate: todayForTest });
+      const slotBtns = screen.getAllByRole("option");
+
+      // Index 0 = 08:00, index 1 = 09:00, index 2 = 10:00
+      // At exactly 10:00:00.000 — slot 10 must NOT be past
+      expect(slotBtns[2]).not.toBeDisabled(); // 10:00–11:00 still usable
+      // Slots before hour 10 must be disabled (they have already passed)
+      expect(slotBtns[0]).toBeDisabled(); // 08:00–09:00
+      expect(slotBtns[1]).toBeDisabled(); // 09:00–10:00
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("non-exact time: current-hour slot is disabled at HH:30", async () => {
+    // Freeze time to 10:30:00.000 LOCAL — the start of slot 10 has passed.
+    jest.useFakeTimers();
+    try {
+      jest.setSystemTime(new Date(2026, 2, 27, 10, 30, 0, 0)); // local 10:30:00.000
+      const todayForTest = new Date().toISOString().slice(0, 10);
+
+      await renderSlotPicker({ selectedDate: todayForTest });
+      const slotBtns = screen.getAllByRole("option");
+
+      // At 10:30 — slot 10 (10:00–11:00) start time has passed; must be disabled
+      expect(slotBtns[2]).toBeDisabled(); // 10:00–11:00
+      // Slot 11 (11:00–12:00) has not started yet; must remain usable
+      expect(slotBtns[3]).not.toBeDisabled(); // 11:00–12:00
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 // ─── BookingListPanel component tests ─────────────────────────────────────────
@@ -608,6 +649,48 @@ describe("SpaceFloorplanPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
+  });
+
+  test("my_booking seat cannot be selected as a new booking seat", async () => {
+    mockApi.get.mockImplementation((url: string) => {
+      if (url === "/api/v1/spaces/sp1") return Promise.resolve(SAMPLE_SPACE);
+      if (url === "/api/v1/spaces/sp1/rules") return Promise.resolve(SAMPLE_RULES);
+      if (url.includes("/api/v1/spaces/sp1/availability")) {
+        return Promise.resolve([
+          { ...SAMPLE_SPACE.seats[0], booking_status: "my_booking" }, // s1 = user's own seat
+          { ...SAMPLE_SPACE.seats[1], booking_status: "available" },
+          { ...SAMPLE_SPACE.seats[2], booking_status: "available" },
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const { default: SpaceFloorplanPage } = await import(
+      "@/app/(dashboard)/spaces/[id]/page"
+    );
+    let container!: HTMLElement;
+    await act(async () => {
+      const result = renderWithProviders(
+        <Suspense fallback={<div>loading…</div>}>
+          <SpaceFloorplanPage params={Promise.resolve({ id: "sp1" })} />
+        </Suspense>
+      );
+      container = result.container;
+    });
+
+    await waitFor(() => screen.getByRole("button", { name: "Add Booking" }));
+    // Allow availability queries to resolve
+    await act(async () => {});
+
+    // Find all seat <g> elements inside the SVG seat map
+    const seatGroups = container.querySelectorAll("svg g");
+    // The first <g> corresponds to seat s1 which has my_booking status
+    if (seatGroups.length > 0) {
+      fireEvent.click(seatGroups[0]);
+    }
+
+    // activeSeatId must remain null — my_booking seat must not be selectable
+    expect(useBookingStore.getState().activeSeatId).toBeNull();
   });
 
   test("discrete slot selections trigger separate availability queries", async () => {

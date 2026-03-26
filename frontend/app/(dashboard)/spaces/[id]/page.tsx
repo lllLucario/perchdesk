@@ -259,6 +259,9 @@ export default function SpaceFloorplanPage({
     if (isOtherBooking) return;
     if (seat.status !== "available") return;
     if (availabilityMap?.[seat.id] === "booked") return;
+    // `my_booking` seats are already owned by the user for the selected time;
+    // they must not be re-selected as a fresh available seat.
+    if (availabilityMap?.[seat.id] === "my_booking") return;
 
     if (activeSeatId === seat.id) {
       clearActiveSeat();

@@ -81,8 +81,16 @@ export default function SlotPicker({
   onDeleteBooking,
   onCheckout,
 }: SlotPickerProps) {
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const currentHour = new Date().getHours();
+  const now = new Date();
+  const todayISO = now.toISOString().slice(0, 10);
+  const currentHour = now.getHours();
+  // Mirrors the store's `exactHour` check: when the user lands exactly on the
+  // hour boundary the slot for that hour is still valid (it just started).
+  // Any time after that (even one second) the start has already passed.
+  const exactOnHour =
+    now.getMinutes() === 0 &&
+    now.getSeconds() === 0 &&
+    now.getMilliseconds() === 0;
 
   // Precompute which hours start a new time-of-day group (for divider labels)
   const groupDividers = new Set<number>();
@@ -141,7 +149,12 @@ export default function SlotPicker({
         >
           {DAY_HOURS.map((hour) => {
             const isActive = activeSlots.includes(hour);
-            const isPast = selectedDate === todayISO && hour <= currentHour;
+            // At the exact hour boundary the slot is still startable; only
+            // strictly earlier hours (or the current hour when time > :00:00)
+            // are considered past.
+            const isPast =
+              selectedDate === todayISO &&
+              (exactOnHour ? hour < currentHour : hour <= currentHour);
             const isMyBooking = myBookingSlots.has(hour);
 
             // Slot belongs to a stored booking (not the one being edited)
