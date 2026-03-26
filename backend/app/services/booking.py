@@ -193,7 +193,9 @@ async def cancel_booking(
     db: AsyncSession, booking_id: uuid.UUID, user_id: uuid.UUID, is_admin: bool = False
 ) -> Booking:
     booking = await db.get(
-        Booking, booking_id, options=[selectinload(Booking.seat)]
+        Booking,
+        booking_id,
+        options=[selectinload(Booking.seat).selectinload(Seat.space)],
     )
     if booking is None:
         raise NotFoundError("Booking not found.")
@@ -202,14 +204,9 @@ async def cancel_booking(
     if booking.status not in ("confirmed", "checked_in"):
         raise BookingRuleViolationError(f"Cannot cancel a booking with status '{booking.status}'.")
 
-    # Load rules for cancellation policy
-    rules_result = await db.execute(
-        select(SpaceRules).where(SpaceRules.space_id == booking.seat.space_id)
-    )
-    rules = rules_result.scalar_one_or_none()
-
     now = datetime.now(UTC)
-    if rules and rules.time_unit in ("half_day", "full_day"):
+    space_type = booking.seat.space.type if booking.seat and booking.seat.space else None
+    if space_type == "office":
         # Office: must cancel before booking date 00:00 AEST
         start_aest = _utc(booking.start_time).astimezone(AEST)
         booking_date_midnight_aest = start_aest.replace(hour=0, minute=0, second=0, microsecond=0)
