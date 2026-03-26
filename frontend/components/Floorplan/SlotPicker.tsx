@@ -82,7 +82,8 @@ export default function SlotPicker({
   onCheckout,
 }: SlotPickerProps) {
   const now = new Date();
-  const todayISO = now.toISOString().slice(0, 10);
+  // Use local calendar date, not UTC, so "today" matches what the user sees.
+  const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const currentHour = now.getHours();
   // Mirrors the store's `exactHour` check: when the user lands exactly on the
   // hour boundary the slot for that hour is still valid (it just started).

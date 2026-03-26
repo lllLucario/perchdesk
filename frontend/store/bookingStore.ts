@@ -32,8 +32,14 @@ function pickNextColor(bookings: Booking[]): string {
   return BOOKING_COLORS.find((c) => !used.has(c)) ?? BOOKING_COLORS[bookings.length % BOOKING_COLORS.length];
 }
 
+/** Returns YYYY-MM-DD in the local calendar, not UTC. */
+function localDateISO(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Kept for call-site compatibility; delegates to localDateISO.
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateISO(new Date());
 }
 
 function addDays(date: Date, days: number): Date {
@@ -43,7 +49,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function dateISO(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return localDateISO(date);
 }
 
 function defaultWorkspaceSelection(now = new Date()) {

@@ -7,6 +7,13 @@ import { screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import { useBookingStore, BOOKING_COLORS, MAX_DAILY_HOURS } from "@/store/bookingStore";
 
+// ─── Local date helper (matches store + SlotPicker semantics) ─────────────────
+
+/** Returns YYYY-MM-DD in the local calendar, not UTC. */
+function localDateISO(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 // ─── API mock ─────────────────────────────────────────────────────────────────
 
 const mockApi = {
@@ -249,7 +256,7 @@ describe("SlotPicker", () => {
   });
 
   function makeSlotPickerProps(overrides: Partial<Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]> = {}) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateISO();
     return {
       selectedDate: today,
       activeSlots: [] as number[],
@@ -348,7 +355,7 @@ describe("SlotPicker", () => {
   });
 
   test("past slots are disabled when date is today", async () => {
-    const todayISO = new Date().toISOString().slice(0, 10);
+    const todayISO = localDateISO();
     const currentHour = new Date().getHours();
     // Only run this check if there is at least one past slot in the 08:00–22:00 window
     if (currentHour > 8) {
@@ -364,8 +371,8 @@ describe("SlotPicker", () => {
     jest.useFakeTimers();
     try {
       jest.setSystemTime(new Date(2026, 2, 27, 10, 0, 0, 0)); // local 10:00:00.000
-      // todayISO inside the component is derived from the same frozen Date
-      const todayForTest = new Date().toISOString().slice(0, 10);
+      // localDateISO() uses the same local-calendar semantics as the component
+      const todayForTest = localDateISO();
 
       await renderSlotPicker({ selectedDate: todayForTest });
       const slotBtns = screen.getAllByRole("option");
@@ -386,7 +393,7 @@ describe("SlotPicker", () => {
     jest.useFakeTimers();
     try {
       jest.setSystemTime(new Date(2026, 2, 27, 10, 30, 0, 0)); // local 10:30:00.000
-      const todayForTest = new Date().toISOString().slice(0, 10);
+      const todayForTest = localDateISO();
 
       await renderSlotPicker({ selectedDate: todayForTest });
       const slotBtns = screen.getAllByRole("option");
