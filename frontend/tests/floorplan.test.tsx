@@ -261,6 +261,7 @@ describe("SlotPicker", () => {
       isValidBooking: false,
       hasBookings: false,
       seatBlockedSlots: new Set<number>(),
+      myBookingSlots: new Set<number>(),
       removedSlotsFeedback: null as string | null,
       onDateChange: jest.fn(),
       onToggleSlot: jest.fn(),
@@ -330,6 +331,32 @@ describe("SlotPicker", () => {
   test("shows removedSlotsFeedback message when set", async () => {
     await renderSlotPicker({ removedSlotsFeedback: "Slot 09:00 removed — not available for this seat." });
     expect(screen.getByText(/Slot 09:00 removed/)).toBeInTheDocument();
+  });
+
+  test("slot in myBookingSlots shows Mine label and is disabled", async () => {
+    await renderSlotPicker({ myBookingSlots: new Set([9]) });
+    const slotBtn = screen.getAllByRole("option")[1]; // index 1 = 09:00–10:00
+    expect(slotBtn).toBeDisabled();
+    expect(screen.getByText("Mine")).toBeInTheDocument();
+  });
+
+  test("renders Morning, Afternoon, and Evening time-of-day dividers", async () => {
+    await renderSlotPicker();
+    expect(screen.getByText("Morning")).toBeInTheDocument();
+    expect(screen.getByText("Afternoon")).toBeInTheDocument();
+    expect(screen.getByText("Evening")).toBeInTheDocument();
+  });
+
+  test("past slots are disabled when date is today", async () => {
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const currentHour = new Date().getHours();
+    // Only run this check if there is at least one past slot in the 08:00–22:00 window
+    if (currentHour > 8) {
+      await renderSlotPicker({ selectedDate: todayISO });
+      const slotBtns = screen.getAllByRole("option");
+      // Hour 8 slot is index 0; if currentHour > 8 it should be disabled
+      expect(slotBtns[0]).toBeDisabled();
+    }
   });
 });
 

@@ -111,8 +111,9 @@ async def create_booking(
     # 4. Validate time_unit alignment
     _validate_time_unit(start_time, end_time, rules.time_unit)
 
-    # 5. Check max active bookings per user per space (max 1 active booking per space)
-    active_result = await db.execute(
+    # 5. Check user-level constraints within the same space
+    # (a) No time-overlapping active bookings for the same user in the same space
+    overlap_result = await db.execute(
         select(Booking)
         .join(Seat, Booking.seat_id == Seat.id)
         .where(
@@ -120,12 +121,45 @@ async def create_booking(
                 Booking.user_id == user_id,
                 Seat.space_id == seat.space_id,
                 Booking.status.in_(["confirmed", "checked_in"]),
+                Booking.start_time < end_time,
+                Booking.end_time > start_time,
             )
         )
     )
-    if active_result.scalar_one_or_none() is not None:
+    if overlap_result.scalar_one_or_none() is not None:
         raise BookingRuleViolationError(
-            "You already have an active booking in this space."
+            "You already have a booking in this space that overlaps with the selected time."
+        )
+
+    # (b) Daily duration limit: total booked minutes for this user in this space on the same date
+    start_aest = start_time.astimezone(AEST)
+    day_start_aest = start_aest.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end_aest = day_start_aest + timedelta(days=1)
+    day_start_utc = day_start_aest.astimezone(UTC)
+    day_end_utc = day_end_aest.astimezone(UTC)
+
+    daily_result = await db.execute(
+        select(Booking)
+        .join(Seat, Booking.seat_id == Seat.id)
+        .where(
+            and_(
+                Booking.user_id == user_id,
+                Seat.space_id == seat.space_id,
+                Booking.status.in_(["confirmed", "checked_in"]),
+                Booking.start_time >= day_start_utc,
+                Booking.start_time < day_end_utc,
+            )
+        )
+    )
+    existing_daily_minutes = sum(
+        (_utc(b.end_time) - _utc(b.start_time)).total_seconds() / 60
+        for b in daily_result.scalars().all()
+    )
+    new_duration_minutes = (end_time - start_time).total_seconds() / 60
+    if existing_daily_minutes + new_duration_minutes > rules.max_duration_minutes:
+        raise BookingRuleViolationError(
+            f"Adding this booking would exceed the daily limit of "
+            f"{rules.max_duration_minutes} minutes in this space."
         )
 
     # 6. Check for seat-level conflicts

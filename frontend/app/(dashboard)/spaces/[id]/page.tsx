@@ -124,19 +124,18 @@ export default function SpaceFloorplanPage({
     return merged;
   }, [availability]);
 
-  // ── Seat-specific availability (per-hour queries for selected seat) ────────
+  // ── Per-hour availability for the whole space (always-on, 14 queries) ───────
+  // Used to derive both seat-blocked slots and my-booking slots.
 
-  const seatHourQueries = useQueries({
-    queries: activeSeatId
-      ? ALL_DAY_HOURS.map((hour) => ({
-          queryKey: ["seats", activeSeatId, "availability", selectedDate, hour],
-          queryFn: () =>
-            api.get<SeatAvailability[]>(
-              `/api/v1/spaces/${id}/availability?start=${encodeURIComponent(toISO(selectedDate, hour))}&end=${encodeURIComponent(toISO(selectedDate, hour + 1))}`
-            ),
-          enabled: !!activeSeatId && !!id,
-        }))
-      : [],
+  const hourQueries = useQueries({
+    queries: ALL_DAY_HOURS.map((hour) => ({
+      queryKey: ["spaces", id, "hour-availability", selectedDate, hour],
+      queryFn: () =>
+        api.get<SeatAvailability[]>(
+          `/api/v1/spaces/${id}/availability?start=${encodeURIComponent(toISO(selectedDate, hour))}&end=${encodeURIComponent(toISO(selectedDate, hour + 1))}`
+        ),
+      enabled: !!id,
+    })),
   });
 
   /** Hours blocked for the currently selected seat (booked by others). */
@@ -144,7 +143,7 @@ export default function SpaceFloorplanPage({
     if (!activeSeatId) return new Set();
     const blocked = new Set<number>();
     ALL_DAY_HOURS.forEach((hour, index) => {
-      const data = seatHourQueries[index]?.data;
+      const data = hourQueries[index]?.data;
       if (!data) return;
       const seatRow = data.find((s) => s.id === activeSeatId);
       if (seatRow?.booking_status === "booked") {
@@ -152,7 +151,20 @@ export default function SpaceFloorplanPage({
       }
     });
     return blocked;
-  }, [activeSeatId, seatHourQueries]);
+  }, [activeSeatId, hourQueries]);
+
+  /** Hours where the current user already has a confirmed booking in this space. */
+  const myBookingSlots = useMemo((): Set<number> => {
+    const set = new Set<number>();
+    ALL_DAY_HOURS.forEach((hour, index) => {
+      const data = hourQueries[index]?.data;
+      if (!data) return;
+      if (data.some((s) => s.booking_status === "my_booking")) {
+        set.add(hour);
+      }
+    });
+    return set;
+  }, [hourQueries]);
 
   // ── Auto-remove active slots that the seat blocks ─────────────────────────
 
@@ -313,6 +325,7 @@ export default function SpaceFloorplanPage({
           isValidBooking={isValidBooking}
           hasBookings={bookings.length > 0}
           seatBlockedSlots={seatBlockedSlots}
+          myBookingSlots={myBookingSlots}
           removedSlotsFeedback={removedSlotsFeedback}
           onDateChange={setDate}
           onToggleSlot={toggleSlot}
@@ -350,6 +363,10 @@ export default function SpaceFloorplanPage({
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-[#E24B4A] inline-block" />
               Booked
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-[#378ADD] inline-block" />
+              My Booking
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-[#B4B2A9] inline-block" />

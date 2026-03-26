@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { Booking, WorkspaceMode } from "@/store/bookingStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ interface SlotPickerProps {
   bookings: Booking[];
   editingBookingId: string | null;
   activeBookingColor: string;
-  /** Whether the user can still add more slots (daily 8h cap). */
+  /** Whether the user can still add more slots (daily cap). */
   canAddMoreSlots: boolean;
   mode: WorkspaceMode;
   /** True when the current booking has at least one slot and a seat. */
@@ -21,6 +22,11 @@ interface SlotPickerProps {
    * These slots are greyed out and cannot be selected.
    */
   seatBlockedSlots: Set<number>;
+  /**
+   * Slots where the current user already has a confirmed booking in this space.
+   * Shown with a distinct "My Booking" visual and disabled.
+   */
+  myBookingSlots: Set<number>;
   /**
    * Feedback message shown when slots were auto-removed due to seat selection.
    * Null when there is no pending message.
@@ -40,8 +46,16 @@ interface SlotPickerProps {
 /** Hourly slots 08:00–22:00 (14 blocks). */
 const DAY_HOURS = Array.from({ length: 14 }, (_, i) => i + 8);
 
+const MY_BOOKING_COLOR = "#378ADD";
+
 function pad(n: number) {
   return String(n).padStart(2, "0");
+}
+
+function getTimeOfDay(hour: number): "Morning" | "Afternoon" | "Evening" {
+  if (hour < 12) return "Morning";
+  if (hour < 18) return "Afternoon";
+  return "Evening";
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -57,6 +71,7 @@ export default function SlotPicker({
   isValidBooking,
   hasBookings,
   seatBlockedSlots,
+  myBookingSlots,
   removedSlotsFeedback,
   onDateChange,
   onToggleSlot,
@@ -67,6 +82,32 @@ export default function SlotPicker({
   onCheckout,
 }: SlotPickerProps) {
   const todayISO = new Date().toISOString().slice(0, 10);
+  const currentHour = new Date().getHours();
+
+  // Precompute which hours start a new time-of-day group (for divider labels)
+  const groupDividers = new Set<number>();
+  let seenGroup: string | null = null;
+  for (const hour of DAY_HOURS) {
+    const g = getTimeOfDay(hour);
+    if (g !== seenGroup) {
+      groupDividers.add(hour);
+      seenGroup = g;
+    }
+  }
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll the first active slot into view when date changes or on mount
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const activeEl = container.querySelector<HTMLElement>(
+      "[data-active-slot='true']"
+    );
+    if (activeEl && typeof activeEl.scrollIntoView === "function") {
+      activeEl.scrollIntoView({ block: "nearest" });
+    }
+  }, [selectedDate]);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col gap-4 min-w-0">
@@ -94,9 +135,14 @@ export default function SlotPicker({
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
           Time Slots
         </p>
-        <div className="space-y-0.5 overflow-y-auto max-h-72">
+        <div
+          ref={scrollContainerRef}
+          className="space-y-0.5 overflow-y-auto max-h-72"
+        >
           {DAY_HOURS.map((hour) => {
             const isActive = activeSlots.includes(hour);
+            const isPast = selectedDate === todayISO && hour <= currentHour;
+            const isMyBooking = myBookingSlots.has(hour);
 
             // Slot belongs to a stored booking (not the one being edited)
             const storedBooking = bookings.find(
@@ -109,50 +155,85 @@ export default function SlotPicker({
             const isOtherBooking = !!storedBooking;
             const isSeatBlocked = seatBlockedSlots.has(hour);
             const isDisabled =
+              isPast ||
+              isMyBooking ||
               isOtherBooking ||
               isSeatBlocked ||
               (!isActive && !canAddMoreSlots);
 
-            const bgColor = isActive
-              ? activeBookingColor
-              : isOtherBooking
-              ? storedBooking.color
-              : null;
+            // Determine background color
+            let bgColor: string | null = null;
+            if (isActive) {
+              bgColor = activeBookingColor;
+            } else if (isMyBooking) {
+              bgColor = MY_BOOKING_COLOR;
+            } else if (isOtherBooking) {
+              bgColor = storedBooking.color;
+            }
 
             const bgStyle = bgColor
               ? { backgroundColor: `${bgColor}${isActive ? "2e" : "1a"}` }
               : {};
 
+            const showDivider = groupDividers.has(hour);
+
             return (
-              <button
-                key={hour}
-                role="option"
-                aria-selected={isActive}
-                disabled={isDisabled}
-                onClick={() => !isDisabled && onToggleSlot(hour)}
-                className={[
-                  "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors",
-                  isDisabled
-                    ? "opacity-40 cursor-not-allowed"
-                    : "hover:bg-gray-50 cursor-pointer",
-                  isActive ? "font-medium" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                style={{
-                  ...bgStyle,
-                  border: isActive ? `1.5px solid ${bgColor}` : "1.5px solid transparent",
-                }}
-              >
-                <span style={isActive ? { color: activeBookingColor } : { color: "#6B7280" }}>
-                  {pad(hour)}:00–{pad(hour + 1)}:00
-                </span>
-                {isActive && (
-                  <span style={{ color: activeBookingColor }} aria-hidden>
-                    ✓
-                  </span>
+              <div key={hour}>
+                {showDivider && (
+                  <p className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest px-1 pt-2 pb-0.5 first:pt-0">
+                    {getTimeOfDay(hour)}
+                  </p>
                 )}
-              </button>
+                <button
+                  role="option"
+                  aria-selected={isActive}
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && onToggleSlot(hour)}
+                  data-active-slot={isActive ? "true" : undefined}
+                  className={[
+                    "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors",
+                    isDisabled
+                      ? "opacity-40 cursor-not-allowed"
+                      : "hover:bg-gray-50 cursor-pointer",
+                    isActive ? "font-medium" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={{
+                    ...bgStyle,
+                    border: isActive
+                      ? `1.5px solid ${bgColor}`
+                      : isMyBooking
+                      ? `1.5px solid ${MY_BOOKING_COLOR}66`
+                      : "1.5px solid transparent",
+                  }}
+                >
+                  <span
+                    style={
+                      isActive
+                        ? { color: activeBookingColor }
+                        : isMyBooking
+                        ? { color: MY_BOOKING_COLOR }
+                        : { color: "#6B7280" }
+                    }
+                  >
+                    {pad(hour)}:00–{pad(hour + 1)}:00
+                  </span>
+                  {isActive && (
+                    <span style={{ color: activeBookingColor }} aria-hidden>
+                      ✓
+                    </span>
+                  )}
+                  {isMyBooking && !isActive && (
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: MY_BOOKING_COLOR }}
+                    >
+                      Mine
+                    </span>
+                  )}
+                </button>
+              </div>
             );
           })}
         </div>

@@ -838,13 +838,13 @@ async def test_time_unit_half_day_invalid_end(
         )
 
 
-# ─── Phase 2: max active bookings per space ───────────────────────────────────
+# ─── Phase 2: multi-booking constraints per space ─────────────────────────────
 
 @pytest.mark.asyncio
-async def test_max_active_bookings_per_space(
+async def test_overlapping_booking_same_space_rejected(
     db_session: AsyncSession, test_user: User, space_with_rules: Space
 ):
-    """A user cannot hold two active bookings in the same space."""
+    """A user cannot hold two time-overlapping active bookings in the same space."""
     seat1 = Seat(space_id=space_with_rules.id, label="X1", position={"x": 0, "y": 0})
     seat2 = Seat(space_id=space_with_rules.id, label="X2", position={"x": 30, "y": 0})
     db_session.add_all([seat1, seat2])
@@ -857,11 +857,66 @@ async def test_max_active_bookings_per_space(
         test_user.id,
         BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(2)),
     )
-    with pytest.raises(BookingRuleViolationError, match="already have an active booking"):
+    # Overlapping booking on a different seat — must be rejected
+    with pytest.raises(BookingRuleViolationError, match="overlaps"):
         await booking_service.create_booking(
             db_session,
             test_user.id,
-            BookingCreate(seat_id=seat2.id, start_time=_future(2), end_time=_future(3)),
+            BookingCreate(seat_id=seat2.id, start_time=_future(1), end_time=_future(2)),
+        )
+
+
+@pytest.mark.asyncio
+async def test_non_overlapping_booking_same_space_allowed(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    """A user can hold multiple non-overlapping bookings in the same space on the same day."""
+    seat1 = Seat(space_id=space_with_rules.id, label="Y1", position={"x": 0, "y": 0})
+    seat2 = Seat(space_id=space_with_rules.id, label="Y2", position={"x": 30, "y": 0})
+    db_session.add_all([seat1, seat2])
+    await db_session.commit()
+    await db_session.refresh(seat1)
+    await db_session.refresh(seat2)
+
+    b1 = await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(2)),
+    )
+    b2 = await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(seat_id=seat2.id, start_time=_future(2), end_time=_future(3)),
+    )
+    assert b1.status == "confirmed"
+    assert b2.status == "confirmed"
+
+
+@pytest.mark.asyncio
+async def test_daily_duration_limit_enforced(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    """A user cannot exceed the space's max_duration_minutes total per day."""
+    # space_with_rules has max_duration_minutes=240 (4 hours)
+    seat1 = Seat(space_id=space_with_rules.id, label="Z1", position={"x": 0, "y": 0})
+    seat2 = Seat(space_id=space_with_rules.id, label="Z2", position={"x": 30, "y": 0})
+    db_session.add_all([seat1, seat2])
+    await db_session.commit()
+    await db_session.refresh(seat1)
+    await db_session.refresh(seat2)
+
+    # Book 4 hours on seat1 (hits the 240-min limit exactly)
+    await booking_service.create_booking(
+        db_session,
+        test_user.id,
+        BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(5)),
+    )
+    # Any additional booking on the same day should fail
+    with pytest.raises(BookingRuleViolationError, match="daily limit"):
+        await booking_service.create_booking(
+            db_session,
+            test_user.id,
+            BookingCreate(seat_id=seat2.id, start_time=_future(5), end_time=_future(6)),
         )
 
 
