@@ -38,6 +38,29 @@ async def test_create_space_admin(client: AsyncClient, admin_token: str):
 
 
 @pytest.mark.asyncio
+async def test_create_library_space_defaults_to_eight_hour_rules(
+    client: AsyncClient, admin_token: str
+):
+    create_resp = await client.post(
+        "/api/v1/spaces",
+        json={"name": "New Library", "type": "library", "capacity": 20},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert create_resp.status_code == 201
+    space_id = create_resp.json()["id"]
+
+    rules_resp = await client.get(
+        f"/api/v1/spaces/{space_id}/rules",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert rules_resp.status_code == 200
+    rules = rules_resp.json()
+    assert rules["time_unit"] == "hourly"
+    assert rules["max_duration_minutes"] == 480
+    assert rules["max_advance_days"] == 3
+
+
+@pytest.mark.asyncio
 async def test_create_office_space_defaults_to_hourly_rules(
     client: AsyncClient, admin_token: str
 ):
@@ -140,7 +163,7 @@ async def test_get_rules(client: AsyncClient, user_token: str, library_space: Sp
     )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["max_duration_minutes"] == 240
+    assert data["max_duration_minutes"] == 480
     assert data["time_unit"] == "hourly"
 
 

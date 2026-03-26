@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useBookingStore, type Draft, type BookingResult } from "@/store/bookingStore";
+import { useBookingStore, type Booking, type BookingResult } from "@/store/bookingStore";
 import { api } from "@/lib/api";
 import { slotRanges, toISO } from "@/lib/booking";
 
@@ -12,10 +12,10 @@ function fmtHour(hour: number): string {
   return `${String(hour).padStart(2, "0")}:00`;
 }
 
-// ─── DraftSummaryRow ──────────────────────────────────────────────────────────
+// ─── BookingSummaryRow ─────────────────────────────────────────────────────────
 
-function DraftSummaryRow({ draft }: { draft: Draft }) {
-  const ranges = slotRanges(draft.slots);
+function BookingSummaryRow({ booking }: { booking: Booking }) {
+  const ranges = slotRanges(booking.slots);
   const bookingCount = ranges.length;
   const rangeLabels = ranges
     .map((r) => `${fmtHour(r.start)}–${fmtHour(r.end)}`)
@@ -26,12 +26,12 @@ function DraftSummaryRow({ draft }: { draft: Draft }) {
       <div className="flex items-center gap-2 mb-0.5">
         <span
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: draft.color }}
+          style={{ backgroundColor: booking.color }}
         />
         <span className="text-sm font-medium text-gray-900">
-          Seat {draft.seatLabel ?? "—"}
+          Seat {booking.seatLabel ?? "—"}
         </span>
-        <span className="text-xs text-gray-400 ml-auto">{draft.date}</span>
+        <span className="text-xs text-gray-400 ml-auto">{booking.date}</span>
       </div>
       <p className="text-sm text-gray-600 pl-[18px]">{rangeLabels}</p>
       <p className="text-xs text-gray-400 mt-0.5 pl-[18px]">
@@ -45,17 +45,17 @@ function DraftSummaryRow({ draft }: { draft: Draft }) {
 // ─── ConfirmModal ─────────────────────────────────────────────────────────────
 
 interface ConfirmModalProps {
-  drafts: Draft[];
+  bookings: Booking[];
   onClose: () => void;
 }
 
-export default function ConfirmModal({ drafts, onClose }: ConfirmModalProps) {
+export default function ConfirmModal({ bookings, onClose }: ConfirmModalProps) {
   const router = useRouter();
   const { setCheckoutResults } = useBookingStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalBookings = drafts.reduce(
-    (sum, d) => sum + slotRanges(d.slots).length,
+  const totalBookings = bookings.reduce(
+    (sum, b) => sum + slotRanges(b.slots).length,
     0
   );
 
@@ -63,32 +63,32 @@ export default function ConfirmModal({ drafts, onClose }: ConfirmModalProps) {
     setIsSubmitting(true);
     const results: BookingResult[] = [];
 
-    for (const draft of drafts) {
-      if (!draft.seatId) continue;
-      for (const range of slotRanges(draft.slots)) {
-        const startISO = toISO(draft.date, range.start);
-        const endISO = toISO(draft.date, range.end);
+    for (const booking of bookings) {
+      if (!booking.seatId) continue;
+      for (const range of slotRanges(booking.slots)) {
+        const startISO = toISO(booking.date, range.start);
+        const endISO = toISO(booking.date, range.end);
         try {
-          const booking = await api.post<{ id: string }>("/api/v1/bookings", {
-            seat_id: draft.seatId,
+          const created = await api.post<{ id: string }>("/api/v1/bookings", {
+            seat_id: booking.seatId,
             start_time: startISO,
             end_time: endISO,
           });
           results.push({
-            draftId: draft.id,
-            draftColor: draft.color,
-            seatLabel: draft.seatLabel,
+            planId: booking.id,
+            planColor: booking.color,
+            seatLabel: booking.seatLabel,
             start: startISO,
             end: endISO,
-            bookingId: booking.id,
+            bookingId: created.id,
             status: "success",
             errorMessage: null,
           });
         } catch (err: unknown) {
           results.push({
-            draftId: draft.id,
-            draftColor: draft.color,
-            seatLabel: draft.seatLabel,
+            planId: booking.id,
+            planColor: booking.color,
+            seatLabel: booking.seatLabel,
             start: startISO,
             end: endISO,
             bookingId: null,
@@ -129,10 +129,10 @@ export default function ConfirmModal({ drafts, onClose }: ConfirmModalProps) {
           </button>
         </div>
 
-        {/* Draft list */}
+        {/* Booking list */}
         <div className="px-5 overflow-y-auto max-h-80">
-          {drafts.map((draft) => (
-            <DraftSummaryRow key={draft.id} draft={draft} />
+          {bookings.map((booking) => (
+            <BookingSummaryRow key={booking.id} booking={booking} />
           ))}
         </div>
 

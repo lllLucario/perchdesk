@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useQueries } from "@tanstack/react-query";
 import {
@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { useBookingStore } from "@/store/bookingStore";
 import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
 import SlotPicker from "@/components/Floorplan/SlotPicker";
-import BookingDraftsPanel from "@/components/Floorplan/BookingDraftsPanel";
+import BookingListPanel from "@/components/Floorplan/BookingListPanel";
 import ConfirmModal from "@/components/Floorplan/ConfirmModal";
 
 /** ISO datetime from a YYYY-MM-DD date and an hour-of-day integer. */
@@ -43,6 +43,9 @@ function slotRanges(date: string, slots: number[]) {
   return ranges;
 }
 
+/** All 14 hourly slots (08:00–22:00). */
+const ALL_DAY_HOURS = Array.from({ length: 14 }, (_, i) => i + 8);
+
 export default function SpaceFloorplanPage({
   params,
 }: {
@@ -50,6 +53,7 @@ export default function SpaceFloorplanPage({
 }) {
   const { id } = use(params);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [removedSlotsFeedback, setRemovedSlotsFeedback] = useState<string | null>(null);
 
   const { data: space, isLoading } = useSpace(id);
   const { data: rules } = useSpaceRules(id);
@@ -60,22 +64,22 @@ export default function SpaceFloorplanPage({
     activeSlots,
     activeSeatId,
     activeSeatLabel,
-    activeDraftColor,
-    drafts,
-    editingDraftId,
+    activeBookingColor,
+    bookings,
+    editingBookingId,
     setDate,
-    enterCreating,
     enterEditing,
     cancelEditing,
     toggleSlot,
     setActiveSeat,
     clearActiveSeat,
-    addDraft,
+    addBooking,
     saveChanges,
-    deleteDraft,
+    deleteBooking,
+    removeSlotsFromActive,
   } = useBookingStore();
 
-  // ── Availability query ────────────────────────────────────────────────────
+  // ── Availability query for selected slots ─────────────────────────────────
 
   const availabilityRanges = useMemo(
     () => slotRanges(selectedDate, activeSlots),
@@ -120,62 +124,144 @@ export default function SpaceFloorplanPage({
     return merged;
   }, [availability]);
 
-  // ── Draft seat map for SeatMapCanvas ─────────────────────────────────────
+  // ── Per-hour availability for the whole space (always-on, 14 queries) ───────
+  // Used to derive both seat-blocked slots and my-booking slots.
 
-  const draftSeatMap = useMemo((): Record<
+  const hourQueries = useQueries({
+    queries: ALL_DAY_HOURS.map((hour) => ({
+      queryKey: ["spaces", id, "hour-availability", selectedDate, hour],
+      queryFn: () =>
+        api.get<SeatAvailability[]>(
+          `/api/v1/spaces/${id}/availability?start=${encodeURIComponent(toISO(selectedDate, hour))}&end=${encodeURIComponent(toISO(selectedDate, hour + 1))}`
+        ),
+      enabled: !!id,
+    })),
+  });
+
+  /** Hours blocked for the currently selected seat (booked by others). */
+  const seatBlockedSlots = useMemo((): Set<number> => {
+    if (!activeSeatId) return new Set();
+    const blocked = new Set<number>();
+    ALL_DAY_HOURS.forEach((hour, index) => {
+      const data = hourQueries[index]?.data;
+      if (!data) return;
+      const seatRow = data.find((s) => s.id === activeSeatId);
+      if (seatRow?.booking_status === "booked") {
+        blocked.add(hour);
+      }
+    });
+    return blocked;
+  }, [activeSeatId, hourQueries]);
+
+  /** Hours where the current user already has a confirmed booking in this space. */
+  const myBookingSlots = useMemo((): Set<number> => {
+    const set = new Set<number>();
+    ALL_DAY_HOURS.forEach((hour, index) => {
+      const data = hourQueries[index]?.data;
+      if (!data) return;
+      if (data.some((s) => s.booking_status === "my_booking")) {
+        set.add(hour);
+      }
+    });
+    return set;
+  }, [hourQueries]);
+
+  // ── Auto-remove active slots that the seat blocks ─────────────────────────
+
+  const prevSeatIdRef = useRef<string | null>(null);
+  const prevBlockedRef = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!activeSeatId) {
+      prevSeatIdRef.current = null;
+      prevBlockedRef.current = new Set();
+      return;
+    }
+
+    const seatChanged = prevSeatIdRef.current !== activeSeatId;
+    const blockedChanged =
+      seatBlockedSlots.size !== prevBlockedRef.current.size ||
+      [...seatBlockedSlots].some((h) => !prevBlockedRef.current.has(h));
+
+    if (!seatChanged && !blockedChanged) return;
+
+    prevSeatIdRef.current = activeSeatId;
+    prevBlockedRef.current = seatBlockedSlots;
+
+    const toRemove = activeSlots.filter((h) => seatBlockedSlots.has(h));
+    if (toRemove.length === 0) return;
+
+    removeSlotsFromActive(toRemove);
+
+    // Defer the React setState call to avoid triggering cascading renders
+    // from within the effect body (react-hooks/set-state-in-effect).
+    const removed = toRemove
+      .map((h) => `${String(h).padStart(2, "0")}:00`)
+      .join(", ");
+    const msg = `${toRemove.length === 1 ? "Slot" : "Slots"} ${removed} removed — not available for this seat.`;
+    setTimeout(() => setRemovedSlotsFeedback(msg), 0);
+  }, [activeSeatId, seatBlockedSlots, activeSlots, removeSlotsFromActive]);
+
+  // Auto-clear feedback after 4 seconds
+  useEffect(() => {
+    if (!removedSlotsFeedback) return;
+    const t = setTimeout(() => setRemovedSlotsFeedback(null), 4000);
+    return () => clearTimeout(t);
+  }, [removedSlotsFeedback]);
+
+  // ── Booking seat map for SeatMapCanvas ────────────────────────────────────
+
+  const bookingSeatMap = useMemo((): Record<
     string,
     { color: string; isActiveDraft: boolean }
   > => {
     const map: Record<string, { color: string; isActiveDraft: boolean }> = {};
 
-    // Stored drafts
-    for (const draft of drafts) {
-      if (!draft.seatId) continue;
-      map[draft.seatId] = {
-        color: draft.color,
-        isActiveDraft: draft.id === editingDraftId,
+    // Stored bookings — only paint seats for the currently selected date
+    for (const booking of bookings) {
+      if (!booking.seatId) continue;
+      if (booking.date !== selectedDate) continue;
+      map[booking.seatId] = {
+        color: booking.color,
+        isActiveDraft: booking.id === editingBookingId,
       };
     }
 
-    // Seat being selected in creating mode
-    if (mode === "creating" && activeSeatId) {
-      map[activeSeatId] = { color: activeDraftColor, isActiveDraft: true };
+    // Seat being selected in creating/editing mode
+    if (activeSeatId) {
+      map[activeSeatId] = { color: activeBookingColor, isActiveDraft: true };
     }
 
     return map;
-  }, [drafts, editingDraftId, mode, activeSeatId, activeDraftColor]);
+  }, [bookings, editingBookingId, activeSeatId, activeBookingColor, selectedDate]);
 
   // ── Constraints ───────────────────────────────────────────────────────────
 
-  // Total hours locked in on this date (excluding the draft being edited)
+  // Total hours locked in on this date (excluding the booking being edited)
   const storedHoursToday = useMemo(
     () =>
-      drafts
-        .filter((d) => d.date === selectedDate && d.id !== editingDraftId)
-        .reduce((sum, d) => sum + d.slots.length, 0),
-    [drafts, selectedDate, editingDraftId]
+      bookings
+        .filter((b) => b.date === selectedDate && b.id !== editingBookingId)
+        .reduce((sum, b) => sum + b.slots.length, 0),
+    [bookings, selectedDate, editingBookingId]
   );
 
   const canAddMoreSlots = storedHoursToday + activeSlots.length < 8;
-  const isValidDraft = activeSlots.length > 0 && !!activeSeatId;
+  const isValidBooking = activeSlots.length > 0 && !!activeSeatId;
 
   // ── Seat click handler ────────────────────────────────────────────────────
 
   function handleSeatClick(seat: Seat) {
-    if (mode === "browsing") {
-      // Clicking a draft-owned seat enters editing for that draft
-      const owningDraft = drafts.find((d) => d.seatId === seat.id);
-      if (owningDraft) enterEditing(owningDraft.id);
-      return;
-    }
-
-    // Creating / editing: seats owned by other drafts are locked
-    const isOtherDraft = drafts.some(
-      (d) => d.seatId === seat.id && d.id !== editingDraftId
+    // Seats owned by other bookings on the same date are locked
+    const isOtherBooking = bookings.some(
+      (b) => b.seatId === seat.id && b.id !== editingBookingId && b.date === selectedDate
     );
-    if (isOtherDraft) return;
+    if (isOtherBooking) return;
     if (seat.status !== "available") return;
     if (availabilityMap?.[seat.id] === "booked") return;
+    // `my_booking` seats are already owned by the user for the selected time;
+    // they must not be re-selected as a fresh available seat.
+    if (availabilityMap?.[seat.id] === "my_booking") return;
 
     if (activeSeatId === seat.id) {
       clearActiveSeat();
@@ -230,24 +316,26 @@ export default function SpaceFloorplanPage({
 
       {/* Three-column workspace */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(168px,1fr)_2fr_minmax(168px,1fr)] gap-4 items-start">
-        {/* Left: Date + Slot picker + draft actions */}
+        {/* Left: Date + Slot picker + booking actions */}
         <SlotPicker
           selectedDate={selectedDate}
           activeSlots={activeSlots}
-          drafts={drafts}
-          editingDraftId={editingDraftId}
-          activeDraftColor={activeDraftColor}
+          bookings={bookings}
+          editingBookingId={editingBookingId}
+          activeBookingColor={activeBookingColor}
           canAddMoreSlots={canAddMoreSlots}
           mode={mode}
-          isValidDraft={isValidDraft}
-          hasDrafts={drafts.length > 0}
+          isValidBooking={isValidBooking}
+          hasBookings={bookings.length > 0}
+          seatBlockedSlots={seatBlockedSlots}
+          myBookingSlots={myBookingSlots}
+          removedSlotsFeedback={removedSlotsFeedback}
           onDateChange={setDate}
           onToggleSlot={toggleSlot}
-          onNewDraft={enterCreating}
-          onAddDraft={addDraft}
+          onAddBooking={addBooking}
           onSaveChanges={saveChanges}
           onCancelEditing={cancelEditing}
-          onDeleteDraft={() => editingDraftId && deleteDraft(editingDraftId)}
+          onDeleteBooking={() => editingBookingId && deleteBooking(editingBookingId)}
           onCheckout={() => setIsConfirmOpen(true)}
         />
 
@@ -257,19 +345,17 @@ export default function SpaceFloorplanPage({
             seats={seats}
             mode="user"
             availabilityMap={availabilityMap}
-            draftSeatMap={draftSeatMap}
+            draftSeatMap={bookingSeatMap}
             gridSize={gridSize}
             onSeatClick={handleSeatClick}
           />
 
           {/* Seat selection hint */}
-          {(mode === "creating" || mode === "editing") && (
-            <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-              {activeSeatId
-                ? `Seat ${activeSeatLabel} selected — click to deselect`
-                : "Click a seat on the map to include it in this draft"}
-            </p>
-          )}
+          <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+            {activeSeatId
+              ? `Seat ${activeSeatLabel} selected — click to deselect`
+              : "Click a seat on the map to include it in this booking"}
+          </p>
 
           {/* Legend */}
           <div className="flex gap-4 text-xs text-gray-500 flex-wrap">
@@ -282,26 +368,30 @@ export default function SpaceFloorplanPage({
               Booked
             </span>
             <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-[#378ADD] inline-block" />
+              My Booking
+            </span>
+            <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-[#B4B2A9] inline-block" />
               Maintenance
             </span>
           </div>
         </div>
 
-        {/* Right: Booking Drafts panel */}
-        <BookingDraftsPanel
-          drafts={drafts}
-          editingDraftId={editingDraftId}
+        {/* Right: Booking List */}
+        <BookingListPanel
+          bookings={bookings}
+          editingBookingId={editingBookingId}
           mode={mode}
-          onEditDraft={enterEditing}
-          onDeleteDraft={deleteDraft}
+          onEditBooking={enterEditing}
+          onDeleteBooking={deleteBooking}
         />
       </div>
 
       {/* Confirm modal — rendered inside the floorplan to preserve workspace context */}
       {isConfirmOpen && (
         <ConfirmModal
-          drafts={drafts}
+          bookings={bookings}
           onClose={() => setIsConfirmOpen(false)}
         />
       )}

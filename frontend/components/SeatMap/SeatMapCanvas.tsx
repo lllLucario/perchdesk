@@ -98,7 +98,10 @@ export default function SeatMapCanvas({
 
   function isClickable(seat: Seat): boolean {
     if (mode === "admin") return toolMode === "delete" || toolMode === "edit";
-    return seat.status === "available" && availabilityMap?.[seat.id] !== "booked";
+    const avail = availabilityMap?.[seat.id];
+    // `my_booking` seats belong to the current user and should not be treated
+    // as a selectable seat for new bookings in the same time range.
+    return seat.status === "available" && avail !== "booked" && avail !== "my_booking";
   }
 
   function getCursor(): string {

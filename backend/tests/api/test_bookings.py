@@ -98,13 +98,13 @@ async def test_booking_conflict(
 async def test_booking_exceeds_max_duration(
     client: AsyncClient, user_token: str, library_seat: Seat
 ):
-    # Library max is 240 min = 4 hours; try 5 hours
+    # Library max is 480 min = 8 hours; try 9 hours
     resp = await client.post(
         "/api/v1/bookings",
         json={
             "seat_id": str(library_seat.id),
             "start_time": future(1),
-            "end_time": future(6),
+            "end_time": future(10),
         },
         headers={"Authorization": f"Bearer {user_token}"},
     )

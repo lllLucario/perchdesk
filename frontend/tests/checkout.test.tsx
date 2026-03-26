@@ -95,21 +95,20 @@ describe("bookingStore — checkoutResults", () => {
     expect(useBookingStore.getState().checkoutResults).toBeNull();
   });
 
-  test("setCheckoutResults stores results and clears drafts", () => {
+  test("setCheckoutResults stores results and clears bookings", () => {
     act(() => {
       const store = useBookingStore.getState();
-      store.enterCreating();
-      store.toggleSlot(9);
+      useBookingStore.setState({ activeSlots: [9] });
       store.setActiveSeat("s1", "A1");
-      store.addDraft();
+      store.addBooking();
     });
 
-    expect(useBookingStore.getState().drafts).toHaveLength(1);
+    expect(useBookingStore.getState().bookings).toHaveLength(1);
 
     const results = [
       {
-        draftId: "d1",
-        draftColor: "#7C3AED",
+        planId: "b1",
+        planColor: "#7C3AED",
         seatLabel: "A1",
         start: "2026-04-01T09:00:00",
         end: "2026-04-01T10:00:00",
@@ -124,7 +123,7 @@ describe("bookingStore — checkoutResults", () => {
     });
 
     expect(useBookingStore.getState().checkoutResults).toEqual(results);
-    expect(useBookingStore.getState().drafts).toHaveLength(0);
+    expect(useBookingStore.getState().bookings).toHaveLength(0);
   });
 
   test("reset clears checkoutResults", () => {
@@ -156,8 +155,8 @@ describe("ConfirmModal", () => {
     return ConfirmModal;
   }
 
-  const singleDraft = {
-    id: "d1",
+  const singleBooking = {
+    id: "b1",
     color: "#7C3AED",
     seatId: "s1",
     seatLabel: "A1",
@@ -165,8 +164,8 @@ describe("ConfirmModal", () => {
     date: "2026-04-01",
   };
 
-  const gappedDraft = {
-    id: "d2",
+  const gappedBooking = {
+    id: "b2",
     color: "#D97706",
     seatId: "s2",
     seatLabel: "B2",
@@ -174,10 +173,10 @@ describe("ConfirmModal", () => {
     date: "2026-04-01",
   };
 
-  test("renders seat label and slot range for a draft", async () => {
+  test("renders seat label and slot range for a booking", async () => {
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[singleBooking]} onClose={jest.fn()} />
     );
     expect(screen.getByText("Seat A1")).toBeInTheDocument();
     // [9, 10] → contiguous → 09:00–11:00
@@ -188,17 +187,17 @@ describe("ConfirmModal", () => {
   test("shows plural heading for multiple bookings", async () => {
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[gappedDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[gappedBooking]} onClose={jest.fn()} />
     );
     // [8, 10] → 2 ranges → heading says "Confirm Bookings"
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/Confirm Bookings/)).toBeInTheDocument();
   });
 
-  test("shows non-contiguous note for gapped draft", async () => {
+  test("shows non-contiguous note for gapped booking", async () => {
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[gappedDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[gappedBooking]} onClose={jest.fn()} />
     );
     expect(screen.getByText(/non-contiguous slots/)).toBeInTheDocument();
     expect(screen.getByText(/Will create 2 bookings/)).toBeInTheDocument();
@@ -207,7 +206,7 @@ describe("ConfirmModal", () => {
   test("does not show non-contiguous note for contiguous slots", async () => {
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[singleBooking]} onClose={jest.fn()} />
     );
     expect(screen.queryByText(/non-contiguous/)).not.toBeInTheDocument();
   });
@@ -215,7 +214,7 @@ describe("ConfirmModal", () => {
   test("Cancel button calls onClose", async () => {
     const onClose = jest.fn();
     const ConfirmModal = await loadConfirmModal();
-    renderWithProviders(<ConfirmModal drafts={[singleDraft]} onClose={onClose} />);
+    renderWithProviders(<ConfirmModal bookings={[singleBooking]} onClose={onClose} />);
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -223,7 +222,7 @@ describe("ConfirmModal", () => {
   test("Close (×) button calls onClose", async () => {
     const onClose = jest.fn();
     const ConfirmModal = await loadConfirmModal();
-    renderWithProviders(<ConfirmModal drafts={[singleDraft]} onClose={onClose} />);
+    renderWithProviders(<ConfirmModal bookings={[singleBooking]} onClose={onClose} />);
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -233,7 +232,7 @@ describe("ConfirmModal", () => {
 
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[singleBooking]} onClose={jest.fn()} />
     );
 
     await act(async () => {
@@ -254,7 +253,7 @@ describe("ConfirmModal", () => {
 
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[singleBooking]} onClose={jest.fn()} />
     );
 
     await act(async () => {
@@ -271,7 +270,7 @@ describe("ConfirmModal", () => {
 
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[singleBooking]} onClose={jest.fn()} />
     );
 
     await act(async () => {
@@ -291,7 +290,7 @@ describe("ConfirmModal", () => {
 
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[singleDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[singleBooking]} onClose={jest.fn()} />
     );
 
     await act(async () => {
@@ -306,14 +305,14 @@ describe("ConfirmModal", () => {
     });
   });
 
-  test("gapped draft creates two API calls", async () => {
+  test("gapped booking creates two API calls", async () => {
     mockApi.post
       .mockResolvedValueOnce({ id: "b1" })
       .mockResolvedValueOnce({ id: "b2" });
 
     const ConfirmModal = await loadConfirmModal();
     renderWithProviders(
-      <ConfirmModal drafts={[gappedDraft]} onClose={jest.fn()} />
+      <ConfirmModal bookings={[gappedBooking]} onClose={jest.fn()} />
     );
 
     await act(async () => {
@@ -335,11 +334,7 @@ describe("ConfirmModal", () => {
     });
   });
 
-  test("floorplan Checkout button opens the modal", async () => {
-    jest.mock("@/lib/api", () => ({
-      api: mockApi,
-    }));
-
+  test("floorplan Submit button opens the confirm modal", async () => {
     const mockGet = mockApi.get;
     mockGet.mockImplementation((url: string) => {
       if (url === "/api/v1/spaces/sp1") {
@@ -359,7 +354,7 @@ describe("ConfirmModal", () => {
       }
       if (url === "/api/v1/spaces/sp1/rules") {
         return Promise.resolve({
-          id: "r1", space_id: "sp1", max_duration_minutes: 240,
+          id: "r1", space_id: "sp1", max_duration_minutes: 480,
           max_advance_days: 3, time_unit: "hourly",
           auto_release_minutes: null, requires_approval: false,
         });
@@ -368,13 +363,11 @@ describe("ConfirmModal", () => {
       return Promise.resolve([]);
     });
 
-    // Seed a draft directly in the store so Checkout button is visible
+    // Seed a booking directly in the store so Submit button is visible
     act(() => {
-      const store = useBookingStore.getState();
-      store.enterCreating();
-      store.toggleSlot(9);
-      store.setActiveSeat("s1", "A1");
-      store.addDraft();
+      useBookingStore.setState({ activeSlots: [9] });
+      useBookingStore.getState().setActiveSeat("s1", "A1");
+      useBookingStore.getState().addBooking();
     });
 
     const { default: SpaceFloorplanPage } = await import(
@@ -390,8 +383,8 @@ describe("ConfirmModal", () => {
       );
     });
 
-    await waitFor(() => screen.getByRole("button", { name: "Checkout" }));
-    fireEvent.click(screen.getByRole("button", { name: "Checkout" }));
+    await waitFor(() => screen.getByRole("button", { name: "Submit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
 
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -424,8 +417,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T09:00:00",
           end: "2026-04-01T10:00:00",
@@ -446,8 +439,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T09:00:00",
           end: "2026-04-01T10:00:00",
@@ -468,8 +461,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T09:00:00",
           end: "2026-04-01T10:00:00",
@@ -478,8 +471,8 @@ describe("ResultPage", () => {
           errorMessage: null,
         },
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T11:00:00",
           end: "2026-04-01T12:00:00",
@@ -500,8 +493,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "B2",
           start: "2026-04-01T14:00:00",
           end: "2026-04-01T15:00:00",
@@ -523,8 +516,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T09:00:00",
           end: "2026-04-01T10:00:00",
@@ -548,8 +541,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T09:00:00",
           end: "2026-04-01T10:00:00",
@@ -573,8 +566,8 @@ describe("ResultPage", () => {
     act(() => {
       useBookingStore.getState().setCheckoutResults([
         {
-          draftId: "d1",
-          draftColor: "#7C3AED",
+          planId: "b1",
+          planColor: "#7C3AED",
           seatLabel: "A1",
           start: "2026-04-01T09:00:00",
           end: "2026-04-01T10:00:00",

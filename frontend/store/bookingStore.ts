@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface Draft {
+export interface Booking {
   id: string;
   color: string;
   seatId: string | null;
@@ -13,13 +13,13 @@ export interface Draft {
   date: string;
 }
 
-export type WorkspaceMode = "browsing" | "creating" | "editing";
+export type WorkspaceMode = "creating" | "editing";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const DRAFT_COLORS = ["#7C3AED", "#D97706", "#0891B2", "#BE185D", "#15803D"];
+export const BOOKING_COLORS = ["#7C3AED", "#D97706", "#0891B2", "#BE185D", "#15803D"];
 
-/** Max total hours bookable in one space per day (across all drafts). */
+/** Max total hours bookable in one space per day (across all bookings). */
 export const MAX_DAILY_HOURS = 8;
 
 const SLOT_START_HOUR = 8;
@@ -27,13 +27,19 @@ const SLOT_END_HOUR = 21;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function pickNextColor(drafts: Draft[]): string {
-  const used = new Set(drafts.map((d) => d.color));
-  return DRAFT_COLORS.find((c) => !used.has(c)) ?? DRAFT_COLORS[drafts.length % DRAFT_COLORS.length];
+function pickNextColor(bookings: Booking[]): string {
+  const used = new Set(bookings.map((b) => b.color));
+  return BOOKING_COLORS.find((c) => !used.has(c)) ?? BOOKING_COLORS[bookings.length % BOOKING_COLORS.length];
 }
 
+/** Returns YYYY-MM-DD in the local calendar, not UTC. */
+function localDateISO(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Kept for call-site compatibility; delegates to localDateISO.
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateISO(new Date());
 }
 
 function addDays(date: Date, days: number): Date {
@@ -43,7 +49,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 function dateISO(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return localDateISO(date);
 }
 
 function defaultWorkspaceSelection(now = new Date()) {
@@ -80,6 +86,13 @@ function defaultWorkspaceSelection(now = new Date()) {
   };
 }
 
+/** Returns the default pre-selected slots for a given date string. */
+function nextSlotsForDate(date: string, now = new Date()): number[] {
+  const today = dateISO(now);
+  if (date !== today) return [SLOT_START_HOUR];
+  return defaultWorkspaceSelection(now).activeSlots;
+}
+
 function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
@@ -87,9 +100,9 @@ function uid(): string {
 // ─── Checkout result types ────────────────────────────────────────────────────
 
 export interface BookingResult {
-  /** The draft this booking came from. */
-  draftId: string;
-  draftColor: string;
+  /** The plan-level booking item this result came from. */
+  planId: string;
+  planColor: string;
   seatLabel: string | null;
   /** ISO datetime range for this individual booking. */
   start: string;
@@ -104,7 +117,7 @@ export interface BookingResult {
 
 interface BookingState {
   mode: WorkspaceMode;
-  editingDraftId: string | null;
+  editingBookingId: string | null;
 
   /** Selected date for the workspace (shared across modes). */
   selectedDate: string;
@@ -113,30 +126,30 @@ interface BookingState {
   activeSlots: number[];
   activeSeatId: string | null;
   activeSeatLabel: string | null;
-  /** Color assigned to the draft currently being created/edited. */
-  activeDraftColor: string;
+  /** Color assigned to the booking currently being created/edited. */
+  activeBookingColor: string;
 
-  /** All saved drafts for this session. */
-  drafts: Draft[];
+  /** All saved bookings for this session (the Booking List). */
+  bookings: Booking[];
 
   /**
    * Results from the most recent checkout submission.
-   * Populated by the confirm page after API calls complete.
+   * Populated by the confirm modal after API calls complete.
    * Null means no checkout has been attempted yet.
    */
   checkoutResults: BookingResult[] | null;
 
   // ── Actions ──
   setDate: (date: string) => void;
-  enterCreating: () => void;
-  enterEditing: (draftId: string) => void;
+  enterEditing: (bookingId: string) => void;
   cancelEditing: () => void;
   toggleSlot: (hour: number) => void;
   setActiveSeat: (seatId: string, seatLabel: string) => void;
   clearActiveSeat: () => void;
-  addDraft: () => void;
+  addBooking: () => void;
   saveChanges: () => void;
-  deleteDraft: (draftId: string) => void;
+  deleteBooking: (bookingId: string) => void;
+  removeSlotsFromActive: (slots: number[]) => void;
   setCheckoutResults: (results: BookingResult[]) => void;
   reset: () => void;
 }
@@ -145,51 +158,42 @@ interface BookingState {
 
 export const useBookingStore = create<BookingState>()((set, get) => ({
   ...defaultWorkspaceSelection(),
-  mode: "browsing",
-  editingDraftId: null,
+  mode: "creating",
+  editingBookingId: null,
   activeSeatId: null,
   activeSeatLabel: null,
-  activeDraftColor: DRAFT_COLORS[0],
-  drafts: [],
+  activeBookingColor: BOOKING_COLORS[0],
+  bookings: [],
   checkoutResults: null,
 
-  setDate: (date) => set({ selectedDate: date }),
+  setDate: (date) =>
+    set({ selectedDate: date, activeSlots: nextSlotsForDate(date) }),
 
-  enterCreating: () => {
-    const { drafts } = get();
-    set({
-      mode: "creating",
-      editingDraftId: null,
-      activeSlots: [],
-      activeSeatId: null,
-      activeSeatLabel: null,
-      activeDraftColor: pickNextColor(drafts),
-    });
-  },
-
-  enterEditing: (draftId) => {
-    const { drafts } = get();
-    const draft = drafts.find((d) => d.id === draftId);
-    if (!draft) return;
+  enterEditing: (bookingId) => {
+    const { bookings } = get();
+    const booking = bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
     set({
       mode: "editing",
-      editingDraftId: draftId,
-      selectedDate: draft.date,
-      activeSlots: [...draft.slots],
-      activeSeatId: draft.seatId,
-      activeSeatLabel: draft.seatLabel,
-      activeDraftColor: draft.color,
+      editingBookingId: bookingId,
+      selectedDate: booking.date,
+      activeSlots: [...booking.slots],
+      activeSeatId: booking.seatId,
+      activeSeatLabel: booking.seatLabel,
+      activeBookingColor: booking.color,
     });
   },
 
-  cancelEditing: () =>
+  cancelEditing: () => {
+    const { selectedDate } = get();
     set({
-      mode: "browsing",
-      editingDraftId: null,
-      activeSlots: [],
+      mode: "creating",
+      editingBookingId: null,
+      activeSlots: nextSlotsForDate(selectedDate),
       activeSeatId: null,
       activeSeatLabel: null,
-    }),
+    });
+  },
 
   toggleSlot: (hour) => {
     const { activeSlots } = get();
@@ -203,71 +207,90 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
 
   clearActiveSeat: () => set({ activeSeatId: null, activeSeatLabel: null }),
 
-  addDraft: () => {
-    const { activeSlots, activeSeatId, activeSeatLabel, activeDraftColor, selectedDate, drafts } = get();
+  addBooking: () => {
+    const { activeSlots, activeSeatId, activeSeatLabel, activeBookingColor, selectedDate, bookings } = get();
     if (activeSlots.length === 0 || !activeSeatId) return;
-    const newDraft: Draft = {
+    const newBooking: Booking = {
       id: uid(),
-      color: activeDraftColor,
+      color: activeBookingColor,
       seatId: activeSeatId,
       seatLabel: activeSeatLabel,
       slots: [...activeSlots],
       date: selectedDate,
     };
+    const newBookings = [...bookings, newBooking];
     set({
-      drafts: [...drafts, newDraft],
-      mode: "browsing",
-      editingDraftId: null,
-      activeSlots: [],
+      bookings: newBookings,
+      mode: "creating",
+      editingBookingId: null,
+      activeSlots: nextSlotsForDate(selectedDate),
       activeSeatId: null,
       activeSeatLabel: null,
+      activeBookingColor: pickNextColor(newBookings),
     });
   },
 
   saveChanges: () => {
-    const { editingDraftId, activeSlots, activeSeatId, activeSeatLabel, selectedDate, drafts } = get();
-    if (!editingDraftId) return;
+    const { editingBookingId, activeSlots, activeSeatId, activeSeatLabel, selectedDate, bookings } = get();
+    if (!editingBookingId) return;
+    const newBookings = bookings.map((b) =>
+      b.id === editingBookingId
+        ? { ...b, slots: [...activeSlots], seatId: activeSeatId, seatLabel: activeSeatLabel, date: selectedDate }
+        : b
+    );
     set({
-      drafts: drafts.map((d) =>
-        d.id === editingDraftId
-          ? { ...d, slots: [...activeSlots], seatId: activeSeatId, seatLabel: activeSeatLabel, date: selectedDate }
-          : d
-      ),
-      mode: "browsing",
-      editingDraftId: null,
-      activeSlots: [],
+      bookings: newBookings,
+      mode: "creating",
+      editingBookingId: null,
+      activeSlots: nextSlotsForDate(selectedDate),
       activeSeatId: null,
       activeSeatLabel: null,
+      activeBookingColor: pickNextColor(newBookings),
     });
   },
 
-  deleteDraft: (draftId) => {
-    const { drafts, editingDraftId } = get();
+  deleteBooking: (bookingId) => {
+    const { bookings, editingBookingId, selectedDate } = get();
+    const newBookings = bookings.filter((b) => b.id !== bookingId);
     set({
-      drafts: drafts.filter((d) => d.id !== draftId),
-      ...(editingDraftId === draftId
+      bookings: newBookings,
+      ...(editingBookingId === bookingId
         ? {
-            mode: "browsing" as WorkspaceMode,
-            editingDraftId: null,
-            activeSlots: [],
+            mode: "creating" as WorkspaceMode,
+            editingBookingId: null,
+            activeSlots: nextSlotsForDate(selectedDate),
             activeSeatId: null,
             activeSeatLabel: null,
+            activeBookingColor: pickNextColor(newBookings),
           }
         : {}),
     });
   },
 
-  setCheckoutResults: (results) => set({ checkoutResults: results, drafts: [] }),
+  removeSlotsFromActive: (slots) => {
+    const { activeSlots } = get();
+    const slotsToRemove = new Set(slots);
+    set({ activeSlots: activeSlots.filter((h) => !slotsToRemove.has(h)) });
+  },
+
+  setCheckoutResults: (results) => set({ checkoutResults: results, bookings: [] }),
 
   reset: () =>
     set({
       ...defaultWorkspaceSelection(),
-      mode: "browsing",
-      editingDraftId: null,
+      mode: "creating",
+      editingBookingId: null,
       activeSeatId: null,
       activeSeatLabel: null,
-      activeDraftColor: DRAFT_COLORS[0],
-      drafts: [],
+      activeBookingColor: BOOKING_COLORS[0],
+      bookings: [],
       checkoutResults: null,
     }),
 }));
+
+// ─── Deprecated aliases — remove once all consumers are updated ───────────────
+
+/** @deprecated Use `Booking` instead. */
+export type Draft = Booking;
+/** @deprecated Use `BOOKING_COLORS` instead. */
+export const DRAFT_COLORS = BOOKING_COLORS;

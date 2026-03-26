@@ -80,12 +80,14 @@ Responsibilities:
 - render seat availability
 - support draft creation/editing
 - support checkout preparation
+- reflect the current user's existing bookings as a distinct state in both the
+  slot picker and seat map
 
 Desktop layout:
 
 - left column: controls
 - center column: floorplan
-- right column: `Booking Drafts`
+- right column: `Booking List`
 
 ### Confirm Modal
 
@@ -138,38 +140,34 @@ Required fields:
 
 The floorplan must support these states:
 
-- `Browsing State`
-- `Creating Draft State`
-- `Editing Draft State`
+- `Creating State`
+- `Editing State`
 
-### Browsing State
-
-Required frontend behavior:
-
-- no active editing target
-- visible stored drafts
-- `New Draft`
-- `Checkout` when drafts exist
-
-### Creating Draft State
+### Creating State
 
 Required frontend behavior:
 
-- activated via `New Draft`
+- default state on page load
+- preselect the nearest valid upcoming slot
+- auto-scroll or auto-focus the slot list so the preselected slot is visible
 - supports slot selection
 - supports seat selection
-- supports `Add Draft`
-- supports `Cancel Editing`
+- supports `Add Booking`
+- supports `Submit` when the booking list is non-empty
+- current in-progress booking does not appear in the right-side list until added
+- when the selected date is today, past time slots are greyed out and disabled
+- time slots include lightweight grouping labels such as `Morning`,
+  `Afternoon`, and `Evening`
 
-### Editing Draft State
+### Editing State
 
 Required frontend behavior:
 
-- activated from an existing draft or one of its selected items
-- restores that draft's seat and slot state into the workspace
+- activated only from explicit `Edit` on an existing booking
+- restores that booking's seat and slot state into the workspace
 - supports `Save Changes`
 - supports `Cancel Editing`
-- supports `Delete Draft`
+- supports `Delete`
 
 ## State Model Expectations
 
@@ -178,19 +176,35 @@ The frontend should maintain enough state to support:
 - selected date
 - selected slot set
 - selected seat
-- current mode: browsing / creating / editing
-- active draft id, if editing
-- list of saved drafts
+- current mode: creating / editing
+- active booking id, if editing
+- list of saved bookings
+- current user's successful bookings for the selected space/date context
 
 ## Visual Rules
 
 Required rules:
 
-- each draft has one shared color
-- the same draft color appears on seat and slot selections
-- active draft uses stronger fill
-- saved non-active drafts use weaker fill
-- selected draft items show a checkmark
+- each booking has one shared color
+- the same booking color appears on seat and slot selections
+- active edited booking uses stronger fill
+- saved non-active bookings use weaker fill
+- selected booking items show a checkmark
+- seat and slot selection must stay synchronized in both creating and editing
+  states
+- `my booking` must have a distinct visual state from both `available` and
+  generic `booked`
+- the slot picker should reflect `my booking` where the user already owns the
+  selected time in the current space
+
+## Backend-aligned UX Expectations
+
+- the current frontend direction assumes an `8 hour` maximum per user per space
+  per day for both `library` and `office`
+- the user must be allowed to create additional bookings in the same space on
+  the same day as long as those bookings do not overlap and still respect the
+  daily duration limit
+- frontend behavior should not assume a one-booking-per-space rule
 
 ## Data Strategy
 
