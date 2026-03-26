@@ -1,28 +1,37 @@
 "use client";
 
-import type { Draft, WorkspaceMode } from "@/store/bookingStore";
+import type { Booking, WorkspaceMode } from "@/store/bookingStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface SlotPickerProps {
   selectedDate: string;
   activeSlots: number[];
-  drafts: Draft[];
-  editingDraftId: string | null;
-  activeDraftColor: string;
+  bookings: Booking[];
+  editingBookingId: string | null;
+  activeBookingColor: string;
   /** Whether the user can still add more slots (daily 8h cap). */
   canAddMoreSlots: boolean;
   mode: WorkspaceMode;
-  /** True when the active draft has at least one slot and a seat. */
-  isValidDraft: boolean;
-  hasDrafts: boolean;
+  /** True when the current booking has at least one slot and a seat. */
+  isValidBooking: boolean;
+  hasBookings: boolean;
+  /**
+   * Slots blocked by the currently selected seat's availability.
+   * These slots are greyed out and cannot be selected.
+   */
+  seatBlockedSlots: Set<number>;
+  /**
+   * Feedback message shown when slots were auto-removed due to seat selection.
+   * Null when there is no pending message.
+   */
+  removedSlotsFeedback: string | null;
   onDateChange: (date: string) => void;
   onToggleSlot: (hour: number) => void;
-  onNewDraft: () => void;
-  onAddDraft: () => void;
+  onAddBooking: () => void;
   onSaveChanges: () => void;
   onCancelEditing: () => void;
-  onDeleteDraft: () => void;
+  onDeleteBooking: () => void;
   onCheckout: () => void;
 }
 
@@ -40,20 +49,21 @@ function pad(n: number) {
 export default function SlotPicker({
   selectedDate,
   activeSlots,
-  drafts,
-  editingDraftId,
-  activeDraftColor,
+  bookings,
+  editingBookingId,
+  activeBookingColor,
   canAddMoreSlots,
   mode,
-  isValidDraft,
-  hasDrafts,
+  isValidBooking,
+  hasBookings,
+  seatBlockedSlots,
+  removedSlotsFeedback,
   onDateChange,
   onToggleSlot,
-  onNewDraft,
-  onAddDraft,
+  onAddBooking,
   onSaveChanges,
   onCancelEditing,
-  onDeleteDraft,
+  onDeleteBooking,
   onCheckout,
 }: SlotPickerProps) {
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -72,6 +82,13 @@ export default function SlotPicker({
         />
       </div>
 
+      {/* Removed slots feedback */}
+      {removedSlotsFeedback && (
+        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          {removedSlotsFeedback}
+        </p>
+      )}
+
       {/* Slot blocks */}
       <div className="flex-1 min-h-0">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
@@ -81,23 +98,25 @@ export default function SlotPicker({
           {DAY_HOURS.map((hour) => {
             const isActive = activeSlots.includes(hour);
 
-            // Slot belongs to a stored draft (not the one being edited)
-            const storedDraft = drafts.find(
-              (d) =>
-                d.date === selectedDate &&
-                d.slots.includes(hour) &&
-                d.id !== editingDraftId
+            // Slot belongs to a stored booking (not the one being edited)
+            const storedBooking = bookings.find(
+              (b) =>
+                b.date === selectedDate &&
+                b.slots.includes(hour) &&
+                b.id !== editingBookingId
             );
 
-            const isOtherDraft = !!storedDraft;
+            const isOtherBooking = !!storedBooking;
+            const isSeatBlocked = seatBlockedSlots.has(hour);
             const isDisabled =
-              isOtherDraft ||
-              (mode !== "browsing" && !isActive && !canAddMoreSlots);
+              isOtherBooking ||
+              isSeatBlocked ||
+              (!isActive && !canAddMoreSlots);
 
             const bgColor = isActive
-              ? activeDraftColor
-              : isOtherDraft
-              ? storedDraft.color
+              ? activeBookingColor
+              : isOtherBooking
+              ? storedBooking.color
               : null;
 
             const bgStyle = bgColor
@@ -109,15 +128,13 @@ export default function SlotPicker({
                 key={hour}
                 role="option"
                 aria-selected={isActive}
-                disabled={isDisabled || mode === "browsing"}
+                disabled={isDisabled}
                 onClick={() => !isDisabled && onToggleSlot(hour)}
                 className={[
                   "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors",
                   isDisabled
                     ? "opacity-40 cursor-not-allowed"
-                    : mode !== "browsing"
-                    ? "hover:bg-gray-50 cursor-pointer"
-                    : "cursor-default",
+                    : "hover:bg-gray-50 cursor-pointer",
                   isActive ? "font-medium" : "",
                 ]
                   .filter(Boolean)
@@ -127,11 +144,11 @@ export default function SlotPicker({
                   border: isActive ? `1.5px solid ${bgColor}` : "1.5px solid transparent",
                 }}
               >
-                <span style={isActive ? { color: activeDraftColor } : { color: "#6B7280" }}>
+                <span style={isActive ? { color: activeBookingColor } : { color: "#6B7280" }}>
                   {pad(hour)}:00–{pad(hour + 1)}:00
                 </span>
                 {isActive && (
-                  <span style={{ color: activeDraftColor }} aria-hidden>
+                  <span style={{ color: activeBookingColor }} aria-hidden>
                     ✓
                   </span>
                 )}
@@ -141,42 +158,25 @@ export default function SlotPicker({
         </div>
       </div>
 
-      {/* Draft action buttons */}
+      {/* Booking action buttons */}
       <div className="space-y-2">
-        {mode === "browsing" && (
+        {mode === "creating" && (
           <>
             <button
-              onClick={onNewDraft}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+              onClick={onAddBooking}
+              disabled={!isValidBooking}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              New Draft
+              Add Booking
             </button>
-            {hasDrafts && (
+            {hasBookings && (
               <button
                 onClick={onCheckout}
                 className="w-full bg-gray-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
               >
-                Checkout
+                Submit
               </button>
             )}
-          </>
-        )}
-
-        {mode === "creating" && (
-          <>
-            <button
-              onClick={onAddDraft}
-              disabled={!isValidDraft}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Add Draft
-            </button>
-            <button
-              onClick={onCancelEditing}
-              className="w-full border border-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
           </>
         )}
 
@@ -184,7 +184,7 @@ export default function SlotPicker({
           <>
             <button
               onClick={onSaveChanges}
-              disabled={!isValidDraft}
+              disabled={!isValidBooking}
               className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Save Changes
@@ -193,13 +193,13 @@ export default function SlotPicker({
               onClick={onCancelEditing}
               className="w-full border border-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
             >
-              Cancel
+              Cancel Editing
             </button>
             <button
-              onClick={onDeleteDraft}
+              onClick={onDeleteBooking}
               className="w-full border border-red-200 text-red-600 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
             >
-              Delete Draft
+              Delete
             </button>
           </>
         )}
