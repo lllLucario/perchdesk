@@ -37,11 +37,6 @@ function localDateISO(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-// Kept for call-site compatibility; delegates to localDateISO.
-function todayISO(): string {
-  return localDateISO(new Date());
-}
-
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -52,45 +47,33 @@ function dateISO(date: Date): string {
   return localDateISO(date);
 }
 
-function defaultWorkspaceSelection(now = new Date()) {
+/**
+ * Computes the initial workspace state on page load.
+ *
+ * Returns the selected date and a `hintSlot` — the nearest upcoming slot
+ * that the UI should visually highlight as a starting suggestion.  The hint
+ * is intentionally NOT added to `activeSlots`; the user must click to select.
+ */
+function defaultWorkspaceSelection(now = new Date()): { selectedDate: string; hintSlot: number } {
   const currentHour = now.getHours();
   const exactHour =
     now.getMinutes() === 0 && now.getSeconds() === 0 && now.getMilliseconds() === 0;
 
   if (currentHour < SLOT_START_HOUR) {
-    return {
-      selectedDate: dateISO(now),
-      activeSlots: [SLOT_START_HOUR],
-    };
+    return { selectedDate: dateISO(now), hintSlot: SLOT_START_HOUR };
   }
 
   if (currentHour > SLOT_END_HOUR || (currentHour === SLOT_END_HOUR && !exactHour)) {
-    return {
-      selectedDate: dateISO(addDays(now, 1)),
-      activeSlots: [SLOT_START_HOUR],
-    };
+    return { selectedDate: dateISO(addDays(now, 1)), hintSlot: SLOT_START_HOUR };
   }
 
   const slotHour = exactHour ? currentHour : currentHour + 1;
 
   if (slotHour > SLOT_END_HOUR) {
-    return {
-      selectedDate: dateISO(addDays(now, 1)),
-      activeSlots: [SLOT_START_HOUR],
-    };
+    return { selectedDate: dateISO(addDays(now, 1)), hintSlot: SLOT_START_HOUR };
   }
 
-  return {
-    selectedDate: dateISO(now),
-    activeSlots: [slotHour],
-  };
-}
-
-/** Returns the default pre-selected slots for a given date string. */
-function nextSlotsForDate(date: string, now = new Date()): number[] {
-  const today = dateISO(now);
-  if (date !== today) return [SLOT_START_HOUR];
-  return defaultWorkspaceSelection(now).activeSlots;
+  return { selectedDate: dateISO(now), hintSlot: slotHour };
 }
 
 function uid(): string {
@@ -129,6 +112,14 @@ interface BookingState {
   /** Color assigned to the booking currently being created/edited. */
   activeBookingColor: string;
 
+  /**
+   * The slot that should be visually highlighted as a "start here" hint.
+   * Set once on page load to the nearest upcoming slot; cleared on the first
+   * user interaction (slot toggle, addBooking, cancelEditing, setDate, etc.)
+   * and never restored, so subsequent Creating sessions start with a blank slate.
+   */
+  hintSlot: number | null;
+
   /** All saved bookings for this session (the Booking List). */
   bookings: Booking[];
 
@@ -160,14 +151,16 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
   ...defaultWorkspaceSelection(),
   mode: "creating",
   editingBookingId: null,
+  activeSlots: [],
   activeSeatId: null,
   activeSeatLabel: null,
   activeBookingColor: BOOKING_COLORS[0],
   bookings: [],
   checkoutResults: null,
 
+  // Changing the date dismisses the hint — context has changed.
   setDate: (date) =>
-    set({ selectedDate: date, activeSlots: nextSlotsForDate(date) }),
+    set({ selectedDate: date, activeSlots: [], hintSlot: null }),
 
   enterEditing: (bookingId) => {
     const { bookings } = get();
@@ -185,22 +178,23 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
   },
 
   cancelEditing: () => {
-    const { selectedDate } = get();
     set({
       mode: "creating",
       editingBookingId: null,
-      activeSlots: nextSlotsForDate(selectedDate),
+      activeSlots: [],
+      hintSlot: null,
       activeSeatId: null,
       activeSeatLabel: null,
     });
   },
 
+  // Any slot interaction dismisses the hint.
   toggleSlot: (hour) => {
     const { activeSlots } = get();
     const next = activeSlots.includes(hour)
       ? activeSlots.filter((h) => h !== hour)
       : [...activeSlots, hour].sort((a, b) => a - b);
-    set({ activeSlots: next });
+    set({ activeSlots: next, hintSlot: null });
   },
 
   setActiveSeat: (seatId, seatLabel) => set({ activeSeatId: seatId, activeSeatLabel: seatLabel }),
@@ -223,7 +217,8 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
       bookings: newBookings,
       mode: "creating",
       editingBookingId: null,
-      activeSlots: nextSlotsForDate(selectedDate),
+      activeSlots: [],
+      hintSlot: null,
       activeSeatId: null,
       activeSeatLabel: null,
       activeBookingColor: pickNextColor(newBookings),
@@ -242,7 +237,8 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
       bookings: newBookings,
       mode: "creating",
       editingBookingId: null,
-      activeSlots: nextSlotsForDate(selectedDate),
+      activeSlots: [],
+      hintSlot: null,
       activeSeatId: null,
       activeSeatLabel: null,
       activeBookingColor: pickNextColor(newBookings),
@@ -250,7 +246,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
   },
 
   deleteBooking: (bookingId) => {
-    const { bookings, editingBookingId, selectedDate } = get();
+    const { bookings, editingBookingId } = get();
     const newBookings = bookings.filter((b) => b.id !== bookingId);
     set({
       bookings: newBookings,
@@ -258,7 +254,8 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
         ? {
             mode: "creating" as WorkspaceMode,
             editingBookingId: null,
-            activeSlots: nextSlotsForDate(selectedDate),
+            activeSlots: [],
+            hintSlot: null,
             activeSeatId: null,
             activeSeatLabel: null,
             activeBookingColor: pickNextColor(newBookings),
@@ -280,6 +277,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
       ...defaultWorkspaceSelection(),
       mode: "creating",
       editingBookingId: null,
+      activeSlots: [],
       activeSeatId: null,
       activeSeatLabel: null,
       activeBookingColor: BOOKING_COLORS[0],
