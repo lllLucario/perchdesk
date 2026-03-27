@@ -10,6 +10,12 @@ interface SlotPickerProps {
   selectedDate: string;
   maxDate?: string;
   activeSlots: number[];
+  /**
+   * The slot to visually highlight as a "start here" suggestion on first load.
+   * Not pre-selected — the user must click to add it to activeSlots.
+   * Null after any interaction clears it.
+   */
+  hintSlot: number | null;
   bookings: Booking[];
   editingBookingId: string | null;
   activeBookingColor: string;
@@ -66,6 +72,7 @@ export default function SlotPicker({
   selectedDate,
   maxDate,
   activeSlots,
+  hintSlot,
   bookings,
   editingBookingId,
   activeBookingColor,
@@ -109,15 +116,15 @@ export default function SlotPicker({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll the first active slot into view when date changes or on mount
+  // Auto-scroll: prefer the first active slot; fall back to the hint slot.
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const activeEl = container.querySelector<HTMLElement>(
-      "[data-active-slot='true']"
-    );
-    if (activeEl && typeof activeEl.scrollIntoView === "function") {
-      activeEl.scrollIntoView({ block: "nearest" });
+    const target =
+      container.querySelector<HTMLElement>("[data-active-slot='true']") ??
+      container.querySelector<HTMLElement>("[data-hint-slot='true']");
+    if (target && typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({ block: "nearest" });
     }
   }, [selectedDate]);
 
@@ -179,6 +186,9 @@ export default function SlotPicker({
               isSeatBlocked ||
               (!isActive && !canAddMoreSlots);
 
+            // Hint: shown only when not active, not disabled, and hintSlot matches
+            const isHint = hintSlot === hour && !isActive && !isDisabled;
+
             // Determine background color
             let bgColor: string | null = null;
             if (isActive) {
@@ -208,6 +218,7 @@ export default function SlotPicker({
                   disabled={isDisabled}
                   onClick={() => !isDisabled && onToggleSlot(hour)}
                   data-active-slot={isActive ? "true" : undefined}
+                  data-hint-slot={isHint ? "true" : undefined}
                   className={[
                     "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors",
                     isDisabled
@@ -221,6 +232,8 @@ export default function SlotPicker({
                     ...bgStyle,
                     border: isActive
                       ? `1.5px solid ${bgColor}`
+                      : isHint
+                      ? "1.5px dashed #9CA3AF"
                       : isMyBooking
                       ? `1.5px solid ${MY_BOOKING_COLOR}66`
                       : "1.5px solid transparent",
@@ -240,6 +253,11 @@ export default function SlotPicker({
                   {isActive && (
                     <span style={{ color: activeBookingColor }} aria-hidden>
                       ✓
+                    </span>
+                  )}
+                  {isHint && (
+                    <span className="text-[10px] text-gray-400" aria-label="Suggested start">
+                      ↑ Start here
                     </span>
                   )}
                   {isMyBooking && !isActive && (
