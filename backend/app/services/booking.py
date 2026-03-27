@@ -15,10 +15,30 @@ from app.core.exceptions import (
 )
 from app.models.booking import Booking
 from app.models.seat import Seat
+from app.models.space import Space
 from app.models.space_rules import SpaceRules
 from app.schemas.booking import BookingCreate
 
 AEST = ZoneInfo("Australia/Sydney")
+
+
+def _booking_relations() -> list:
+    """Return eager-load options for seat → space → building.
+
+    Defined as a function (not a module-level constant) so that SQLAlchemy's
+    mapper is fully configured before these options are evaluated.
+    """
+    return [selectinload(Booking.seat).selectinload(Seat.space).selectinload(Space.building)]
+
+
+async def _load_booking_with_relations(
+    db: AsyncSession, booking_id: uuid.UUID
+) -> Booking | None:
+    """Fetch a single booking with seat → space → building eagerly loaded."""
+    result = await db.execute(
+        select(Booking).where(Booking.id == booking_id).options(*_booking_relations())
+    )
+    return result.scalar_one_or_none()
 
 
 def _utc(dt: datetime) -> datetime:
@@ -185,18 +205,16 @@ async def create_booking(
     )
     db.add(booking)
     await db.commit()
-    await db.refresh(booking)
-    return booking
+    # Reload with relationships so BookingResponse can populate enriched fields.
+    loaded = await _load_booking_with_relations(db, booking.id)
+    assert loaded is not None
+    return loaded
 
 
 async def cancel_booking(
     db: AsyncSession, booking_id: uuid.UUID, user_id: uuid.UUID, is_admin: bool = False
 ) -> Booking:
-    booking = await db.get(
-        Booking,
-        booking_id,
-        options=[selectinload(Booking.seat).selectinload(Seat.space)],
-    )
+    booking = await _load_booking_with_relations(db, booking_id)
     if booking is None:
         raise NotFoundError("Booking not found.")
     if not is_admin and booking.user_id != user_id:
@@ -224,14 +242,16 @@ async def cancel_booking(
 
     booking.status = "cancelled"
     await db.commit()
-    await db.refresh(booking)
-    return booking
+    # Reload to reflect updated status with relationships intact.
+    loaded = await _load_booking_with_relations(db, booking_id)
+    assert loaded is not None
+    return loaded
 
 
 async def check_in(
     db: AsyncSession, booking_id: uuid.UUID, user_id: uuid.UUID
 ) -> Booking:
-    booking = await db.get(Booking, booking_id)
+    booking = await _load_booking_with_relations(db, booking_id)
     if booking is None:
         raise NotFoundError("Booking not found.")
     if booking.user_id != user_id:
@@ -250,8 +270,10 @@ async def check_in(
     booking.status = "checked_in"
     booking.checked_in_at = now
     await db.commit()
-    await db.refresh(booking)
-    return booking
+    # Reload to reflect updated status with relationships intact.
+    loaded = await _load_booking_with_relations(db, booking_id)
+    assert loaded is not None
+    return loaded
 
 
 async def list_my_bookings(db: AsyncSession, user_id: uuid.UUID) -> list[Booking]:
@@ -259,19 +281,22 @@ async def list_my_bookings(db: AsyncSession, user_id: uuid.UUID) -> list[Booking
         select(Booking)
         .where(Booking.user_id == user_id)
         .order_by(Booking.start_time.asc())
+        .options(*_booking_relations())
     )
     return list(result.scalars().all())
 
 
 async def list_all_bookings(db: AsyncSession) -> list[Booking]:
-    result = await db.execute(select(Booking).order_by(Booking.start_time.asc()))
+    result = await db.execute(
+        select(Booking).order_by(Booking.start_time.asc()).options(*_booking_relations())
+    )
     return list(result.scalars().all())
 
 
 async def get_booking(
     db: AsyncSession, booking_id: uuid.UUID, user_id: uuid.UUID, is_admin: bool = False
 ) -> Booking:
-    booking = await db.get(Booking, booking_id)
+    booking = await _load_booking_with_relations(db, booking_id)
     if booking is None:
         raise NotFoundError("Booking not found.")
     if not is_admin and booking.user_id != user_id:

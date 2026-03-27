@@ -5,7 +5,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.booking import Booking
+from app.models.building import Building
 from app.models.seat import Seat
+from app.models.space import Space
+from app.models.space_rules import SpaceRules
 from app.models.user import User
 
 
@@ -44,6 +47,12 @@ async def test_create_booking(
     data = resp.json()
     assert data["status"] == "confirmed"
     assert data["seat_id"] == str(library_seat.id)
+    # Enriched fields
+    assert data["seat_label"] == "A1"
+    assert data["space_name"] == "Test Library"
+    assert data["building_name"] is None  # library_space has no building in fixture
+    assert "seat_position" in data
+    assert "space_layout_config" in data
 
 
 @pytest.mark.asyncio
@@ -149,7 +158,13 @@ async def test_list_my_bookings(
         "/api/v1/bookings", headers={"Authorization": f"Bearer {user_token}"}
     )
     assert resp.status_code == 200
-    assert len(resp.json()) == 1
+    bookings = resp.json()
+    assert len(bookings) == 1
+    # Enriched fields present in list response
+    b = bookings[0]
+    assert b["seat_label"] == "A1"
+    assert b["space_name"] == "Test Library"
+    assert b["building_name"] is None
 
 
 @pytest.mark.asyncio
@@ -203,3 +218,51 @@ async def test_admin_bookings_forbidden_for_user(client: AsyncClient, user_token
         headers={"Authorization": f"Bearer {user_token}"},
     )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_booking_enriched_building_name(
+    client: AsyncClient,
+    user_token: str,
+    db_session: AsyncSession,
+):
+    """Booking for a space linked to a building should return building_name."""
+    building = Building(name="Main Campus", address="1 University Ave")
+    db_session.add(building)
+    await db_session.flush()
+
+    space = Space(
+        building_id=building.id, name="Office Floor 3", type="office", capacity=20
+    )
+    db_session.add(space)
+    await db_session.flush()
+
+    rules = SpaceRules(
+        space_id=space.id,
+        max_duration_minutes=480,
+        max_advance_days=7,
+        time_unit="hourly",
+        auto_release_minutes=None,
+    )
+    db_session.add(rules)
+    await db_session.flush()
+
+    seat = Seat(space_id=space.id, label="B5", position={"x": 120, "y": 90})
+    db_session.add(seat)
+    await db_session.commit()
+
+    resp = await client.post(
+        "/api/v1/bookings",
+        json={
+            "seat_id": str(seat.id),
+            "start_time": future(1),
+            "end_time": future(2),
+        },
+        headers={"Authorization": f"Bearer {user_token}"},
+    )
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["seat_label"] == "B5"
+    assert data["space_name"] == "Office Floor 3"
+    assert data["building_name"] == "Main Campus"
+    assert data["building_id"] is not None
