@@ -289,6 +289,7 @@ describe("SlotPicker", () => {
       selectedDate: today,
       maxDate: undefined as string | undefined,
       activeSlots: [] as number[],
+      hintSlot: null as number | null,
       bookings: [] as Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]["bookings"],
       editingBookingId: null as string | null,
       activeBookingColor: "#7C3AED",
