@@ -221,8 +221,52 @@ describe("BookingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Booking History/i }));
 
     await waitFor(() => {
-      expect(screen.queryByRole("button", { name: /check in/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
+      // "Cancel" (exact) and "Check In" action buttons should not exist
+      // Use exact match to avoid matching "Cancelled" filter pill
+      expect(screen.queryByRole("button", { name: /^Check In$/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Cancel$/ })).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Filter controls ───────────────────────────────────────────────────────
+
+  test("status filter hides cards that do not match", async () => {
+    // FUTURE_CONFIRMED → Booked (relative hint: "Starts in Xh")
+    // PAST_CONFIRMED → Check-in Available (relative hint: "Check-in window open")
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED, PAST_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /Booking History/i }));
+
+    // Click the "Booked" filter pill — Check-in Available card should disappear
+    fireEvent.click(screen.getByRole("button", { name: /^Booked$/ }));
+
+    await waitFor(() => {
+      // The "Starts in" hint belongs to the Booked card — still visible
+      expect(screen.getByText(/Starts in/)).toBeInTheDocument();
+      // The Check-in Available card unique hint is gone
+      expect(screen.queryByText("Check-in window open")).not.toBeInTheDocument();
+    });
+  });
+
+  test("All filter shows all active bookings", async () => {
+    // FUTURE_CONFIRMED → relative hint "Starts in Xh"
+    // PAST_CONFIRMED → relative hint "Check-in window open"
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED, PAST_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /^All$/ }));
+
+    // Default is All — both cards visible
+    await waitFor(() => {
+      expect(screen.getByText(/Starts in/)).toBeInTheDocument();
+      expect(screen.getByText("Check-in window open")).toBeInTheDocument();
+    });
+  });
+
+  test("sort dropdown is rendered", async () => {
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => {
+      expect(screen.getByRole("combobox", { name: /sort/i })).toBeInTheDocument();
     });
   });
 
