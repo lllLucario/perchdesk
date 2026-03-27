@@ -13,6 +13,7 @@ import {
   STATUS_BADGE,
   type UXStatus,
 } from "@/lib/bookingStatus";
+import SeatMapCanvas from "@/components/SeatMap/SeatMapCanvas";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,7 +54,6 @@ function applyActiveFilterSort(
 ): AnnotatedBooking[] {
   const filtered =
     filter === "All" ? items : items.filter(({ uxStatus }) => uxStatus === filter);
-
   return [...filtered].sort((a, b) => {
     switch (sort) {
       case "Start time: soonest":
@@ -75,7 +75,6 @@ function applyHistoryFilterSort(
 ): AnnotatedBooking[] {
   const filtered =
     filter === "All" ? items : items.filter(({ uxStatus }) => uxStatus === filter);
-
   return [...filtered].sort((a, b) => {
     switch (sort) {
       case "Most recent":
@@ -111,7 +110,6 @@ function ControlRow<S extends string>({
 }: FilterRowProps<S>) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
-      {/* Status filter pills */}
       <div className="flex flex-wrap gap-1.5">
         {["All", ...filters].map((f) => (
           <button
@@ -127,8 +125,6 @@ function ControlRow<S extends string>({
           </button>
         ))}
       </div>
-
-      {/* Sort dropdown */}
       <div className="sm:ml-auto shrink-0">
         <select
           value={activeSort}
@@ -147,14 +143,184 @@ function ControlRow<S extends string>({
   );
 }
 
+// ─── Booking detail modal ─────────────────────────────────────────────────────
+
+interface BookingDetailModalProps {
+  booking: Booking;
+  uxStatus: UXStatus;
+  onClose: () => void;
+}
+
+function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("en-AU", {
+    timeZone: "Australia/Sydney",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalProps) {
+  const cancelBooking = useCancelBooking();
+  const checkIn = useCheckIn();
+
+  const dateLabel = formatDateLabel(booking.start_time);
+  const timeRange = `${formatTimeLabel(booking.start_time)}–${formatTimeLabel(booking.end_time)}`;
+  const duration = formatDuration(booking.start_time, booking.end_time);
+
+  const layoutCfg = booking.space_layout_config as {
+    width?: number;
+    height?: number;
+    grid_size?: number;
+    background_image?: string | null;
+  } | null;
+
+  const canvasWidth = layoutCfg?.width ?? 800;
+  const canvasHeight = layoutCfg?.height ?? 600;
+  const gridSize = layoutCfg?.grid_size ?? 30;
+  const backgroundImage = layoutCfg?.background_image ?? null;
+
+  // Construct a minimal Seat object from the enriched booking fields
+  const previewSeat = {
+    id: booking.seat_id,
+    space_id: booking.space_id,
+    label: booking.seat_label,
+    position: booking.seat_position,
+    status: "available" as const,
+    attributes: null,
+  };
+
+  const availabilityMap: Record<string, "available" | "booked" | "my_booking"> = {
+    [booking.seat_id]: "my_booking",
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b">
+          <h2 className="text-base font-semibold text-gray-900">Booking Details</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4 space-y-4">
+          {/* Meta */}
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="font-medium text-gray-900">{booking.space_name}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[uxStatus]}`}>
+                {uxStatus}
+              </span>
+            </div>
+            {booking.building_name && (
+              <p className="text-sm text-gray-500 mb-1">{booking.building_name}</p>
+            )}
+            <p className="text-sm text-gray-700">
+              {dateLabel} · {timeRange} · Seat {booking.seat_label} · {duration}
+            </p>
+          </div>
+
+          {/* Detail fields */}
+          <dl className="text-sm space-y-1 text-gray-600">
+            <div className="flex gap-2">
+              <dt className="text-gray-400 w-28 shrink-0">Booking ID</dt>
+              <dd className="font-mono text-xs break-all">{booking.id}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-gray-400 w-28 shrink-0">Created</dt>
+              <dd>{formatDateTime(booking.created_at)}</dd>
+            </div>
+            {booking.checked_in_at && (
+              <div className="flex gap-2">
+                <dt className="text-gray-400 w-28 shrink-0">Checked in</dt>
+                <dd>{formatDateTime(booking.checked_in_at)}</dd>
+              </div>
+            )}
+          </dl>
+
+          {/* Floorplan preview */}
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Floorplan preview</p>
+            {layoutCfg !== null ? (
+              <SeatMapCanvas
+                seats={[previewSeat]}
+                mode="user"
+                availabilityMap={availabilityMap}
+                width={canvasWidth}
+                height={canvasHeight}
+                gridSize={gridSize}
+                backgroundImage={backgroundImage}
+                showGrid={backgroundImage === null}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-32 bg-gray-50 border rounded-lg text-sm text-gray-400">
+                No floorplan available for this space
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex justify-between items-center px-6 pb-5 pt-3 border-t gap-3">
+          <button
+            onClick={onClose}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            Close
+          </button>
+          <div className="flex gap-2">
+            {uxStatus === "Check-in Available" && (
+              <button
+                onClick={() => {
+                  checkIn.mutate(booking.id);
+                  onClose();
+                }}
+                disabled={checkIn.isPending}
+                className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              >
+                Check In
+              </button>
+            )}
+            {(uxStatus === "Booked" || uxStatus === "Check-in Available") && (
+              <button
+                onClick={() => {
+                  cancelBooking.mutate(booking.id);
+                  onClose();
+                }}
+                disabled={cancelBooking.isPending}
+                className="text-sm bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Booking card ─────────────────────────────────────────────────────────────
 
 interface BookingCardProps {
   booking: Booking;
   uxStatus: UXStatus;
+  onViewDetails: () => void;
 }
 
-function BookingCard({ booking, uxStatus }: BookingCardProps) {
+function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
   const cancelBooking = useCancelBooking();
   const checkIn = useCheckIn();
 
@@ -187,14 +353,18 @@ function BookingCard({ booking, uxStatus }: BookingCardProps) {
             <span className="mx-1.5 text-gray-300">·</span>
             {duration}
           </p>
-          {hint && (
-            <p className="text-xs text-gray-500 mt-1">{hint}</p>
-          )}
+          {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
         </div>
       </div>
 
       {/* Action buttons */}
       <div className="flex gap-2 mt-3 flex-wrap">
+        <button
+          onClick={onViewDetails}
+          className="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100"
+        >
+          View Details
+        </button>
         {uxStatus === "Booked" && (
           <button
             onClick={() => cancelBooking.mutate(booking.id)}
@@ -222,8 +392,6 @@ function BookingCard({ booking, uxStatus }: BookingCardProps) {
             </button>
           </>
         )}
-        {/* In Use: no action buttons */}
-        {/* History statuses: no action buttons */}
       </div>
     </div>
   );
@@ -270,16 +438,15 @@ function HistoryEmpty({ filtered }: { filtered: boolean }) {
 
 export default function BookingsPage() {
   const [activeTab, setActiveTab] = useState<Tab>("active");
-
   const [activeFilter, setActiveFilter] = useState<UXStatus | "All">("All");
   const [activeSort, setActiveSort] = useState<ActiveSort>("Start time: soonest");
   const [historyFilter, setHistoryFilter] = useState<UXStatus | "All">("All");
   const [historySort, setHistorySort] = useState<HistorySort>("Most recent");
+  const [modalBooking, setModalBooking] = useState<AnnotatedBooking | null>(null);
 
   const { data: bookings, isLoading } = useBookings();
 
   const now = new Date();
-
   const annotated = (bookings ?? []).map((b) => ({
     booking: b,
     uxStatus: deriveUXStatus(b, now),
@@ -339,8 +506,13 @@ export default function BookingsPage() {
             <ActiveEmpty filtered={activeFilter !== "All"} />
           ) : (
             <div className="space-y-3">
-              {visibleActive.map(({ booking, uxStatus }) => (
-                <BookingCard key={booking.id} booking={booking} uxStatus={uxStatus} />
+              {visibleActive.map((item) => (
+                <BookingCard
+                  key={item.booking.id}
+                  booking={item.booking}
+                  uxStatus={item.uxStatus}
+                  onViewDetails={() => setModalBooking(item)}
+                />
               ))}
             </div>
           )}
@@ -362,12 +534,26 @@ export default function BookingsPage() {
             <HistoryEmpty filtered={historyFilter !== "All"} />
           ) : (
             <div className="space-y-3">
-              {visibleHistory.map(({ booking, uxStatus }) => (
-                <BookingCard key={booking.id} booking={booking} uxStatus={uxStatus} />
+              {visibleHistory.map((item) => (
+                <BookingCard
+                  key={item.booking.id}
+                  booking={item.booking}
+                  uxStatus={item.uxStatus}
+                  onViewDetails={() => setModalBooking(item)}
+                />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {/* Detail modal */}
+      {modalBooking && (
+        <BookingDetailModal
+          booking={modalBooking.booking}
+          uxStatus={modalBooking.uxStatus}
+          onClose={() => setModalBooking(null)}
+        />
       )}
     </div>
   );

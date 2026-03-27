@@ -32,6 +32,18 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
+// SeatMapCanvas uses SVG; mock it to a simple placeholder in tests
+jest.mock("@/components/SeatMap/SeatMapCanvas", () => ({
+  __esModule: true,
+  default: ({ seats }: { seats: { label: string }[] }) => (
+    <div data-testid="floorplan-preview">
+      {seats.map((s) => (
+        <span key={s.label}>{s.label}</span>
+      ))}
+    </div>
+  ),
+}));
+
 // ─── Shared mock data ─────────────────────────────────────────────────────────
 
 const ENRICHED_BASE = {
@@ -55,6 +67,8 @@ const FUTURE_CONFIRMED = {
   start_time: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
   end_time: new Date(Date.now() + 3 * 3600 * 1000).toISOString(),
   status: "confirmed",
+  // Provide a non-null layout_config so the floorplan preview renders
+  space_layout_config: { width: 400, height: 300, grid_size: 30 },
 };
 
 /** start_time in the past, end_time in the future, confirmed → Check-in Available */
@@ -267,6 +281,82 @@ describe("BookingsPage", () => {
     await renderBookings();
     await waitFor(() => {
       expect(screen.getByRole("combobox", { name: /sort/i })).toBeInTheDocument();
+    });
+  });
+
+  // ── Detail modal ──────────────────────────────────────────────────────────
+
+  test("View Details opens the booking detail modal", async () => {
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /View Details/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Booking Details")).toBeInTheDocument();
+    });
+  });
+
+  test("modal shows booking fields", async () => {
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /View Details/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Booking Details")).toBeInTheDocument();
+      // Booking ID is unique to the modal
+      expect(screen.getByText("Booking ID")).toBeInTheDocument();
+      // Booking ID value appears in modal
+      expect(screen.getByText(FUTURE_CONFIRMED.id)).toBeInTheDocument();
+    });
+  });
+
+  test("modal shows floorplan preview", async () => {
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /View Details/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("floorplan-preview")).toBeInTheDocument();
+    });
+  });
+
+  test("modal Close button dismisses modal", async () => {
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /View Details/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+    await waitFor(() => screen.getByText("Booking Details"));
+
+    // Click the text "Close" button in the footer (not the X icon which also has aria-label=Close)
+    fireEvent.click(screen.getByText("Close"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Booking Details")).not.toBeInTheDocument();
+    });
+  });
+
+  test("history modal has no Check In or Cancel action buttons", async () => {
+    mockApi.get.mockResolvedValue([EXPIRED]);
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /Booking History/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /Booking History/i }));
+    await waitFor(() => screen.getByRole("button", { name: /View Details/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Booking Details")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Check In$/ })).not.toBeInTheDocument();
+      // Only "Close" action button in footer (modal's Cancel action won't exist for history)
+      expect(screen.queryByRole("button", { name: /^Cancel$/ })).not.toBeInTheDocument();
     });
   });
 
