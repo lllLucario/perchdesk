@@ -897,7 +897,12 @@ async def test_non_overlapping_booking_same_space_allowed(
 async def test_daily_duration_limit_enforced(
     db_session: AsyncSession, test_user: User, space_with_rules: Space
 ):
-    """A user cannot exceed the space's max_duration_minutes total per day."""
+    """A user cannot exceed the space's max_duration_minutes total per day.
+
+    Times are anchored to AEST calendar days (tomorrow 09:00–17:00 AEST, then
+    17:00–18:00 AEST) so the test is deterministic regardless of when it runs —
+    both slots always fall on the same AEST calendar day.
+    """
     # space_with_rules has max_duration_minutes=480 (8 hours)
     seat1 = Seat(space_id=space_with_rules.id, label="Z1", position={"x": 0, "y": 0})
     seat2 = Seat(space_id=space_with_rules.id, label="Z2", position={"x": 30, "y": 0})
@@ -906,18 +911,27 @@ async def test_daily_duration_limit_enforced(
     await db_session.refresh(seat1)
     await db_session.refresh(seat2)
 
+    # Build AEST-anchored times: tomorrow 09:00 → 17:00 (8 h) and 17:00 → 18:00 (1 h)
+    tomorrow_aest = (datetime.now(AEST) + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    start1 = tomorrow_aest.replace(hour=9).astimezone(UTC)
+    end1 = tomorrow_aest.replace(hour=17).astimezone(UTC)   # 8 h — hits exact limit
+    start2 = tomorrow_aest.replace(hour=17).astimezone(UTC)
+    end2 = tomorrow_aest.replace(hour=18).astimezone(UTC)   # 1 additional hour
+
     # Book 8 hours on seat1 (hits the 480-min limit exactly)
     await booking_service.create_booking(
         db_session,
         test_user.id,
-        BookingCreate(seat_id=seat1.id, start_time=_future(1), end_time=_future(9)),
+        BookingCreate(seat_id=seat1.id, start_time=start1, end_time=end1),
     )
-    # Any additional booking on the same day should fail
+    # Any additional booking on the same AEST day should fail
     with pytest.raises(BookingRuleViolationError, match="daily limit"):
         await booking_service.create_booking(
             db_session,
             test_user.id,
-            BookingCreate(seat_id=seat2.id, start_time=_future(9), end_time=_future(10)),
+            BookingCreate(seat_id=seat2.id, start_time=start2, end_time=end2),
         )
 
 
