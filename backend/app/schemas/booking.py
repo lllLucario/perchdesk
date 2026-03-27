@@ -35,11 +35,26 @@ class BookingResponse(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def extract_nested(cls, v: Any) -> Any:
-        """Flatten ORM relationships into response fields when given an ORM object."""
+        """Flatten ORM relationships into response fields when given an ORM object.
+
+        Raises ValueError if the seat or space relation is not loaded — this
+        indicates a missing eager-load in the service layer and should fail
+        loudly rather than fabricating placeholder data.
+        """
         if not isinstance(v, dict):
             seat = getattr(v, "seat", None)
-            space = getattr(seat, "space", None) if seat else None
-            building = getattr(space, "building", None) if space else None
+            if seat is None:
+                raise ValueError(
+                    f"BookingResponse requires the seat relation to be loaded "
+                    f"(booking {v.id}). Use _load_booking_with_relations()."
+                )
+            space = getattr(seat, "space", None)
+            if space is None:
+                raise ValueError(
+                    f"BookingResponse requires the seat.space relation to be loaded "
+                    f"(booking {v.id}). Use _load_booking_with_relations()."
+                )
+            building = getattr(space, "building", None)
             return {
                 "id": v.id,
                 "user_id": v.user_id,
@@ -49,11 +64,11 @@ class BookingResponse(BaseModel):
                 "status": v.status,
                 "checked_in_at": v.checked_in_at,
                 "created_at": v.created_at,
-                "seat_label": seat.label if seat else "",
-                "seat_position": seat.position if seat else {},
-                "space_id": space.id if space else v.seat_id,
-                "space_name": space.name if space else "",
-                "space_layout_config": space.layout_config if space else None,
+                "seat_label": seat.label,
+                "seat_position": seat.position,
+                "space_id": space.id,
+                "space_name": space.name,
+                "space_layout_config": space.layout_config,
                 "building_id": building.id if building else None,
                 "building_name": building.name if building else None,
             }
