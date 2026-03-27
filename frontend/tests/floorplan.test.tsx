@@ -79,10 +79,44 @@ describe("bookingStore", () => {
     expect(useBookingStore.getState().mode).toBe("creating");
   });
 
-  test("reset starts in creating mode with a default upcoming slot", () => {
+  test("reset starts in creating mode with a hint slot and no pre-selected slots", () => {
     const state = useBookingStore.getState();
     expect(state.mode).toBe("creating");
-    expect(state.activeSlots.length).toBe(1);
+    // activeSlots starts empty — the hint is a visual cue only, not a selection
+    expect(state.activeSlots).toHaveLength(0);
+    expect(state.hintSlot).not.toBeNull();
+  });
+
+  test("hintSlot is cleared after first slot interaction", () => {
+    expect(useBookingStore.getState().hintSlot).not.toBeNull();
+    useBookingStore.getState().toggleSlot(9);
+    expect(useBookingStore.getState().hintSlot).toBeNull();
+  });
+
+  test("hintSlot is cleared after addBooking", () => {
+    useBookingStore.setState({ activeSlots: [9], hintSlot: 9 });
+    useBookingStore.getState().setActiveSeat("s1", "A1");
+    useBookingStore.getState().addBooking();
+    expect(useBookingStore.getState().hintSlot).toBeNull();
+  });
+
+  test("hintSlot is cleared after cancelEditing", () => {
+    useBookingStore.setState({ hintSlot: 10 });
+    useBookingStore.getState().cancelEditing();
+    expect(useBookingStore.getState().hintSlot).toBeNull();
+  });
+
+  test("hintSlot is cleared after setDate", () => {
+    expect(useBookingStore.getState().hintSlot).not.toBeNull();
+    useBookingStore.getState().setDate("2026-04-01");
+    expect(useBookingStore.getState().hintSlot).toBeNull();
+  });
+
+  test("reset restores hintSlot", () => {
+    useBookingStore.getState().toggleSlot(9); // clears hint
+    expect(useBookingStore.getState().hintSlot).toBeNull();
+    useBookingStore.getState().reset();
+    expect(useBookingStore.getState().hintSlot).not.toBeNull();
   });
 
   test("initial activeBookingColor is the first BOOKING_COLOR", () => {
@@ -255,6 +289,7 @@ describe("SlotPicker", () => {
       selectedDate: today,
       maxDate: undefined as string | undefined,
       activeSlots: [] as number[],
+      hintSlot: null as number | null,
       bookings: [] as Parameters<typeof import("@/components/Floorplan/SlotPicker")["default"]>[0]["bookings"],
       editingBookingId: null as string | null,
       activeBookingColor: "#7C3AED",
