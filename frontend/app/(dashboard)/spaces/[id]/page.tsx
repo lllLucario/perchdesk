@@ -58,6 +58,7 @@ export default function SpaceFloorplanPage({
     mode,
     selectedDate,
     activeSlots,
+    hintSlot,
     activeSeatId,
     activeSeatLabel,
     activeBookingColor,
@@ -159,6 +160,22 @@ export default function SpaceFloorplanPage({
         set.add(hour);
       }
     });
+    return set;
+  }, [hourQueries]);
+
+  /**
+   * Seat IDs where the current user has any existing booking on the selected date.
+   * Derived from the always-running hourly queries so the seat map can block
+   * these seats even before the user selects time slots.
+   */
+  const myBookingSeatIds = useMemo((): Set<string> => {
+    const set = new Set<string>();
+    for (const query of hourQueries) {
+      if (!query.data) continue;
+      for (const s of query.data) {
+        if (s.booking_status === "my_booking") set.add(s.id);
+      }
+    }
     return set;
   }, [hourQueries]);
 
@@ -264,9 +281,10 @@ export default function SpaceFloorplanPage({
     if (isOtherBooking) return;
     if (seat.status !== "available") return;
     if (availabilityMap?.[seat.id] === "booked") return;
-    // `my_booking` seats are already owned by the user for the selected time;
-    // they must not be re-selected as a fresh available seat.
-    if (availabilityMap?.[seat.id] === "my_booking") return;
+    // `my_booking` seats are already owned by the user; block via the
+    // time-range availability map (when slots are selected) or via the
+    // always-on hourly queries (when no slots are selected yet).
+    if (availabilityMap?.[seat.id] === "my_booking" || myBookingSeatIds.has(seat.id)) return;
 
     if (activeSeatId === seat.id) {
       clearActiveSeat();
@@ -325,6 +343,7 @@ export default function SpaceFloorplanPage({
         <SlotPicker
           selectedDate={selectedDate}
           activeSlots={activeSlots}
+          hintSlot={hintSlot}
           bookings={bookings}
           editingBookingId={editingBookingId}
           activeBookingColor={activeBookingColor}
