@@ -145,6 +145,10 @@ export function useBookings() {
   return useQuery<Booking[]>({
     queryKey: ["bookings"],
     queryFn: () => api.get<Booking[]>("/api/v1/bookings"),
+    // Re-fetch every minute so UX statuses derived from the current time
+    // (Booked → Check-in Available, In Use → Completed) stay up to date
+    // without requiring a full page reload.
+    refetchInterval: 60_000,
   });
 }
 
