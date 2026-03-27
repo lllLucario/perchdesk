@@ -47,6 +47,14 @@ export interface Booking {
   status: string;
   checked_in_at: string | null;
   created_at: string;
+  // Enriched context fields from backend
+  seat_label: string;
+  seat_position: { x: number; y: number };
+  space_id: string;
+  space_name: string;
+  space_layout_config: Record<string, unknown> | null;
+  building_id: string | null;
+  building_name: string | null;
 }
 
 export interface SpaceRules {
