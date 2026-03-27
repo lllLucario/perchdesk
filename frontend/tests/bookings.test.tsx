@@ -360,6 +360,27 @@ describe("BookingsPage", () => {
     });
   });
 
+  test("modal stays open and shows error when cancel mutation fails", async () => {
+    mockApi.get.mockResolvedValue([FUTURE_CONFIRMED]);
+    mockApi.patch.mockRejectedValue(new Error("Cannot cancel: booking already started"));
+
+    await renderBookings();
+    await waitFor(() => screen.getByRole("button", { name: /View Details/i }));
+    fireEvent.click(screen.getByRole("button", { name: /View Details/i }));
+    await waitFor(() => screen.getByText("Booking Details"));
+
+    // Two Cancel buttons exist (card + modal footer); click the modal footer one (last)
+    const cancelBtns = screen.getAllByRole("button", { name: /^Cancel$/ });
+    fireEvent.click(cancelBtns[cancelBtns.length - 1]);
+
+    await waitFor(() => {
+      // Modal is still open
+      expect(screen.getByText("Booking Details")).toBeInTheDocument();
+      // Error message is visible
+      expect(screen.getByText("Cannot cancel: booking already started")).toBeInTheDocument();
+    });
+  });
+
   // ── Mutation wiring ───────────────────────────────────────────────────────
 
   test("Cancel button calls PATCH cancel endpoint", async () => {
