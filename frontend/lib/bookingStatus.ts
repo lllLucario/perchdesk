@@ -23,6 +23,7 @@ export function deriveUXStatus(booking: Booking, now: Date = new Date()): UXStat
 
   switch (booking.status) {
     case "confirmed":
+      if (now >= end) return "Completed";
       return now >= start ? "Check-in Available" : "Booked";
     case "checked_in":
       return now < end ? "In Use" : "Completed";

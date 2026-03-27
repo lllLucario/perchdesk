@@ -57,12 +57,12 @@ const FUTURE_CONFIRMED = {
   status: "confirmed",
 };
 
-/** start_time in the past, still confirmed → Check-in Available */
+/** start_time in the past, end_time in the future, confirmed → Check-in Available */
 const PAST_CONFIRMED = {
   ...ENRICHED_BASE,
   id: "b-past-confirmed",
-  start_time: "2026-03-20T09:00:00Z",
-  end_time: "2026-03-20T10:00:00Z",
+  start_time: new Date(Date.now() - 1 * 3600 * 1000).toISOString(),
+  end_time: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
   status: "confirmed",
 };
 
@@ -276,9 +276,14 @@ describe("bookingStatus utilities", () => {
       expect(deriveUXStatus(b, now)).toBe("Booked");
     });
 
-    test("confirmed + start in past → Check-in Available", () => {
+    test("confirmed + start in past, end in future → Check-in Available", () => {
       const b = { ...BASE, status: "confirmed", start_time: "2026-03-27T09:00:00Z", end_time: "2026-03-27T11:00:00Z" };
       expect(deriveUXStatus(b, now)).toBe("Check-in Available");
+    });
+
+    test("confirmed + start and end both in past → Completed", () => {
+      const b = { ...BASE, status: "confirmed", start_time: "2026-03-27T07:00:00Z", end_time: "2026-03-27T09:00:00Z" };
+      expect(deriveUXStatus(b, now)).toBe("Completed");
     });
 
     test("checked_in + end in future → In Use", () => {
