@@ -116,6 +116,11 @@ async def create_booking(
     if end_time <= start_time:
         raise BookingRuleViolationError("End time must be after start time.")
 
+    # 4. Validate time_unit alignment before computing duration so misaligned
+    # slots are rejected with a meaningful message even when DST transitions
+    # cause the raw duration to exceed the max_duration_minutes limit.
+    _validate_time_unit(start_time, end_time, rules.time_unit)
+
     duration_minutes = (end_time - start_time).total_seconds() / 60
     if duration_minutes > rules.max_duration_minutes:
         raise BookingRuleViolationError(
@@ -127,9 +132,6 @@ async def create_booking(
         raise BookingRuleViolationError(
             f"Cannot book more than {rules.max_advance_days} days in advance."
         )
-
-    # 4. Validate time_unit alignment
-    _validate_time_unit(start_time, end_time, rules.time_unit)
 
     # 5. Check user-level constraints within the same space
     # (a) No time-overlapping active bookings for the same user in the same space
