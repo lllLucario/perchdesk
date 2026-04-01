@@ -35,11 +35,17 @@ jest.mock("@/store/authStore", () => ({
 }));
 
 // locationStore is reset per test via setState
-import { useLocationStore } from "@/store/locationStore";
+import { useLocationStore, type LocationPermission, type Coordinates } from "@/store/locationStore";
 
 const mockRequestLocation = jest.fn();
 
-function setLocationState(overrides: Parameters<typeof useLocationStore.setState>[0]) {
+function setLocationState(overrides: {
+  permission?: LocationPermission;
+  coordinates?: Coordinates | null;
+  acquiredAt?: number | null;
+  requestLocation?: () => void;
+  clearLocation?: () => void;
+}) {
   useLocationStore.setState({
     permission: "idle",
     coordinates: null,
