@@ -211,6 +211,38 @@ describe("HomePage — authenticated", () => {
     );
   });
 
+  test("For You shows location fallback when permission is denied", async () => {
+    useLocationStore.setState({
+      permission: "denied",
+      coordinates: null,
+      acquiredAt: null,
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApiResolved();
+    await renderHome();
+    await waitFor(() =>
+      expect(screen.getByText(/Location unavailable/)).toBeInTheDocument()
+    );
+    const link = screen.getByRole("link", { name: "Browse buildings" });
+    expect(link).toHaveAttribute("href", "/buildings");
+  });
+
+  test("For You shows location fallback when permission is unavailable", async () => {
+    useLocationStore.setState({
+      permission: "unavailable",
+      coordinates: null,
+      acquiredAt: null,
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApiResolved();
+    await renderHome();
+    await waitFor(() =>
+      expect(screen.getByText(/Location unavailable/)).toBeInTheDocument()
+    );
+  });
+
   test("For You shows recommendation cards when location granted", async () => {
     useLocationStore.setState({
       permission: "granted",
