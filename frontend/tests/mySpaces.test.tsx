@@ -211,3 +211,29 @@ describe("MySpacesPage — location unavailable", () => {
     expect(screen.getByText(/Location is unavailable/)).toBeInTheDocument();
   });
 });
+
+describe("MySpacesPage — nearby API error", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setLocationState({
+      permission: "granted",
+      coordinates: { latitude: -33.8688, longitude: 151.2093, accuracy: 10 },
+      acquiredAt: Date.now(),
+    });
+    mockApi.get.mockRejectedValue(new Error("Network error"));
+  });
+
+  test("shows error message instead of empty state when API fails", async () => {
+    await renderMySpaces();
+    await waitFor(() =>
+      expect(screen.getByText(/Could not load nearby spaces/)).toBeInTheDocument()
+    );
+  });
+
+  test("does not show 'No nearby spaces found' when there is an error", async () => {
+    await renderMySpaces();
+    await waitFor(() =>
+      expect(screen.queryByText(/No nearby spaces found/)).not.toBeInTheDocument()
+    );
+  });
+});

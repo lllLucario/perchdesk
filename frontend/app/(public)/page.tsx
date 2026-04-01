@@ -18,7 +18,7 @@ export default function HomePage() {
     isAuthenticated && permission === "granted" && coordinates !== null
       ? { lat: coordinates.latitude, lng: coordinates.longitude, limit: 4 }
       : null;
-  const { data: nearbyRecs, isLoading: nearbyLoading } = useNearbySpaces(nearbyParams);
+  const { data: nearbyRecs, isLoading: nearbyLoading, isError: nearbyError } = useNearbySpaces(nearbyParams);
   const { data: bookings, isLoading: bookingsLoading } = useBookings();
 
   // Recent spaces: deduplicated by space_id, most-recent-booking first, up to 2.
@@ -140,7 +140,17 @@ export default function HomePage() {
                 </p>
               )}
 
-              {permission === "granted" && recentForYou.length === 0 && recsForYou.length === 0 && (
+              {permission === "granted" && nearbyError && (
+                <p className="text-sm text-red-400">
+                  Could not load nearby spaces.{" "}
+                  <Link href="/my-spaces" className="underline hover:text-red-500">
+                    Try again
+                  </Link>
+                  .
+                </p>
+              )}
+
+              {permission === "granted" && !nearbyError && recentForYou.length === 0 && recsForYou.length === 0 && (
                 <p className="text-sm text-gray-400">No personalised spaces yet.</p>
               )}
             </>

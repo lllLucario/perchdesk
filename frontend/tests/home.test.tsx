@@ -193,6 +193,24 @@ describe("HomePage — authenticated", () => {
     expect(screen.getByText("Booked recently")).toBeInTheDocument();
   });
 
+  test("For You shows error message when nearby API fails", async () => {
+    useLocationStore.setState({
+      permission: "granted",
+      coordinates: { latitude: -33.8688, longitude: 151.2093, accuracy: 10 },
+      acquiredAt: Date.now(),
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.includes("nearby")) return Promise.reject(new Error("Network error"));
+      return Promise.resolve([]);
+    });
+    await renderHome();
+    await waitFor(() =>
+      expect(screen.getByText(/Could not load nearby spaces/)).toBeInTheDocument()
+    );
+  });
+
   test("For You shows recommendation cards when location granted", async () => {
     useLocationStore.setState({
       permission: "granted",

@@ -16,7 +16,7 @@ function RecommendedSection() {
       ? { lat: coordinates.latitude, lng: coordinates.longitude, limit: 8 }
       : null;
 
-  const { data: recommendations, isLoading } = useNearbySpaces(nearbyParams);
+  const { data: recommendations, isLoading, isError } = useNearbySpaces(nearbyParams);
   const router = useRouter();
 
   if (permission === "idle") {
@@ -77,6 +77,22 @@ function RecommendedSection() {
           <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
         ))}
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <p className="text-sm text-red-400">
+        Could not load nearby spaces. Check your connection and{" "}
+        <button onClick={() => window.location.reload()} className="underline hover:text-red-500">
+          try again
+        </button>
+        , or{" "}
+        <Link href="/buildings" className="underline hover:text-red-500">
+          browse buildings
+        </Link>
+        .
+      </p>
     );
   }
 
