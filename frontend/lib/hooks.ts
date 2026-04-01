@@ -79,6 +79,52 @@ export interface SeatAvailability extends Seat {
   booking_status: "available" | "booked" | "my_booking";
 }
 
+/** Shape returned by GET /api/v1/spaces/nearby */
+export interface SpaceRecommendationResult {
+  space_id: string;
+  space_name: string;
+  space_type: string;
+  capacity: number;
+  building_id: string;
+  building_name: string;
+  building_address: string;
+  building_latitude: number;
+  building_longitude: number;
+  distance_km: number;
+  reason: "near_you" | "closest_available";
+  available_seat_count: number;
+}
+
+// ----- Nearby spaces recommendation -----
+
+export interface NearbySpacesParams {
+  lat: number;
+  lng: number;
+  startTime?: string;
+  endTime?: string;
+  type?: "library" | "office";
+  limit?: number;
+}
+
+export function useNearbySpaces(params: NearbySpacesParams | null) {
+  return useQuery<SpaceRecommendationResult[]>({
+    queryKey: ["spaces", "nearby", params],
+    queryFn: () => {
+      if (!params) return Promise.resolve([]);
+      const qs = new URLSearchParams({
+        lat: String(params.lat),
+        lng: String(params.lng),
+        ...(params.startTime ? { start_time: params.startTime } : {}),
+        ...(params.endTime ? { end_time: params.endTime } : {}),
+        ...(params.type ? { type: params.type } : {}),
+        ...(params.limit != null ? { limit: String(params.limit) } : {}),
+      });
+      return api.get<SpaceRecommendationResult[]>(`/api/v1/spaces/nearby?${qs}`);
+    },
+    enabled: params !== null,
+  });
+}
+
 // ----- Buildings -----
 
 export function useBuildings() {
