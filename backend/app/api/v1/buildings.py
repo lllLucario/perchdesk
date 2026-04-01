@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.user import User
-from app.schemas.building import BuildingCreate, BuildingResponse
+from app.schemas.building import BuildingCreate, BuildingResponse, BuildingUpdate
 from app.schemas.space import SpaceResponse
 from app.services import building as building_service
 
@@ -46,3 +46,13 @@ async def create_building(
     _: User = Depends(require_admin),
 ) -> BuildingResponse:
     return await building_service.create_building(db, data)  # type: ignore[return-value]
+
+
+@router.put("/{building_id}", response_model=BuildingResponse)
+async def update_building(
+    building_id: uuid.UUID,
+    data: BuildingUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> BuildingResponse:
+    return await building_service.update_building(db, building_id, data)  # type: ignore[return-value]
