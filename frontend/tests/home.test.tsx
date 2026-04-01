@@ -193,6 +193,64 @@ describe("HomePage — authenticated", () => {
     expect(screen.getByText("Booked recently")).toBeInTheDocument();
   });
 
+  test("For You orders recent cards by created_at DESC, not start_time", async () => {
+    // bk1 has an earlier created_at but a later start_time.
+    // bk2 has a later created_at but an earlier start_time.
+    // The card for Space B (bk2) should appear before Space A (bk1).
+    const now = Date.now();
+    mockApiResolved({
+      bookings: [
+        {
+          id: "bk1",
+          space_id: "sA",
+          space_name: "Space A",
+          space_type: "library",
+          building_name: "Building X",
+          seat_id: "seat1",
+          start_time: new Date(now + 7 * 24 * 3600 * 1000).toISOString(), // far future
+          end_time: new Date(now + 7 * 24 * 3600 * 1000 + 3600000).toISOString(),
+          status: "confirmed",
+          user_id: "u1",
+          checked_in_at: null,
+          created_at: new Date(now - 2000).toISOString(), // booked earlier
+          seat_label: "A1",
+          seat_position: { x: 0, y: 0 },
+          space_layout_config: null,
+          building_id: "b1",
+        },
+        {
+          id: "bk2",
+          space_id: "sB",
+          space_name: "Space B",
+          space_type: "library",
+          building_name: "Building X",
+          seat_id: "seat2",
+          start_time: new Date(now + 3600 * 1000).toISOString(), // near future
+          end_time: new Date(now + 7200 * 1000).toISOString(),
+          status: "confirmed",
+          user_id: "u1",
+          checked_in_at: null,
+          created_at: new Date(now - 1000).toISOString(), // booked more recently
+          seat_label: "B1",
+          seat_position: { x: 0, y: 0 },
+          space_layout_config: null,
+          building_id: "b1",
+        },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => {
+      expect(screen.getByText("Space A")).toBeInTheDocument();
+      expect(screen.getByText("Space B")).toBeInTheDocument();
+    });
+    const cards = document.querySelectorAll("[data-testid='recent-card'], .flex-shrink-0");
+    const texts = Array.from(cards).map((c) => c.textContent ?? "");
+    const indexA = texts.findIndex((t) => t.includes("Space A"));
+    const indexB = texts.findIndex((t) => t.includes("Space B"));
+    // Space B (more recently booked) must appear before Space A
+    expect(indexB).toBeLessThan(indexA);
+  });
+
   test("For You shows error message when nearby API fails", async () => {
     useLocationStore.setState({
       permission: "granted",

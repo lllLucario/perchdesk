@@ -21,12 +21,17 @@ export default function HomePage() {
   const { data: nearbyRecs, isLoading: nearbyLoading, isError: nearbyError } = useNearbySpaces(nearbyParams);
   const { data: bookings, isLoading: bookingsLoading } = useBookings();
 
-  // Recent spaces: deduplicated by space_id, most-recent-booking first, up to 2.
+  // Recent spaces: deduplicated by space_id, sorted by created_at DESC (most recently
+  // booked first), up to 2. Sorting by created_at rather than start_time ensures that
+  // future bookings with a distant start_time don't displace genuinely recent activity.
   const recentForYou = (() => {
     if (!bookings) return [];
     const seen = new Set<string>();
     const result: typeof bookings = [];
-    for (const b of [...bookings].reverse()) {
+    const sorted = [...bookings].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    for (const b of sorted) {
       if (!seen.has(b.space_id)) {
         seen.add(b.space_id);
         result.push(b);
