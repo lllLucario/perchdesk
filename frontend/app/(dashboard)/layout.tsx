@@ -27,6 +27,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/buildings" className="text-sm text-gray-600 hover:text-gray-900">
             Buildings
           </Link>
+          <Link href="/my-spaces" className="text-sm text-gray-600 hover:text-gray-900">
+            My Spaces
+          </Link>
           <Link href="/bookings" className="text-sm text-gray-600 hover:text-gray-900">
             My Bookings
           </Link>
