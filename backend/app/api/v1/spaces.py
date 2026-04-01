@@ -66,6 +66,8 @@ async def list_nearby_spaces(
         raise BookingRuleViolationError(
             "start_time and end_time must both be provided or both be omitted"
         )
+    if start_time is not None and end_time is not None and end_time <= start_time:
+        raise BookingRuleViolationError("end_time must be after start_time")
     return await space_service.list_nearby_spaces(
         db,
         lat=lat,

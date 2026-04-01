@@ -351,6 +351,28 @@ class TestNearbySpaces:
         )
         assert resp.status_code == 400
 
+    async def test_nearby_reversed_window_returns_400(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        start, end = _future_window()
+        resp = await client.get(
+            "/api/v1/spaces/nearby",
+            params={**SYDNEY, "start_time": end, "end_time": start},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 400
+
+    async def test_nearby_zero_length_window_returns_400(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        start, _ = _future_window()
+        resp = await client.get(
+            "/api/v1/spaces/nearby",
+            params={**SYDNEY, "start_time": start, "end_time": start},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 400
+
     async def test_nearby_empty_when_no_buildings_with_coords(
         self, client: AsyncClient, user_token: str, library_space: Space
     ) -> None:
