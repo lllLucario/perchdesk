@@ -6,7 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.user import User
+from app.core.exceptions import BookingRuleViolationError
 from app.schemas.building import (
+    BuildingBoundsResult,
     BuildingCreate,
     BuildingNearbyResult,
     BuildingResponse,
@@ -52,6 +54,27 @@ async def list_nearby_buildings(
         )
         for b, dist in pairs
     ]
+
+
+# NOTE: /within-bounds must be registered before /{building_id} so FastAPI does
+# not attempt to coerce the literal string "within-bounds" as a UUID.
+@router.get("/within-bounds", response_model=list[BuildingBoundsResult])
+async def list_buildings_within_bounds(
+    min_lat: float = Query(..., ge=-90, le=90, description="South edge of viewport (decimal degrees)"),
+    min_lng: float = Query(..., ge=-180, le=180, description="West edge of viewport (decimal degrees)"),
+    max_lat: float = Query(..., ge=-90, le=90, description="North edge of viewport (decimal degrees)"),
+    max_lng: float = Query(..., ge=-180, le=180, description="East edge of viewport (decimal degrees)"),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[BuildingBoundsResult]:
+    if min_lat > max_lat:
+        raise BookingRuleViolationError("min_lat must be less than or equal to max_lat")
+    if min_lng > max_lng:
+        raise BookingRuleViolationError("min_lng must be less than or equal to max_lng")
+    buildings = await building_service.list_buildings_within_bounds(
+        db, min_lat, min_lng, max_lat, max_lng
+    )
+    return [BuildingBoundsResult.model_validate(b) for b in buildings]
 
 
 @router.get("/{building_id}", response_model=BuildingResponse)
