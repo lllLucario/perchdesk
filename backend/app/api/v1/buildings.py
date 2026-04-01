@@ -1,12 +1,17 @@
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
 from app.models.user import User
-from app.schemas.building import BuildingCreate, BuildingResponse, BuildingUpdate
+from app.schemas.building import (
+    BuildingCreate,
+    BuildingNearbyResult,
+    BuildingResponse,
+    BuildingUpdate,
+)
 from app.schemas.space import SpaceResponse
 from app.services import building as building_service
 
@@ -19,6 +24,34 @@ async def list_buildings(
     _: User = Depends(get_current_user),
 ) -> list[BuildingResponse]:
     return await building_service.list_buildings(db)  # type: ignore[return-value]
+
+
+# NOTE: /nearby must be registered before /{building_id} so FastAPI does not
+# attempt to coerce the literal string "nearby" as a UUID path parameter.
+@router.get("/nearby", response_model=list[BuildingNearbyResult])
+async def list_nearby_buildings(
+    lat: float = Query(..., ge=-90, le=90, description="User latitude in decimal degrees"),
+    lng: float = Query(..., ge=-180, le=180, description="User longitude in decimal degrees"),
+    limit: int = Query(default=20, ge=1, le=50, description="Maximum number of results"),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[BuildingNearbyResult]:
+    pairs = await building_service.list_nearby_buildings(db, lat, lng, limit)
+    return [
+        BuildingNearbyResult(
+            id=b.id,
+            name=b.name,
+            address=b.address,
+            description=b.description,
+            opening_hours=b.opening_hours,
+            facilities=b.facilities,
+            latitude=b.latitude,  # type: ignore[arg-type]
+            longitude=b.longitude,  # type: ignore[arg-type]
+            created_at=b.created_at,
+            distance_km=round(dist, 3),
+        )
+        for b, dist in pairs
+    ]
 
 
 @router.get("/{building_id}", response_model=BuildingResponse)
