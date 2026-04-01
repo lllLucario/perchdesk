@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -39,3 +39,34 @@ class SpaceDetailResponse(SpaceResponse):
     """Full detail shape including embedded seats."""
 
     seats: list[SeatResponse] = []
+
+
+class SpaceRecommendationResult(BaseModel):
+    """A space returned from a nearby recommendation query.
+
+    Carries distance context from the parent building and a single
+    explanation reason for why the space is recommended.
+
+    ``available_seat_count`` is the number of seats that are bookable:
+    - When a time window is given: seats with no conflicting active booking.
+    - Without a time window: seats whose status is ``available``.
+
+    ``reason`` values:
+    - ``"closest_available"`` — time window was provided and the space has
+      at least one bookable seat in that window.
+    - ``"near_you"`` — no time window was provided, or no seats are
+      available in the requested window.
+    """
+
+    space_id: uuid.UUID
+    space_name: str
+    space_type: str
+    capacity: int
+    building_id: uuid.UUID
+    building_name: str
+    building_address: str
+    building_latitude: float
+    building_longitude: float
+    distance_km: float
+    reason: Literal["near_you", "closest_available"]
+    available_seat_count: int
