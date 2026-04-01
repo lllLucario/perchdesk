@@ -414,3 +414,177 @@ class TestUpdateBuilding:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 422
+
+
+class TestNearbyBuildings:
+    # User position: a few metres from building_with_coords (Sydney CBD area).
+    USER_LAT = -33.87
+    USER_LNG = 151.21
+
+    async def test_nearby_requires_auth(self, client: AsyncClient) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby", params={"lat": self.USER_LAT, "lng": self.USER_LNG}
+        )
+        assert resp.status_code == 401
+
+    async def test_nearby_missing_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_nearby_missing_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_nearby_invalid_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": 91.0, "lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_nearby_invalid_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": -181.0},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_nearby_empty_when_no_buildings_have_coords(
+        self, client: AsyncClient, user_token: str, sample_building: Building
+    ) -> None:
+        # sample_building has no coordinates — should not appear in results.
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_nearby_returns_building_with_coords(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        building_with_coords: Building,
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Geo Building"
+
+    async def test_nearby_excludes_buildings_without_coords(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        building_with_coords: Building,
+        sample_building: Building,  # no coords
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        names = [b["name"] for b in resp.json()]
+        assert "Geo Building" in names
+        assert "Sample Building" not in names
+
+    async def test_nearby_response_includes_distance_km(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        building_with_coords: Building,
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()[0]
+        assert "distance_km" in data
+        assert isinstance(data["distance_km"], float)
+        # User is a few metres away — distance should be well under 5 km.
+        assert data["distance_km"] < 5.0
+
+    async def test_nearby_sorted_nearest_first(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+        building_with_coords: Building,  # Sydney ~0 km from user
+    ) -> None:
+        # Add a second building in Melbourne (~714 km from Sydney).
+        far = Building(
+            name="Far Building", address="1 Far St", latitude=-37.8136, longitude=144.9631
+        )
+        db_session.add(far)
+        await db_session.commit()
+
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+        assert data[0]["name"] == "Geo Building"
+        assert data[1]["name"] == "Far Building"
+        assert data[0]["distance_km"] < data[1]["distance_km"]
+
+    async def test_nearby_limit_caps_results(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+    ) -> None:
+        # Insert three buildings with coordinates.
+        for i, (lat, lng) in enumerate(
+            [(-33.8688, 151.2093), (-34.0, 151.0), (-35.0, 150.0)]
+        ):
+            db_session.add(
+                Building(name=f"Building {i}", address=f"{i} St", latitude=lat, longitude=lng)
+            )
+        await db_session.commit()
+
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG, "limit": 2},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) == 2
+
+    async def test_nearby_limit_above_max_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/nearby",
+            params={"lat": self.USER_LAT, "lng": self.USER_LNG, "limit": 51},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 422
