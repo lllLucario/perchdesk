@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
-from app.models.user import User
 from app.core.exceptions import BookingRuleViolationError
+from app.models.user import User
 from app.schemas.building import (
     BuildingBoundsResult,
     BuildingCreate,
@@ -60,10 +60,10 @@ async def list_nearby_buildings(
 # not attempt to coerce the literal string "within-bounds" as a UUID.
 @router.get("/within-bounds", response_model=list[BuildingBoundsResult])
 async def list_buildings_within_bounds(
-    min_lat: float = Query(..., ge=-90, le=90, description="South edge of viewport (decimal degrees)"),
-    min_lng: float = Query(..., ge=-180, le=180, description="West edge of viewport (decimal degrees)"),
-    max_lat: float = Query(..., ge=-90, le=90, description="North edge of viewport (decimal degrees)"),
-    max_lng: float = Query(..., ge=-180, le=180, description="East edge of viewport (decimal degrees)"),
+    min_lat: float = Query(..., ge=-90, le=90, description="South edge of viewport"),
+    min_lng: float = Query(..., ge=-180, le=180, description="West edge of viewport"),
+    max_lat: float = Query(..., ge=-90, le=90, description="North edge of viewport"),
+    max_lng: float = Query(..., ge=-180, le=180, description="East edge of viewport"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[BuildingBoundsResult]:
