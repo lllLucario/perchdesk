@@ -91,3 +91,23 @@ class BuildingResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BuildingNearbyResult(BaseModel):
+    """A building returned from a nearby query, with distance context.
+
+    Only buildings that have coordinates are ever returned by this endpoint,
+    so latitude and longitude are non-nullable here.
+    distance_km is rounded to three decimal places (~1 m precision).
+    """
+
+    id: uuid.UUID
+    name: str
+    address: str
+    description: str | None
+    opening_hours: dict[str, Any] | None
+    facilities: list[Any] | None
+    latitude: float
+    longitude: float
+    created_at: datetime
+    distance_km: float
