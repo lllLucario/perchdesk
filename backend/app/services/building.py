@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import NotFoundError
 from app.models.building import Building
 from app.models.space import Space
-from app.schemas.building import BuildingCreate
+from app.schemas.building import BuildingCreate, BuildingUpdate
 
 
 async def list_buildings(db: AsyncSession) -> list[Building]:
@@ -35,8 +35,22 @@ async def create_building(db: AsyncSession, data: BuildingCreate) -> Building:
         description=data.description,
         opening_hours=data.opening_hours,
         facilities=data.facilities,
+        latitude=data.latitude,
+        longitude=data.longitude,
     )
     db.add(building)
+    await db.commit()
+    await db.refresh(building)
+    return building
+
+
+async def update_building(
+    db: AsyncSession, building_id: uuid.UUID, data: BuildingUpdate
+) -> Building:
+    building = await get_building(db, building_id)
+    update_fields = data.model_dump(exclude_unset=True)
+    for field, value in update_fields.items():
+        setattr(building, field, value)
     await db.commit()
     await db.refresh(building)
     return building
