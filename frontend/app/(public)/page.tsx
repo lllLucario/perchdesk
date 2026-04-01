@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSpaces, useBuildings, useNearbySpaces } from "@/lib/hooks";
+import { useSpaces, useBuildings, useBookings, useNearbySpaces } from "@/lib/hooks";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import RecommendationRibbon from "@/components/RecommendationRibbon";
@@ -16,9 +16,32 @@ export default function HomePage() {
 
   const nearbyParams =
     isAuthenticated && permission === "granted" && coordinates !== null
-      ? { lat: coordinates.latitude, lng: coordinates.longitude, limit: 6 }
+      ? { lat: coordinates.latitude, lng: coordinates.longitude, limit: 4 }
       : null;
-  const { data: forYouSpaces, isLoading: forYouLoading } = useNearbySpaces(nearbyParams);
+  const { data: nearbyRecs, isLoading: nearbyLoading } = useNearbySpaces(nearbyParams);
+  const { data: bookings, isLoading: bookingsLoading } = useBookings();
+
+  // Recent spaces: deduplicated by space_id, most-recent-booking first, up to 2.
+  const recentForYou = (() => {
+    if (!bookings) return [];
+    const seen = new Set<string>();
+    const result: typeof bookings = [];
+    for (const b of [...bookings].reverse()) {
+      if (!seen.has(b.space_id)) {
+        seen.add(b.space_id);
+        result.push(b);
+        if (result.length === 2) break;
+      }
+    }
+    return result;
+  })();
+
+  // Recommended spaces: exclude any already shown as recent.
+  const recentSpaceIds = new Set(recentForYou.map((b) => b.space_id));
+  const recsForYou = (nearbyRecs ?? []).filter((r) => !recentSpaceIds.has(r.space_id)).slice(0, 4);
+
+  const forYouLoading = bookingsLoading || (permission === "loading") ||
+    (permission === "granted" && nearbyLoading);
 
   const recentSpaces = spaces?.slice(0, 4) ?? [];
   const buildings = buildingsData?.slice(0, 4) ?? [];
@@ -50,65 +73,77 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {permission === "idle" && (
-            <div className="bg-white border border-gray-100 rounded-xl px-5 py-5 flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Allow location access to see spaces near you
-              </p>
-              <button
-                onClick={requestLocation}
-                className="ml-4 text-sm text-blue-600 font-medium hover:underline flex-shrink-0"
-              >
-                Use my location
-              </button>
-            </div>
-          )}
-
-          {(permission === "loading" || (permission === "granted" && forYouLoading)) && (
+          {forYouLoading ? (
             <div className="flex gap-3 overflow-x-auto pb-1">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="w-40 h-32 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
               ))}
             </div>
-          )}
+          ) : (
+            <>
+              {/* Mixed stream: recents + recommendations */}
+              {(recentForYou.length > 0 || recsForYou.length > 0) && (
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {/* Recent cards */}
+                  {recentForYou.map((b) => (
+                    <div
+                      key={b.space_id}
+                      className="w-40 flex-shrink-0 bg-white border border-gray-100 rounded-xl px-3 py-3 hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => router.push(`/spaces/${b.space_id}`)}
+                    >
+                      <p className="font-medium text-gray-900 text-sm line-clamp-1">{b.space_name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{b.building_name ?? "—"}</p>
+                      <p className="text-xs text-gray-400 mt-2">Booked recently</p>
+                    </div>
+                  ))}
 
-          {permission === "granted" && !forYouLoading && forYouSpaces && forYouSpaces.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {forYouSpaces.map((rec) => (
-                <div
-                  key={rec.space_id}
-                  className="w-40 flex-shrink-0 bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/spaces/${rec.space_id}`)}
-                >
-                  <div className="px-3 pt-3 pb-1">
-                    <RecommendationRibbon reason={rec.reason} />
-                  </div>
-                  <div className="px-3 pb-3">
-                    <p className="font-medium text-gray-900 text-sm mt-1 line-clamp-1">
-                      {rec.space_name}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5 capitalize">
-                      {rec.space_type} · {rec.capacity} seats
-                    </p>
-                    <p className="text-xs text-blue-500 mt-1">{rec.distance_km} km away</p>
-                  </div>
+                  {/* Recommended cards */}
+                  {recsForYou.map((rec) => (
+                    <div
+                      key={rec.space_id}
+                      className="w-40 flex-shrink-0 bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() => router.push(`/spaces/${rec.space_id}`)}
+                    >
+                      <div className="px-3 pt-3 pb-1">
+                        <RecommendationRibbon reason={rec.reason} />
+                      </div>
+                      <div className="px-3 pb-3">
+                        <p className="font-medium text-gray-900 text-sm mt-1 line-clamp-1">{rec.space_name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5 capitalize">
+                          {rec.space_type} · {rec.capacity} seats
+                        </p>
+                        <p className="text-xs text-blue-500 mt-1">{rec.distance_km} km away</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {permission === "granted" && !forYouLoading && (!forYouSpaces || forYouSpaces.length === 0) && (
-            <p className="text-sm text-gray-400">No nearby spaces found.</p>
-          )}
+              {/* Location nudge when idle or denied/unavailable */}
+              {permission === "idle" && (
+                <div className={`${recentForYou.length > 0 ? "mt-3" : ""} bg-white border border-gray-100 rounded-xl px-5 py-4 flex items-center justify-between`}>
+                  <p className="text-sm text-gray-500">Allow location access to see nearby spaces</p>
+                  <button
+                    onClick={requestLocation}
+                    className="ml-4 text-sm text-blue-600 font-medium hover:underline flex-shrink-0"
+                  >
+                    Use my location
+                  </button>
+                </div>
+              )}
 
-          {(permission === "denied" || permission === "unavailable") && (
-            <p className="text-sm text-gray-400">
-              Location unavailable.{" "}
-              <Link href="/buildings" className="text-blue-600 hover:underline">
-                Browse buildings
-              </Link>
-              {" "}instead.
-            </p>
+              {(permission === "denied" || permission === "unavailable") && recentForYou.length === 0 && (
+                <p className="text-sm text-gray-400">
+                  Location unavailable.{" "}
+                  <Link href="/buildings" className="text-blue-600 hover:underline">Browse buildings</Link>
+                  {" "}instead.
+                </p>
+              )}
+
+              {permission === "granted" && recentForYou.length === 0 && recsForYou.length === 0 && (
+                <p className="text-sm text-gray-400">No personalised spaces yet.</p>
+              )}
+            </>
           )}
         </section>
       )}
