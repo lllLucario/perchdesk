@@ -685,11 +685,15 @@ class TestBuildingsWithinBounds:
     async def test_within_bounds_min_lng_gt_max_lng_rejected(
         self, client: AsyncClient, user_token: str
     ) -> None:
+        # min_lng > max_lng is the antimeridian-crossing representation used by
+        # many map libraries.  The endpoint explicitly rejects it with a message
+        # that explains the limitation rather than silently returning wrong data.
         params = {**self.BOUNDS, "min_lng": 152.0, "max_lng": 151.0}
         resp = await client.get(
             "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
         )
         assert resp.status_code == 400
+        assert "Antimeridian" in resp.json()["error"]["detail"]
 
     async def test_within_bounds_empty_when_no_coordinated_buildings(
         self, client: AsyncClient, user_token: str, sample_building: Building

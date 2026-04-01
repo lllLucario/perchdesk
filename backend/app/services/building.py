@@ -87,6 +87,10 @@ async def list_buildings_within_bounds(
     Filters by simple lat/lng bounding box — compatible with later spatial
     index optimisation.  Buildings without coordinates are silently excluded.
     Results are ordered by name for stable rendering across viewport updates.
+
+    Antimeridian note: this function expects min_lng <= max_lng.  Viewports
+    that cross the antimeridian (where map libraries may pass min_lng > max_lng)
+    are not supported and should be rejected by the caller before reaching here.
     """
     result = await db.execute(
         select(Building)
