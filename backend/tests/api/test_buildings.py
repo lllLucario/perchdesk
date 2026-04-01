@@ -264,6 +264,26 @@ class TestCreateBuilding:
         )
         assert resp.status_code == 422
 
+    async def test_create_building_only_latitude_rejected(
+        self, client: AsyncClient, admin_token: str
+    ) -> None:
+        resp = await client.post(
+            "/api/v1/buildings",
+            json={"name": "Partial Building", "address": "1 Partial St", "latitude": -33.8688},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_create_building_only_longitude_rejected(
+        self, client: AsyncClient, admin_token: str
+    ) -> None:
+        resp = await client.post(
+            "/api/v1/buildings",
+            json={"name": "Partial Building", "address": "1 Partial St", "longitude": 151.2093},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
 
 class TestUpdateBuilding:
     async def test_update_building_requires_auth(
@@ -350,6 +370,47 @@ class TestUpdateBuilding:
         resp = await client.put(
             f"/api/v1/buildings/{sample_building.id}",
             json={"longitude": 181.0},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_update_building_only_latitude_rejected(
+        self, client: AsyncClient, admin_token: str, sample_building: Building
+    ) -> None:
+        resp = await client.put(
+            f"/api/v1/buildings/{sample_building.id}",
+            json={"latitude": -33.8688},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_update_building_only_longitude_rejected(
+        self, client: AsyncClient, admin_token: str, sample_building: Building
+    ) -> None:
+        resp = await client.put(
+            f"/api/v1/buildings/{sample_building.id}",
+            json={"longitude": 151.2093},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_update_building_clear_only_latitude_rejected(
+        self, client: AsyncClient, admin_token: str, building_with_coords: Building
+    ) -> None:
+        # Sending only latitude=null would leave longitude intact in DB — rejected.
+        resp = await client.put(
+            f"/api/v1/buildings/{building_with_coords.id}",
+            json={"latitude": None},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    async def test_update_building_clear_only_longitude_rejected(
+        self, client: AsyncClient, admin_token: str, building_with_coords: Building
+    ) -> None:
+        resp = await client.put(
+            f"/api/v1/buildings/{building_with_coords.id}",
+            json={"longitude": None},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 422

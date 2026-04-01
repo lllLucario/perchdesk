@@ -2,7 +2,19 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+
+
+def _validate_lat(v: float | None) -> float | None:
+    if v is not None and not (-90.0 <= v <= 90.0):
+        raise ValueError("latitude must be between -90 and 90")
+    return v
+
+
+def _validate_lon(v: float | None) -> float | None:
+    if v is not None and not (-180.0 <= v <= 180.0):
+        raise ValueError("longitude must be between -180 and 180")
+    return v
 
 
 class BuildingCreate(BaseModel):
@@ -17,16 +29,20 @@ class BuildingCreate(BaseModel):
     @field_validator("latitude")
     @classmethod
     def validate_latitude(cls, v: float | None) -> float | None:
-        if v is not None and not (-90.0 <= v <= 90.0):
-            raise ValueError("latitude must be between -90 and 90")
-        return v
+        return _validate_lat(v)
 
     @field_validator("longitude")
     @classmethod
     def validate_longitude(cls, v: float | None) -> float | None:
-        if v is not None and not (-180.0 <= v <= 180.0):
-            raise ValueError("longitude must be between -180 and 180")
-        return v
+        return _validate_lon(v)
+
+    @model_validator(mode="after")
+    def validate_coordinate_pair(self) -> "BuildingCreate":
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError(
+                "latitude and longitude must both be provided or both be null"
+            )
+        return self
 
 
 class BuildingUpdate(BaseModel):
@@ -41,16 +57,26 @@ class BuildingUpdate(BaseModel):
     @field_validator("latitude")
     @classmethod
     def validate_latitude(cls, v: float | None) -> float | None:
-        if v is not None and not (-90.0 <= v <= 90.0):
-            raise ValueError("latitude must be between -90 and 90")
-        return v
+        return _validate_lat(v)
 
     @field_validator("longitude")
     @classmethod
     def validate_longitude(cls, v: float | None) -> float | None:
-        if v is not None and not (-180.0 <= v <= 180.0):
-            raise ValueError("longitude must be between -180 and 180")
-        return v
+        return _validate_lon(v)
+
+    @model_validator(mode="after")
+    def validate_coordinate_pair(self) -> "BuildingUpdate":
+        lat_set = "latitude" in self.model_fields_set
+        lon_set = "longitude" in self.model_fields_set
+        if lat_set != lon_set:
+            raise ValueError(
+                "latitude and longitude must both be provided or both be omitted"
+            )
+        if lat_set and (self.latitude is None) != (self.longitude is None):
+            raise ValueError(
+                "latitude and longitude must both be provided or both be null"
+            )
+        return self
 
 
 class BuildingResponse(BaseModel):
