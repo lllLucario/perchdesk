@@ -154,7 +154,7 @@ describe("requestLocation", () => {
     expect(mockGetCurrentPosition).not.toHaveBeenCalled();
   });
 
-  test("does not clear existing coordinates when re-requesting after grant", () => {
+  test("retains previous coordinates while permission returns to loading on re-request", () => {
     // First successful grant
     mockGetCurrentPosition.mockImplementation(
       (onSuccess: PositionCallback) => onSuccess(fakePosition(-33.8688, 151.2093))
@@ -162,14 +162,15 @@ describe("requestLocation", () => {
     useLocationStore.getState().requestLocation();
     expect(useLocationStore.getState().permission).toBe("granted");
 
-    // Second request stays loading while in-flight
+    // Second request is in-flight — permission goes back to loading
     mockGetCurrentPosition.mockImplementation(() => {
-      // hold
+      // hold — callback not yet fired
     });
     useLocationStore.getState().requestLocation();
 
-    // Permission is now loading but previous coordinates are gone (loading reset)
+    // Previous coordinates are retained while the new request is in-flight
     expect(useLocationStore.getState().permission).toBe("loading");
+    expect(useLocationStore.getState().coordinates?.latitude).toBeCloseTo(-33.8688);
   });
 });
 
