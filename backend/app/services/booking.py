@@ -121,7 +121,15 @@ async def create_booking(
     # cause the raw duration to exceed the max_duration_minutes limit.
     _validate_time_unit(start_time, end_time, rules.time_unit)
 
-    duration_minutes = (end_time - start_time).total_seconds() / 60
+    # Compute duration using AEST wall-clock time, not UTC seconds.
+    # A midnight-to-midnight full_day booking that straddles a DST transition
+    # has a UTC duration of 25 h (clock falls back) or 23 h (clock springs
+    # forward), both of which would incorrectly fail or pass the UTC-based
+    # duration check.  Wall-clock subtraction gives 24 h (1440 min) in both
+    # cases, which is the semantically correct "one calendar day" duration.
+    _start_local = start_time.astimezone(AEST).replace(tzinfo=None)
+    _end_local = end_time.astimezone(AEST).replace(tzinfo=None)
+    duration_minutes = (_end_local - _start_local).total_seconds() / 60
     if duration_minutes > rules.max_duration_minutes:
         raise BookingRuleViolationError(
             f"Booking duration exceeds maximum of {rules.max_duration_minutes} minutes."
@@ -174,10 +182,13 @@ async def create_booking(
         )
     )
     existing_daily_minutes = sum(
-        (_utc(b.end_time) - _utc(b.start_time)).total_seconds() / 60
+        (
+            _utc(b.end_time).astimezone(AEST).replace(tzinfo=None)
+            - _utc(b.start_time).astimezone(AEST).replace(tzinfo=None)
+        ).total_seconds() / 60
         for b in daily_result.scalars().all()
     )
-    new_duration_minutes = (end_time - start_time).total_seconds() / 60
+    new_duration_minutes = (_end_local - _start_local).total_seconds() / 60
     if existing_daily_minutes + new_duration_minutes > rules.max_duration_minutes:
         raise BookingRuleViolationError(
             f"Adding this booking would exceed the daily limit of "
