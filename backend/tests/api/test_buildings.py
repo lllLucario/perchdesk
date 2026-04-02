@@ -588,3 +588,219 @@ class TestNearbyBuildings:
             headers={"Authorization": f"Bearer {user_token}"},
         )
         assert resp.status_code == 422
+
+
+class TestBuildingsWithinBounds:
+    # Viewport covering Sydney CBD — building_with_coords sits at (-33.8688, 151.2093).
+    BOUNDS = {"min_lat": -34.0, "min_lng": 151.0, "max_lat": -33.0, "max_lng": 152.0}
+
+    def _auth(self, token: str) -> dict[str, str]:
+        return {"Authorization": f"Bearer {token}"}
+
+    async def test_within_bounds_requires_auth(self, client: AsyncClient) -> None:
+        resp = await client.get("/api/v1/buildings/within-bounds", params=self.BOUNDS)
+        assert resp.status_code == 401
+
+    async def test_within_bounds_missing_min_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {k: v for k, v in self.BOUNDS.items() if k != "min_lat"}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_missing_min_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {k: v for k, v in self.BOUNDS.items() if k != "min_lng"}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_missing_max_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {k: v for k, v in self.BOUNDS.items() if k != "max_lat"}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_missing_max_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {k: v for k, v in self.BOUNDS.items() if k != "max_lng"}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_invalid_min_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {**self.BOUNDS, "min_lat": -91.0}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_invalid_max_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {**self.BOUNDS, "max_lat": 91.0}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_invalid_min_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {**self.BOUNDS, "min_lng": -181.0}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_invalid_max_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {**self.BOUNDS, "max_lng": 181.0}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 422
+
+    async def test_within_bounds_min_lat_gt_max_lat_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        params = {**self.BOUNDS, "min_lat": -33.0, "max_lat": -34.0}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 400
+
+    async def test_within_bounds_min_lng_gt_max_lng_rejected(
+        self, client: AsyncClient, user_token: str
+    ) -> None:
+        # min_lng > max_lng is the antimeridian-crossing representation used by
+        # many map libraries.  The endpoint explicitly rejects it with a message
+        # that explains the limitation rather than silently returning wrong data.
+        params = {**self.BOUNDS, "min_lng": 152.0, "max_lng": 151.0}
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds", params=params, headers=self._auth(user_token)
+        )
+        assert resp.status_code == 400
+        assert "Antimeridian" in resp.json()["error"]["detail"]
+
+    async def test_within_bounds_empty_when_no_coordinated_buildings(
+        self, client: AsyncClient, user_token: str, sample_building: Building
+    ) -> None:
+        # sample_building has no coordinates — should not appear.
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds",
+            params=self.BOUNDS,
+            headers=self._auth(user_token),
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_within_bounds_returns_building_inside_viewport(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        building_with_coords: Building,
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds",
+            params=self.BOUNDS,
+            headers=self._auth(user_token),
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Geo Building"
+
+    async def test_within_bounds_excludes_building_outside_viewport(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+    ) -> None:
+        # inside viewport
+        db_session.add(Building(name="Inside", address="1 St", latitude=-33.9, longitude=151.2))
+        # outside viewport (too far south)
+        db_session.add(Building(name="Outside", address="2 St", latitude=-35.0, longitude=151.2))
+        await db_session.commit()
+
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds",
+            params=self.BOUNDS,
+            headers=self._auth(user_token),
+        )
+        assert resp.status_code == 200
+        names = [b["name"] for b in resp.json()]
+        assert "Inside" in names
+        assert "Outside" not in names
+
+    async def test_within_bounds_excludes_buildings_without_coordinates(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+    ) -> None:
+        db_session.add(Building(name="No Coords", address="3 St"))
+        db_session.add(Building(name="Has Coords", address="4 St", latitude=-33.9, longitude=151.2))
+        await db_session.commit()
+
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds",
+            params=self.BOUNDS,
+            headers=self._auth(user_token),
+        )
+        assert resp.status_code == 200
+        names = [b["name"] for b in resp.json()]
+        assert "Has Coords" in names
+        assert "No Coords" not in names
+
+    async def test_within_bounds_response_has_non_nullable_coordinates(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        building_with_coords: Building,
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds",
+            params=self.BOUNDS,
+            headers=self._auth(user_token),
+        )
+        assert resp.status_code == 200
+        item = resp.json()[0]
+        assert item["latitude"] is not None
+        assert item["longitude"] is not None
+        assert "distance_km" not in item
+
+    async def test_within_bounds_results_ordered_by_name(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+    ) -> None:
+        for name, lat, lng in [
+            ("Zeta Hub", -33.9, 151.2),
+            ("Alpha Centre", -33.85, 151.21),
+            ("Beta Space", -33.88, 151.19),
+        ]:
+            db_session.add(Building(name=name, address="X St", latitude=lat, longitude=lng))
+        await db_session.commit()
+
+        resp = await client.get(
+            "/api/v1/buildings/within-bounds",
+            params=self.BOUNDS,
+            headers=self._auth(user_token),
+        )
+        assert resp.status_code == 200
+        names = [b["name"] for b in resp.json()]
+        assert names == sorted(names)

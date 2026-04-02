@@ -111,3 +111,24 @@ class BuildingNearbyResult(BaseModel):
     longitude: float
     created_at: datetime
     distance_km: float
+
+
+class BuildingBoundsResult(BaseModel):
+    """A building returned from a viewport/bounding-box query.
+
+    Only buildings that have coordinates are ever returned by this endpoint,
+    so latitude and longitude are non-nullable here.  Unlike BuildingNearbyResult
+    there is no user reference point, so no distance is included.
+    """
+
+    id: uuid.UUID
+    name: str
+    address: str
+    description: str | None
+    opening_hours: dict[str, Any] | None
+    facilities: list[Any] | None
+    latitude: float
+    longitude: float
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

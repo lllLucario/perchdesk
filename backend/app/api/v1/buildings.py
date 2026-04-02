@@ -5,8 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, require_admin
+from app.core.exceptions import BookingRuleViolationError
 from app.models.user import User
 from app.schemas.building import (
+    BuildingBoundsResult,
     BuildingCreate,
     BuildingNearbyResult,
     BuildingResponse,
@@ -52,6 +54,38 @@ async def list_nearby_buildings(
         )
         for b, dist in pairs
     ]
+
+
+# NOTE: /within-bounds must be registered before /{building_id} so FastAPI does
+# not attempt to coerce the literal string "within-bounds" as a UUID.
+#
+# Antimeridian limitation: this endpoint does not support viewports that cross
+# the antimeridian (180°/-180°).  Map libraries sometimes represent such viewports
+# as min_lng > max_lng (e.g. min_lng=170, max_lng=-170).  Those requests are
+# rejected with HTTP 400.  This is an intentional scope decision — the product
+# currently operates within Australia (roughly 113°E–154°E) where antimeridian
+# crossings do not occur.  A future wrap-aware query path can be introduced if
+# the product expands to regions that straddle the antimeridian.
+@router.get("/within-bounds", response_model=list[BuildingBoundsResult])
+async def list_buildings_within_bounds(
+    min_lat: float = Query(..., ge=-90, le=90, description="South edge of viewport"),
+    min_lng: float = Query(..., ge=-180, le=180, description="West edge of viewport"),
+    max_lat: float = Query(..., ge=-90, le=90, description="North edge of viewport"),
+    max_lng: float = Query(..., ge=-180, le=180, description="East edge of viewport"),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[BuildingBoundsResult]:
+    if min_lat > max_lat:
+        raise BookingRuleViolationError("min_lat must be less than or equal to max_lat")
+    if min_lng > max_lng:
+        raise BookingRuleViolationError(
+            "min_lng must be less than or equal to max_lng. "
+            "Antimeridian-crossing viewports (min_lng > max_lng) are not supported."
+        )
+    buildings = await building_service.list_buildings_within_bounds(
+        db, min_lat, min_lng, max_lat, max_lng
+    )
+    return [BuildingBoundsResult.model_validate(b) for b in buildings]
 
 
 @router.get("/{building_id}", response_model=BuildingResponse)
