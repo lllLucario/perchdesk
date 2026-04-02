@@ -50,7 +50,15 @@ export default function BuildingsPage() {
         <span className="text-gray-900 font-medium">Buildings</span>
       </nav>
 
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Buildings</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-xl font-semibold text-gray-900">Buildings</h1>
+        <Link
+          href="/buildings/map"
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5"
+        >
+          <span aria-hidden>🗺</span> Map view
+        </Link>
+      </div>
 
       {buildings && buildings.length === 0 ? (
         <p className="text-sm text-gray-400">No buildings available.</p>
