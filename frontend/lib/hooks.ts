@@ -10,7 +10,27 @@ export interface Building {
   description: string | null;
   opening_hours: Record<string, string> | null;
   facilities: string[] | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
+}
+
+/** A building that has coordinates confirmed present (non-nullable). */
+export interface BuildingWithCoords extends Omit<Building, "latitude" | "longitude"> {
+  latitude: number;
+  longitude: number;
+}
+
+/** Shape returned by GET /api/v1/buildings/nearby */
+export interface BuildingNearbyResult extends BuildingWithCoords {
+  distance_km: number;
+}
+
+export interface BuildingsWithinBoundsParams {
+  minLat: number;
+  minLng: number;
+  maxLat: number;
+  maxLng: number;
 }
 
 export interface Space {
@@ -131,6 +151,39 @@ export function useBuildings() {
   return useQuery<Building[]>({
     queryKey: ["buildings"],
     queryFn: () => api.get<Building[]>("/api/v1/buildings"),
+  });
+}
+
+export function useBuildingsWithinBounds(params: BuildingsWithinBoundsParams | null) {
+  return useQuery<BuildingWithCoords[]>({
+    queryKey: ["buildings", "within-bounds", params],
+    queryFn: () => {
+      if (!params) return Promise.resolve([]);
+      const qs = new URLSearchParams({
+        min_lat: String(params.minLat),
+        min_lng: String(params.minLng),
+        max_lat: String(params.maxLat),
+        max_lng: String(params.maxLng),
+      });
+      return api.get<BuildingWithCoords[]>(`/api/v1/buildings/within-bounds?${qs}`);
+    },
+    enabled: params !== null,
+    staleTime: 10_000,
+  });
+}
+
+export function useNearbyBuildings(lat: number | null, lng: number | null, limit = 20) {
+  return useQuery<BuildingNearbyResult[]>({
+    queryKey: ["buildings", "nearby", lat, lng, limit],
+    queryFn: () => {
+      const qs = new URLSearchParams({
+        lat: String(lat),
+        lng: String(lng),
+        limit: String(limit),
+      });
+      return api.get<BuildingNearbyResult[]>(`/api/v1/buildings/nearby?${qs}`);
+    },
+    enabled: lat !== null && lng !== null,
   });
 }
 
