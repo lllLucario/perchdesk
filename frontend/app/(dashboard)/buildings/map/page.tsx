@@ -29,16 +29,25 @@ export default function BuildingMapPage() {
 
   const { permission, coordinates, requestLocation } = useLocationStore();
   const { data: allBuildings, isLoading, isError } = useBuildings();
-  const { data: boundsBuildings } = useBuildingsWithinBounds(viewportBounds);
+  const {
+    data: boundsBuildings,
+    isError: boundsError,
+  } = useBuildingsWithinBounds(viewportBounds);
 
   // Only buildings with coordinates can appear as map markers.
   const coordinatedBuildings: BuildingWithCoords[] = (allBuildings ?? []).filter(
     (b): b is BuildingWithCoords => b.latitude !== null && b.longitude !== null
   );
 
-  // Sidebar: prefer viewport-filtered results once the map has reported bounds;
-  // fall back to all coordinated buildings during initial load.
-  const listBuildings = boundsBuildings ?? coordinatedBuildings;
+  // Sidebar list derivation:
+  //   - No viewport yet (initial load)  → show all coordinated buildings
+  //   - Viewport known, query failed    → null signals an explicit error state;
+  //                                       must NOT fall back to full list or the
+  //                                       failure looks like a valid result
+  //   - Viewport known, loading/success → within-bounds results (or full list
+  //                                       while the first fetch is in flight)
+  const listBuildings =
+    viewportBounds !== null && boundsError ? null : boundsBuildings ?? coordinatedBuildings;
 
   const mapCenter: [number, number] | undefined =
     permission === "granted" && coordinates
@@ -94,6 +103,7 @@ export default function BuildingMapPage() {
             buildings={listBuildings}
             selectedId={selectedId}
             viewportBounds={viewportBounds}
+            boundsError={viewportBounds !== null && boundsError}
             onSelect={setSelectedId}
             onViewSpaces={(id) => router.push(`/buildings/${id}`)}
           />
@@ -167,16 +177,27 @@ function BuildingList({
   buildings,
   selectedId,
   viewportBounds,
+  boundsError,
   onSelect,
   onViewSpaces,
 }: {
-  buildings: BuildingWithCoords[];
+  buildings: BuildingWithCoords[] | null;
   selectedId: string | null;
   viewportBounds: BuildingsWithinBoundsParams | null;
+  boundsError: boolean;
   onSelect: (id: string) => void;
   onViewSpaces: (id: string) => void;
 }) {
-  if (buildings.length === 0) {
+  if (boundsError) {
+    return (
+      <div className="p-4">
+        <p className="text-sm text-red-500">Failed to load buildings in this area.</p>
+        <p className="text-xs text-gray-400 mt-1">Try moving the map or zooming out.</p>
+      </div>
+    );
+  }
+
+  if (!buildings || buildings.length === 0) {
     return (
       <div className="p-4">
         <p className="text-sm text-gray-400">
@@ -194,9 +215,10 @@ function BuildingList({
     );
   }
 
+  // buildings is non-null and non-empty at this point (guards above).
   return (
     <div className="divide-y divide-gray-50">
-      {buildings.map((b) => (
+      {(buildings as BuildingWithCoords[]).map((b) => (
         <div
           key={b.id}
           data-building-id={b.id}

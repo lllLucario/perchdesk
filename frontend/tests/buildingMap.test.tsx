@@ -323,6 +323,29 @@ describe("BuildingMapPage", () => {
     const link = screen.getByText("Browse all buildings →");
     expect(link).toHaveAttribute("href", "/buildings");
   });
+
+  test("within-bounds error shows error message instead of falling back to full list", async () => {
+    // Initial buildings load succeeds; the within-bounds query fails.
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.startsWith("/api/v1/buildings/within-bounds")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      return Promise.resolve([B_WITH_COORDS]);
+    });
+    await renderMapPage();
+    await waitFor(() => screen.getByTestId("map-pin-b1"));
+
+    // Clicking the pin fires onBoundsChange → sets viewportBounds → triggers within-bounds query
+    fireEvent.click(screen.getByTestId("map-pin-b1"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText("Failed to load buildings in this area.")
+      ).toBeInTheDocument()
+    );
+    // Full list must NOT be shown as a silent fallback
+    expect(screen.queryByText("City Campus")).not.toBeInTheDocument();
+  });
 });
 
 // ─── BuildingsPage: Map view toggle ───────────────────────────────────────────
