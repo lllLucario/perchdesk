@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -75,6 +75,35 @@ function MapFlyTo({
   return null;
 }
 
+// Recenters the map imperatively when the user's location coordinates arrive.
+//
+// react-leaflet's MapContainer.center is mount-only — updating the prop after
+// the map has been created has no effect on the viewport.  This component uses
+// useMap() to flyTo the new center whenever lat/lng change, mirroring the
+// MapFlyTo pattern used for building selection.
+//
+// Primitive lat/lng values are used as the useEffect dependency instead of the
+// center array to avoid a new reference on every render triggering the effect.
+//
+// The isFirstRender guard skips the initial mount so the map does not fly to
+// the default Sydney coordinates redundantly (MapContainer already positions
+// the map there on creation).  Subsequent center changes — i.e. the user
+// grants location and coordinates become available — do trigger a fly-to.
+function MapRecenterOnLocation({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 13), { duration: 0.8 });
+  }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
+
 // ─── Public component ─────────────────────────────────────────────────────────
 
 interface Props {
@@ -108,6 +137,7 @@ export default function BuildingMap({
       />
       <ViewportTracker onBoundsChange={onBoundsChange} />
       <MapFlyTo selectedId={selectedId} buildings={buildings} />
+      <MapRecenterOnLocation lat={center[0]} lng={center[1]} />
       {buildings.map((b) => (
         <Marker
           key={b.id}

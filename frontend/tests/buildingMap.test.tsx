@@ -76,14 +76,18 @@ jest.mock("leaflet", () => ({
 // next/dynamic resolves to the actual module in jest (no ssr boundary in jsdom).
 // Mocking it ensures BuildingMap renders as a stub without the CSS import failing.
 jest.mock("@/components/BuildingMap", () =>
-  function MockBuildingMap({ buildings, selectedId, onSelectBuilding, onBoundsChange }: {
+  function MockBuildingMap({ buildings, selectedId, onSelectBuilding, onBoundsChange, center }: {
     buildings: Array<{ id: string; name: string; latitude: number; longitude: number }>;
     selectedId: string | null;
     onSelectBuilding: (id: string) => void;
     onBoundsChange: (b: unknown) => void;
+    center?: [number, number];
   }) {
     return (
-      <div data-testid="building-map">
+      <div
+        data-testid="building-map"
+        data-center={center ? `${center[0]},${center[1]}` : ""}
+      >
         {buildings.map((b) => (
           <button
             key={b.id}
@@ -286,6 +290,35 @@ describe("BuildingMapPage", () => {
     await renderMapPage();
     await waitFor(() =>
       expect(screen.getByText(/Location active/)).toBeInTheDocument()
+    );
+  });
+
+  test("passes user coordinates as map center when location is granted", async () => {
+    // Regression: MapContainer.center is mount-only, so the page must pass the
+    // updated center prop to BuildingMap when location transitions to granted.
+    // The BuildingMap component handles the imperative fly-to internally.
+    const userLat = -33.8;
+    const userLng = 151.0;
+
+    setLocationState({ permission: "idle" });
+    mockApi.get.mockResolvedValue([B_WITH_COORDS]);
+    await renderMapPage();
+    await waitFor(() => screen.getByTestId("building-map"));
+
+    // Before location: center prop is undefined (map uses its Sydney default).
+    expect(screen.getByTestId("building-map")).toHaveAttribute("data-center", "");
+
+    // Grant location → page should propagate user coords as the center prop.
+    setLocationState({
+      permission: "granted",
+      coordinates: { latitude: userLat, longitude: userLng, accuracy: 10 },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("building-map")).toHaveAttribute(
+        "data-center",
+        `${userLat},${userLng}`
+      )
     );
   });
 
