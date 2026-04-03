@@ -6,6 +6,7 @@ import { useSpaces, useBuildings, useNearbyBuildings, useBookings, useNearbySpac
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import RecommendationRibbon from "@/components/RecommendationRibbon";
+import SpaceCard from "@/components/SpaceCard";
 
 export default function HomePage() {
   const router = useRouter();
@@ -119,21 +120,15 @@ export default function HomePage() {
 
                   {/* Recommended cards */}
                   {recsForYou.map((rec) => (
-                    <div
-                      key={rec.space_id}
-                      className="w-40 flex-shrink-0 bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => router.push(`/spaces/${rec.space_id}`)}
-                    >
-                      <div className="px-3 pt-3 pb-1">
-                        <RecommendationRibbon reason={rec.reason} />
-                      </div>
-                      <div className="px-3 pb-3">
-                        <p className="font-medium text-gray-900 text-sm mt-1 line-clamp-1">{rec.space_name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5 capitalize">
-                          {rec.space_type} · {rec.capacity} seats
-                        </p>
-                        <p className="text-xs text-blue-500 mt-1">{rec.distance_km} km away</p>
-                      </div>
+                    <div key={rec.space_id} className="w-40 flex-shrink-0">
+                      <SpaceCard
+                        spaceId={rec.space_id}
+                        name={rec.space_name}
+                        type={rec.space_type}
+                        capacity={rec.capacity}
+                        ribbon={<RecommendationRibbon reason={rec.reason} />}
+                        supportingLine={`${rec.distance_km} km away`}
+                      />
                     </div>
                   ))}
                 </div>
