@@ -117,7 +117,7 @@ describe("HomePage — authenticated", () => {
   test("renders Nearby Buildings section heading when location is granted", async () => {
     useLocationStore.setState({
       permission: "granted",
-      coordinates: { latitude: -33.87, longitude: 151.21 },
+      coordinates: { latitude: -33.87, longitude: 151.21, accuracy: 10 },
       acquiredAt: null,
       requestLocation: jest.fn(),
       clearLocation: jest.fn(),
