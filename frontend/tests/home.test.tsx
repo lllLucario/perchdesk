@@ -127,6 +127,25 @@ describe("HomePage — authenticated", () => {
     expect(screen.getByText("Nearby Buildings")).toBeInTheDocument();
   });
 
+  test("shows error fallback when location is granted but nearby buildings API fails", async () => {
+    useLocationStore.setState({
+      permission: "granted",
+      coordinates: { latitude: -33.87, longitude: 151.21, accuracy: 10 },
+      acquiredAt: null,
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApi.get.mockRejectedValue(new Error("Network error"));
+    await renderHome();
+    await waitFor(() => {
+      expect(screen.getByText(/Could not load nearby buildings/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Browse all buildings" })).toBeInTheDocument();
+    });
+    // Placeholder cards must not appear when the query has failed
+    expect(screen.queryByText("Central Library")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tech Hub")).not.toBeInTheDocument();
+  });
+
   test("shows loading skeletons while data is loading", async () => {
     // All queries pending — For You section shows 4 skeletons, Recent Spaces shows 4.
     mockApi.get.mockReturnValue(new Promise(() => {}));

@@ -57,7 +57,10 @@ export default function HomePage() {
     permission === "granted" && coordinates !== null
       ? { lat: coordinates.latitude, lng: coordinates.longitude }
       : null;
-  const { data: nearbyBuildingsData } = useNearbyBuildings(
+  const {
+    data: nearbyBuildingsData,
+    isError: nearbyBuildingsError,
+  } = useNearbyBuildings(
     nearbyBuildingsParams?.lat ?? null,
     nearbyBuildingsParams?.lng ?? null,
     4
@@ -219,7 +222,15 @@ export default function HomePage() {
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           {isNearbyLocation ? "Nearby Buildings" : "Buildings"}
         </h2>
-        {buildings.length === 0 ? (
+        {isNearbyLocation && nearbyBuildingsError ? (
+          <p className="text-sm text-gray-400">
+            Could not load nearby buildings.{" "}
+            <Link href="/buildings" className="text-blue-600 hover:underline">
+              Browse all buildings
+            </Link>
+            .
+          </p>
+        ) : buildings.length === 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {[
               { name: "Central Library", address: "123 Main Street" },
