@@ -29,6 +29,8 @@ async def seed(session: AsyncSession) -> None:
         description="Main campus building with library and collaborative study spaces.",
         opening_hours={"weekday": "07:00–22:00", "weekend": "09:00–18:00"},
         facilities=["Wifi", "Printing", "Cafeteria", "Accessible"],
+        latitude=-33.8885,
+        longitude=151.1908,
     )
     tech_park = Building(
         name="Tech Park",
@@ -36,6 +38,8 @@ async def seed(session: AsyncSession) -> None:
         description="Modern co-working building designed for tech teams and startups.",
         opening_hours={"weekday": "08:00–20:00", "weekend": "10:00–16:00"},
         facilities=["Wifi", "Standing desks", "Meeting rooms", "Bike storage"],
+        latitude=-33.8702,
+        longitude=151.1942,
     )
     session.add(city_campus)
     session.add(tech_park)

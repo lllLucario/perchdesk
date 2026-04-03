@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { BuildingWithCoords, BuildingsWithinBoundsParams } from "@/lib/hooks";
@@ -24,31 +24,56 @@ function buildingMarkerIcon(selected: boolean) {
 }
 
 // Emits viewport bounds to the parent on map load, move, and zoom.
+//
+// Uses useMap() + manual Leaflet on/off instead of useMapEvents so that:
+// 1. Event handlers are registered exactly once (on mount) and never
+//    re-registered on re-renders — re-registration can fire the event
+//    immediately causing a setState → re-render → re-register infinite loop.
+// 2. onBoundsChange is kept in a ref updated via useEffect (not during render)
+//    to satisfy React Compiler's "no ref access during render" rule while
+//    still always calling the latest version of the callback.
+// 3. Bounds are deduplicated so the callback is skipped when the viewport
+//    has not actually changed (guards against flyTo / icon-update noise).
 function ViewportTracker({
   onBoundsChange,
 }: {
   onBoundsChange: (b: BuildingsWithinBoundsParams) => void;
 }) {
-  function emit(m: L.Map) {
-    const b = m.getBounds();
-    onBoundsChange({
-      minLat: b.getSouth(),
-      minLng: b.getWest(),
-      maxLat: b.getNorth(),
-      maxLng: b.getEast(),
-    });
-  }
+  const map = useMap();
+  const callbackRef = useRef(onBoundsChange);
+  const lastBoundsKey = useRef<string>("");
 
-  const map = useMapEvents({
-    moveend: () => emit(map),
-    zoomend: () => emit(map),
+  // Keep ref in sync with the latest prop value (inside useEffect, not render).
+  useEffect(() => {
+    callbackRef.current = onBoundsChange;
   });
 
-  // Emit initial bounds once the map container has finished its first render.
   useEffect(() => {
-    const id = setTimeout(() => emit(map), 150);
-    return () => clearTimeout(id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    function emit() {
+      const b = map.getBounds();
+      const bounds: BuildingsWithinBoundsParams = {
+        minLat: b.getSouth(),
+        minLng: b.getWest(),
+        maxLat: b.getNorth(),
+        maxLng: b.getEast(),
+      };
+      const key = `${bounds.minLat},${bounds.minLng},${bounds.maxLat},${bounds.maxLng}`;
+      if (key === lastBoundsKey.current) return;
+      lastBoundsKey.current = key;
+      callbackRef.current(bounds);
+    }
+
+    map.on("moveend", emit);
+    map.on("zoomend", emit);
+    // Emit initial bounds after the map finishes its first render.
+    const id = setTimeout(emit, 150);
+
+    return () => {
+      map.off("moveend", emit);
+      map.off("zoomend", emit);
+      clearTimeout(id);
+    };
+  }, [map]);
 
   return null;
 }
