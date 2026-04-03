@@ -24,25 +24,52 @@ function buildingMarkerIcon(selected: boolean) {
 }
 
 // Emits viewport bounds to the parent on map load, move, and zoom.
+//
+// Two invariants are maintained to prevent infinite update loops:
+//
+// 1. Stable handler references: useMapEvents receives the same object on every
+//    render so react-leaflet never re-registers events (re-registration can fire
+//    the event immediately, triggering a setState → re-render → re-register cycle).
+//
+// 2. Deduplication: emit compares the serialised bounds against the last emitted
+//    value and skips the callback when nothing has changed, breaking any residual
+//    loop that would otherwise occur when a flyTo or icon update causes the map to
+//    fire moveend/zoomend with an unchanged viewport.
 function ViewportTracker({
   onBoundsChange,
 }: {
   onBoundsChange: (b: BuildingsWithinBoundsParams) => void;
 }) {
-  function emit(m: L.Map) {
+  // Keep onBoundsChange in a ref so the stable handlers below always call the
+  // latest version without needing to re-register events on every render.
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
+
+  const lastBoundsKey = useRef<string>("");
+
+  // Stable emit — reads the map's current bounds, deduplicates, and notifies.
+  const emit = useRef((m: L.Map) => {
     const b = m.getBounds();
-    onBoundsChange({
+    const bounds: BuildingsWithinBoundsParams = {
       minLat: b.getSouth(),
       minLng: b.getWest(),
       maxLat: b.getNorth(),
       maxLng: b.getEast(),
-    });
-  }
+    };
+    const key = `${bounds.minLat},${bounds.minLng},${bounds.maxLat},${bounds.maxLng}`;
+    if (key === lastBoundsKey.current) return;
+    lastBoundsKey.current = key;
+    onBoundsChangeRef.current(bounds);
+  }).current;
 
-  const map = useMapEvents({
-    moveend: () => emit(map),
-    zoomend: () => emit(map),
-  });
+  // Stable handler object — same reference across re-renders so react-leaflet
+  // never tears down and re-registers the Leaflet event listeners.
+  const handlers = useRef({
+    moveend: (e: L.LeafletEvent) => emit(e.target as L.Map),
+    zoomend: (e: L.LeafletEvent) => emit(e.target as L.Map),
+  }).current;
+
+  const map = useMapEvents(handlers);
 
   // Emit initial bounds once the map container has finished its first render.
   useEffect(() => {
