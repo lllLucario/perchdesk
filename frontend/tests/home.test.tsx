@@ -107,10 +107,43 @@ describe("HomePage — authenticated", () => {
     expect(screen.getByText("Recent Spaces")).toBeInTheDocument();
   });
 
-  test("renders Nearby Buildings section heading", async () => {
+  test("renders Buildings section heading when location is idle", async () => {
+    mockApi.get.mockReturnValue(new Promise(() => {}));
+    await renderHome();
+    // Permission is "idle" by default — heading is "Buildings" not "Nearby Buildings"
+    expect(screen.getByText("Buildings")).toBeInTheDocument();
+  });
+
+  test("renders Nearby Buildings section heading when location is granted", async () => {
+    useLocationStore.setState({
+      permission: "granted",
+      coordinates: { latitude: -33.87, longitude: 151.21, accuracy: 10 },
+      acquiredAt: null,
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
     mockApi.get.mockReturnValue(new Promise(() => {}));
     await renderHome();
     expect(screen.getByText("Nearby Buildings")).toBeInTheDocument();
+  });
+
+  test("shows error fallback when location is granted but nearby buildings API fails", async () => {
+    useLocationStore.setState({
+      permission: "granted",
+      coordinates: { latitude: -33.87, longitude: 151.21, accuracy: 10 },
+      acquiredAt: null,
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApi.get.mockRejectedValue(new Error("Network error"));
+    await renderHome();
+    await waitFor(() => {
+      expect(screen.getByText(/Could not load nearby buildings/)).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Browse all buildings" })).toBeInTheDocument();
+    });
+    // Placeholder cards must not appear when the query has failed
+    expect(screen.queryByText("Central Library")).not.toBeInTheDocument();
+    expect(screen.queryByText("Tech Hub")).not.toBeInTheDocument();
   });
 
   test("shows loading skeletons while data is loading", async () => {
@@ -369,9 +402,10 @@ describe("HomePage — unauthenticated", () => {
     expect(loginLinks.length).toBeGreaterThan(0);
   });
 
-  test("still renders Nearby Buildings section", async () => {
+  test("still renders Buildings section when unauthenticated", async () => {
     await renderHome();
-    expect(screen.getByText("Nearby Buildings")).toBeInTheDocument();
+    // No location when unauthenticated — heading is generic "Buildings"
+    expect(screen.getByText("Buildings")).toBeInTheDocument();
     expect(screen.getByText("Central Library")).toBeInTheDocument();
   });
 });

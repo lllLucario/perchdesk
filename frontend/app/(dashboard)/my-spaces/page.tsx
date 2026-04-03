@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useLocationStore } from "@/store/locationStore";
 import { useNearbySpaces } from "@/lib/hooks";
 import RecommendationRibbon from "@/components/RecommendationRibbon";
+import SpaceCard from "@/components/SpaceCard";
+
 
 // ─── Recommended Spaces section ──────────────────────────────────────────────
 
@@ -17,7 +18,6 @@ function RecommendedSection() {
       : null;
 
   const { data: recommendations, isLoading, isError } = useNearbySpaces(nearbyParams);
-  const router = useRouter();
 
   if (permission === "idle") {
     return (
@@ -109,29 +109,18 @@ function RecommendedSection() {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1">
+    <div className="grid grid-cols-2 gap-3">
       {recommendations.map((rec) => (
-        <div
+        <SpaceCard
           key={rec.space_id}
-          className="w-44 flex-shrink-0 bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-          onClick={() => router.push(`/spaces/${rec.space_id}`)}
-        >
-          {/* Ribbon */}
-          <div className="px-3 pt-3 pb-1">
-            <RecommendationRibbon reason={rec.reason} />
-          </div>
-
-          <div className="px-3 pb-3">
-            <p className="font-medium text-gray-900 text-sm mt-1 line-clamp-1">
-              {rec.space_name}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5 capitalize">
-              {rec.space_type} · {rec.capacity} seats
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">{rec.building_name}</p>
-            <p className="text-xs text-blue-500 mt-1">{rec.distance_km} km away</p>
-          </div>
-        </div>
+          spaceId={rec.space_id}
+          name={rec.space_name}
+          type={rec.space_type}
+          capacity={rec.capacity}
+          buildingName={rec.building_name}
+          ribbon={<RecommendationRibbon reason={rec.reason} />}
+          supportingLine={`${rec.distance_km} km away`}
+        />
       ))}
     </div>
   );
