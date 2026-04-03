@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSpaces, useBuildings, useBookings, useNearbySpaces } from "@/lib/hooks";
+import { useSpaces, useBuildings, useNearbyBuildings, useBookings, useNearbySpaces } from "@/lib/hooks";
 import { useAuthStore } from "@/store/authStore";
 import { useLocationStore } from "@/store/locationStore";
 import RecommendationRibbon from "@/components/RecommendationRibbon";
@@ -49,7 +49,22 @@ export default function HomePage() {
     (permission === "granted" && nearbyLoading);
 
   const recentSpaces = spaces?.slice(0, 4) ?? [];
-  const buildings = buildingsData?.slice(0, 4) ?? [];
+
+  // Nearby buildings: use location-aware query when coordinates are available,
+  // otherwise fall back to the generic building list.
+  const nearbyBuildingsParams =
+    permission === "granted" && coordinates !== null
+      ? { lat: coordinates.latitude, lng: coordinates.longitude }
+      : null;
+  const { data: nearbyBuildingsData } = useNearbyBuildings(
+    nearbyBuildingsParams?.lat ?? null,
+    nearbyBuildingsParams?.lng ?? null,
+    4
+  );
+  const isNearbyLocation = permission === "granted" && coordinates !== null;
+  const buildings = isNearbyLocation
+    ? (nearbyBuildingsData ?? [])
+    : (buildingsData?.slice(0, 4) ?? []);
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -204,10 +219,10 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Nearby Buildings */}
+      {/* Nearby / All Buildings */}
       <section>
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-          Nearby Buildings
+          {isNearbyLocation ? "Nearby Buildings" : "Buildings"}
         </h2>
         {buildings.length === 0 ? (
           <div className="grid grid-cols-2 gap-3">
