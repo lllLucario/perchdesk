@@ -118,6 +118,7 @@ function RecommendedSection() {
           type={rec.space_type}
           capacity={rec.capacity}
           buildingName={rec.building_name}
+          isFavorited={rec.is_favorited}
           ribbon={<RecommendationRibbon reason={rec.reason} />}
           supportingLine={`${rec.distance_km} km away`}
         />

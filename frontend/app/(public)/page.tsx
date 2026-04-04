@@ -129,6 +129,7 @@ export default function HomePage() {
                         name={rec.space_name}
                         type={rec.space_type}
                         capacity={rec.capacity}
+                        isFavorited={rec.is_favorited}
                         ribbon={<RecommendationRibbon reason={rec.reason} />}
                         supportingLine={`${rec.distance_km} km away`}
                       />
