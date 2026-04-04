@@ -405,3 +405,19 @@ export function useDeleteFloorPlan() {
     },
   });
 }
+
+// ----- Favorites -----
+
+export function useToggleFavoriteSpace() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, favorited }: { spaceId: string; favorited: boolean }) =>
+      favorited
+        ? api.delete<void>(`/api/v1/spaces/${spaceId}/favorite`)
+        : api.post<unknown>(`/api/v1/spaces/${spaceId}/favorite`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["spaces"] });
+      queryClient.invalidateQueries({ queryKey: ["buildings"] });
+    },
+  });
+}
