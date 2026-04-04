@@ -10,6 +10,22 @@ from app.models.seat import Seat
 from app.models.space import Space
 
 
+def _is_unique_violation(exc: IntegrityError) -> bool:
+    """Return True when the IntegrityError is caused by a unique-constraint violation.
+
+    Handles both PostgreSQL (pgcode 23505) and SQLite ("UNIQUE constraint failed")
+    so the check works in both production and the test environment.
+    """
+    orig = exc.orig
+    if orig is None:
+        return False
+    # PostgreSQL
+    if hasattr(orig, "pgcode") and orig.pgcode == "23505":
+        return True
+    # SQLite
+    return "UNIQUE constraint failed" in str(orig)
+
+
 async def list_favorite_spaces(
     db: AsyncSession, user_id: uuid.UUID
 ) -> list[FavoriteSpace]:
@@ -32,9 +48,11 @@ async def add_favorite_space(
     db.add(favorite)
     try:
         await db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
-        raise DuplicateError("Space is already in your favorites.")
+        if _is_unique_violation(exc):
+            raise DuplicateError("Space is already in your favorites.")
+        raise
     await db.refresh(favorite)
     return favorite
 
@@ -83,9 +101,11 @@ async def add_favorite_seat(
     db.add(favorite)
     try:
         await db.commit()
-    except IntegrityError:
+    except IntegrityError as exc:
         await db.rollback()
-        raise DuplicateError("Seat is already in your favorites.")
+        if _is_unique_violation(exc):
+            raise DuplicateError("Seat is already in your favorites.")
+        raise
     await db.refresh(favorite)
     return favorite
 
