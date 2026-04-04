@@ -453,7 +453,7 @@ async def test_create_booking_exceeds_max_duration(
             BookingCreate(
                 seat_id=available_seat.id,
                 start_time=_future(1),
-                end_time=_future(10),  # 9 hours > 480 min limit
+                end_time=_future(12),  # 11 UTC hours; still >480 min on DST fall-back days
             ),
         )
 
