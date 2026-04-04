@@ -42,6 +42,7 @@ export interface Space {
   capacity: number;
   layout_config: Record<string, unknown> | null;
   created_at: string;
+  is_favorited: boolean;
 }
 
 export interface Seat {
@@ -113,6 +114,7 @@ export interface SpaceRecommendationResult {
   distance_km: number;
   reason: "near_you" | "closest_available";
   available_seat_count: number;
+  is_favorited: boolean;
 }
 
 // ----- Nearby spaces recommendation -----
