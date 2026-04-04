@@ -31,6 +31,9 @@ class SpaceResponse(BaseModel):
     capacity: int
     layout_config: dict[str, Any] | None
     created_at: datetime
+    # Enriched by GET endpoints using the requesting user's favorites.
+    # Admin-only write endpoints (PUT, floor-plan upload/delete) return the
+    # schema default (false) and do not reflect the caller's real favorite state.
     is_favorited: bool = False
 
     model_config = {"from_attributes": True}
@@ -71,4 +74,5 @@ class SpaceRecommendationResult(BaseModel):
     distance_km: float
     reason: Literal["near_you", "closest_available"]
     available_seat_count: int
+    # Enriched by the nearby endpoint using the requesting user's favorites.
     is_favorited: bool = False
