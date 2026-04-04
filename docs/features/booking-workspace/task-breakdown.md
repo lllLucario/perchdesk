@@ -270,6 +270,23 @@ Support modal-based space detail with booking-oriented information.
 
 ---
 
+## Deferred Cross-Domain Note: Recent Floorplan Entry Signal
+
+This feature track is the correct source domain for a future `recently entered
+floorplan` signal, because only the booking workspace can define what counts
+as a successful floorplan entry.
+
+That signal is consumed by `My Spaces`, but it should not block the current
+booking-workspace implementation sequence unless a task explicitly scopes it in.
+
+When this signal is later implemented, it should:
+
+- fire after floorplan initialization succeeds
+- not be inferred from a simple browse click
+- use dedicated persistence or event tracking rather than page-local UI state
+
+---
+
 ## Task 7: Refactor Floorplan into Three-Column Workspace
 
 **Effort: M**
