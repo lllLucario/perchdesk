@@ -31,6 +31,7 @@ class SpaceResponse(BaseModel):
     capacity: int
     layout_config: dict[str, Any] | None
     created_at: datetime
+    is_favorited: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -70,3 +71,4 @@ class SpaceRecommendationResult(BaseModel):
     distance_km: float
     reason: Literal["near_you", "closest_available"]
     available_seat_count: int
+    is_favorited: bool = False
