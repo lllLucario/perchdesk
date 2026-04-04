@@ -42,6 +42,12 @@ async def add_favorite_space(
 async def remove_favorite_space(
     db: AsyncSession, user_id: uuid.UUID, space_id: uuid.UUID
 ) -> None:
+    # Validate the space exists before checking favorites so the client can
+    # distinguish a missing resource from an unfavorited existing one.
+    space = await db.get(Space, space_id)
+    if space is None:
+        raise NotFoundError(f"Space {space_id} not found.")
+
     result = await db.execute(
         select(FavoriteSpace).where(
             FavoriteSpace.user_id == user_id,
@@ -87,6 +93,12 @@ async def add_favorite_seat(
 async def remove_favorite_seat(
     db: AsyncSession, user_id: uuid.UUID, seat_id: uuid.UUID
 ) -> None:
+    # Validate the seat exists before checking favorites so the client can
+    # distinguish a missing resource from an unfavorited existing one.
+    seat = await db.get(Seat, seat_id)
+    if seat is None:
+        raise NotFoundError(f"Seat {seat_id} not found.")
+
     result = await db.execute(
         select(FavoriteSeat).where(
             FavoriteSeat.user_id == user_id,
