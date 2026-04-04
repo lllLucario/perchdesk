@@ -16,6 +16,7 @@ from app.schemas.building import (
 )
 from app.schemas.space import SpaceResponse
 from app.services import building as building_service
+from app.services import favorite as favorite_service
 
 router = APIRouter(prefix="/buildings", tags=["buildings"])
 
@@ -101,9 +102,16 @@ async def get_building(
 async def list_building_spaces(
     building_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[SpaceResponse]:
-    return await building_service.list_building_spaces(db, building_id)  # type: ignore[return-value]
+    spaces = await building_service.list_building_spaces(db, building_id)
+    favorited_ids = await favorite_service.get_favorited_space_ids(
+        db, current_user.id, [s.id for s in spaces]
+    )
+    return [
+        SpaceResponse.model_validate(s).model_copy(update={"is_favorited": s.id in favorited_ids})
+        for s in spaces
+    ]
 
 
 @router.post("", response_model=BuildingResponse, status_code=201)

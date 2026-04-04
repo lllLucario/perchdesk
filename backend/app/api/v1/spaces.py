@@ -18,6 +18,7 @@ from app.schemas.space import (
     SpaceUpdate,
 )
 from app.schemas.space_rules import SpaceRulesResponse, SpaceRulesUpdate
+from app.services import favorite as favorite_service
 from app.services import space as space_service
 from app.services import space_rules as rules_service
 
@@ -29,9 +30,16 @@ UPLOAD_DIR = "uploads/floor_plans"
 @router.get("", response_model=list[SpaceResponse])
 async def list_spaces(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> list:
-    return await space_service.list_spaces(db)
+    current_user: User = Depends(get_current_user),
+) -> list[SpaceResponse]:
+    spaces = await space_service.list_spaces(db)
+    favorited_ids = await favorite_service.get_favorited_space_ids(
+        db, current_user.id, [s.id for s in spaces]
+    )
+    return [
+        SpaceResponse.model_validate(s).model_copy(update={"is_favorited": s.id in favorited_ids})
+        for s in spaces
+    ]
 
 
 @router.post("", response_model=SpaceResponse, status_code=201)
@@ -60,7 +68,7 @@ async def list_nearby_spaces(
     ),
     limit: int = Query(default=20, ge=1, le=50, description="Maximum number of results"),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> list[SpaceRecommendationResult]:
     if (start_time is None) != (end_time is None):
         raise BookingRuleViolationError(
@@ -68,7 +76,7 @@ async def list_nearby_spaces(
         )
     if start_time is not None and end_time is not None and end_time <= start_time:
         raise BookingRuleViolationError("end_time must be after start_time")
-    return await space_service.list_nearby_spaces(
+    results = await space_service.list_nearby_spaces(
         db,
         lat=lat,
         lng=lng,
@@ -77,15 +85,26 @@ async def list_nearby_spaces(
         space_type=type,
         limit=limit,
     )
+    favorited_ids = await favorite_service.get_favorited_space_ids(
+        db, current_user.id, [r.space_id for r in results]
+    )
+    return [
+        r.model_copy(update={"is_favorited": r.space_id in favorited_ids})
+        for r in results
+    ]
 
 
 @router.get("/{space_id}", response_model=SpaceDetailResponse)
 async def get_space(
     space_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-) -> object:
-    return await space_service.get_space(db, space_id)
+    current_user: User = Depends(get_current_user),
+) -> SpaceDetailResponse:
+    space = await space_service.get_space(db, space_id)
+    favorited_ids = await favorite_service.get_favorited_space_ids(db, current_user.id, [space.id])
+    return SpaceDetailResponse.model_validate(space).model_copy(
+        update={"is_favorited": space.id in favorited_ids}
+    )
 
 
 @router.put("/{space_id}", response_model=SpaceResponse)

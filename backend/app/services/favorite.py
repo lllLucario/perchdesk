@@ -10,6 +10,27 @@ from app.models.seat import Seat
 from app.models.space import Space
 
 
+async def get_favorited_space_ids(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    space_ids: list[uuid.UUID],
+) -> set[uuid.UUID]:
+    """Return the subset of space_ids that the user has favorited.
+
+    Returns an empty set when space_ids is empty, avoiding an unnecessary
+    database round-trip.
+    """
+    if not space_ids:
+        return set()
+    result = await db.execute(
+        select(FavoriteSpace.space_id).where(
+            FavoriteSpace.user_id == user_id,
+            FavoriteSpace.space_id.in_(space_ids),
+        )
+    )
+    return set(result.scalars().all())
+
+
 def _is_unique_violation(exc: IntegrityError) -> bool:
     """Return True when the IntegrityError is caused by a unique-constraint violation.
 
