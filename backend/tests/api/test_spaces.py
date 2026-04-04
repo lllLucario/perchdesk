@@ -700,3 +700,129 @@ class TestNearbySpaces:
         )
         assert resp.status_code == 200
         assert len(resp.json()) == 3
+
+
+# ---------------------------------------------------------------------------
+# is_favorited enrichment
+# ---------------------------------------------------------------------------
+
+
+class TestIsFavorited:
+    """Verify that is_favorited is present and reflects the current user's state."""
+
+    async def test_list_spaces_includes_is_favorited_field(
+        self, client: AsyncClient, user_token: str, library_space: Space
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/spaces", headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert resp.status_code == 200
+        item = resp.json()[0]
+        assert "is_favorited" in item
+
+    async def test_list_spaces_not_favorited_by_default(
+        self, client: AsyncClient, user_token: str, library_space: Space
+    ) -> None:
+        resp = await client.get(
+            "/api/v1/spaces", headers={"Authorization": f"Bearer {user_token}"}
+        )
+        assert resp.json()[0]["is_favorited"] is False
+
+    async def test_list_spaces_reflects_favorite(
+        self, client: AsyncClient, user_token: str, library_space: Space
+    ) -> None:
+        await client.post(
+            f"/api/v1/spaces/{library_space.id}/favorite",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        resp = await client.get(
+            "/api/v1/spaces", headers={"Authorization": f"Bearer {user_token}"}
+        )
+        item = next(i for i in resp.json() if i["id"] == str(library_space.id))
+        assert item["is_favorited"] is True
+
+    async def test_list_spaces_scoped_to_current_user(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        admin_token: str,
+        library_space: Space,
+    ) -> None:
+        # Admin favorites the space; regular user should still see is_favorited=false
+        await client.post(
+            f"/api/v1/spaces/{library_space.id}/favorite",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        resp = await client.get(
+            "/api/v1/spaces", headers={"Authorization": f"Bearer {user_token}"}
+        )
+        item = next(i for i in resp.json() if i["id"] == str(library_space.id))
+        assert item["is_favorited"] is False
+
+    async def test_get_space_includes_is_favorited(
+        self, client: AsyncClient, user_token: str, library_space: Space
+    ) -> None:
+        resp = await client.get(
+            f"/api/v1/spaces/{library_space.id}",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        assert "is_favorited" in resp.json()
+
+    async def test_get_space_reflects_favorite(
+        self, client: AsyncClient, user_token: str, library_space: Space
+    ) -> None:
+        await client.post(
+            f"/api/v1/spaces/{library_space.id}/favorite",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        resp = await client.get(
+            f"/api/v1/spaces/{library_space.id}",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.json()["is_favorited"] is True
+
+    async def test_nearby_spaces_includes_is_favorited(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+    ) -> None:
+        bldg = Building(name="Fav Bldg", address="1 Fav St", latitude=-33.8688, longitude=151.2093)
+        db_session.add(bldg)
+        await db_session.flush()
+        space, _ = await _make_geo_space(db_session, bldg, name="Fav Space", capacity=2, n_seats=0)
+
+        resp = await client.get(
+            "/api/v1/spaces/nearby",
+            params={"lat": -33.8688, "lng": 151.2093},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        item = next((i for i in resp.json() if i["space_id"] == str(space.id)), None)
+        assert item is not None
+        assert "is_favorited" in item
+        assert item["is_favorited"] is False
+
+    async def test_nearby_spaces_reflects_favorite(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        db_session: AsyncSession,
+    ) -> None:
+        bldg = Building(name="Fav Bldg2", address="2 Fav St", latitude=-33.8688, longitude=151.2093)
+        db_session.add(bldg)
+        await db_session.flush()
+        space, _ = await _make_geo_space(db_session, bldg, name="Fav Space2", capacity=2, n_seats=0)
+
+        await client.post(
+            f"/api/v1/spaces/{space.id}/favorite",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        resp = await client.get(
+            "/api/v1/spaces/nearby",
+            params={"lat": -33.8688, "lng": 151.2093},
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        item = next(i for i in resp.json() if i["space_id"] == str(space.id))
+        assert item["is_favorited"] is True

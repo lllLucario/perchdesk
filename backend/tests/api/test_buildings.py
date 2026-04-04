@@ -804,3 +804,38 @@ class TestBuildingsWithinBounds:
         assert resp.status_code == 200
         names = [b["name"] for b in resp.json()]
         assert names == sorted(names)
+
+
+class TestBuildingSpacesIsFavorited:
+    async def test_building_spaces_includes_is_favorited(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        space_in_building: Space,
+        sample_building: Building,
+    ) -> None:
+        resp = await client.get(
+            f"/api/v1/buildings/{sample_building.id}/spaces",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
+        assert "is_favorited" in resp.json()[0]
+        assert resp.json()[0]["is_favorited"] is False
+
+    async def test_building_spaces_reflects_favorite(
+        self,
+        client: AsyncClient,
+        user_token: str,
+        space_in_building: Space,
+        sample_building: Building,
+    ) -> None:
+        await client.post(
+            f"/api/v1/spaces/{space_in_building.id}/favorite",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        resp = await client.get(
+            f"/api/v1/buildings/{sample_building.id}/spaces",
+            headers={"Authorization": f"Bearer {user_token}"},
+        )
+        assert resp.json()[0]["is_favorited"] is True
