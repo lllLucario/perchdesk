@@ -107,13 +107,16 @@ async def test_booking_conflict(
 async def test_booking_exceeds_max_duration(
     client: AsyncClient, user_token: str, library_seat: Seat
 ):
-    # Library max is 480 min = 8 hours; try 9 hours
+    # Library max is 480 min = 8 hours; try 11 hours.
+    # Using 11 UTC hours ensures the wall-clock duration exceeds 480 min even
+    # on DST fall-back days when the clock goes back 1 hour (11 UTC hours
+    # = 10 wall-clock hours = 600 min > 480 min).
     resp = await client.post(
         "/api/v1/bookings",
         json={
             "seat_id": str(library_seat.id),
             "start_time": future(1),
-            "end_time": future(10),
+            "end_time": future(12),
         },
         headers={"Authorization": f"Bearer {user_token}"},
     )

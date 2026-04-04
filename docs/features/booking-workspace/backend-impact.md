@@ -8,6 +8,10 @@ matches the new frontend workflow.
 
 It is not a full backend spec. It is an implementation-awareness document.
 
+Read together with:
+
+- `docs/time-semantics.md`
+
 ## Core Principle
 
 The UX may introduce planning behavior that is richer than the current backend
@@ -66,6 +70,37 @@ The new floorplan flow expects time-first behavior and may require:
 
 If the current API only supports simple range availability, frontend adapters
 may be sufficient at first. If not, targeted API refinement may be needed.
+
+### 2.1 Booking rule time semantics
+
+Booking-workspace implementation must not assume that every time comparison can
+be reduced to UTC subtraction.
+
+Important distinction:
+
+- overlap/conflict checks should continue using UTC instants
+- slot alignment, daily caps, and midnight-based rules should use
+  `Australia/Sydney` wall-clock semantics
+
+This is especially important near DST boundaries, where a valid local
+midnight-to-midnight booking may not equal exactly `1440` UTC minutes.
+
+### 2.2 Floorplan-entry event sourcing
+
+The booking workspace is also the natural source of truth for a future
+`recently entered floorplan` signal.
+
+That signal would be consumed by personalized discovery surfaces such as
+`My Spaces`, but it should originate here because only the floorplan workflow
+can define what counts as a successful workspace entry.
+
+Important constraints:
+
+- it should not be inferred from a simple card click
+- it should only fire after the floorplan page has entered a successful usable
+  state
+- it will require dedicated persistence or event tracking if the product wants
+  to consume it later
 
 ### 3. Booking draft checkout
 
