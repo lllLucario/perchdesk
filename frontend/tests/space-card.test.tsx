@@ -117,4 +117,36 @@ describe("SpaceCard", () => {
     fireEvent.click(screen.getByLabelText("Add to favorites"));
     expect(mockRouter.push).not.toHaveBeenCalled();
   });
+
+  // ── Optimistic state transitions ──
+
+  test("star flips to favorited immediately on click (optimistic)", async () => {
+    // POST stays pending — we want to verify the UI flips before resolution
+    (api.post as jest.Mock).mockReturnValue(new Promise(() => {}));
+    renderWithProviders(<SpaceCard {...baseProps} isFavorited={false} />);
+    expect(screen.getByLabelText("Add to favorites")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Add to favorites"));
+    // Should optimistically flip to "Remove from favorites"
+    expect(screen.getByLabelText("Remove from favorites")).toBeInTheDocument();
+  });
+
+  test("star flips to unfavorited immediately on click (optimistic)", async () => {
+    (api.delete as jest.Mock).mockReturnValue(new Promise(() => {}));
+    renderWithProviders(<SpaceCard {...baseProps} isFavorited />);
+    expect(screen.getByLabelText("Remove from favorites")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Remove from favorites"));
+    expect(screen.getByLabelText("Add to favorites")).toBeInTheDocument();
+  });
+
+  test("star reverts on mutation failure", async () => {
+    (api.post as jest.Mock).mockRejectedValue(new Error("Network error"));
+    renderWithProviders(<SpaceCard {...baseProps} isFavorited={false} />);
+    fireEvent.click(screen.getByLabelText("Add to favorites"));
+    // Optimistically flipped
+    expect(screen.getByLabelText("Remove from favorites")).toBeInTheDocument();
+    // After rejection, should revert
+    await waitFor(() => {
+      expect(screen.getByLabelText("Add to favorites")).toBeInTheDocument();
+    });
+  });
 });

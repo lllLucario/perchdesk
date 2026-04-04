@@ -39,9 +39,21 @@ export default function SpaceCard({
   const router = useRouter();
   const toggleFavorite = useToggleFavoriteSpace();
 
+  // Optimistic local state: flips immediately on click, syncs back to
+  // server-backed prop when it changes (e.g. after query refetch).
+  const [optimistic, setOptimistic] = React.useState(isFavorited);
+  React.useEffect(() => {
+    setOptimistic(isFavorited);
+  }, [isFavorited]);
+
   const handleStarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite.mutate({ spaceId, favorited: isFavorited });
+    const next = !optimistic;
+    setOptimistic(next);
+    toggleFavorite.mutate(
+      { spaceId, favorited: optimistic },
+      { onError: () => setOptimistic(optimistic) },
+    );
   };
 
   return (
@@ -51,7 +63,7 @@ export default function SpaceCard({
     >
       {/* Favorite star */}
       <button
-        aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+        aria-label={optimistic ? "Remove from favorites" : "Add to favorites"}
         className="absolute top-2 right-2 p-1 text-gray-300 hover:text-yellow-400 transition-colors"
         onClick={handleStarClick}
         disabled={toggleFavorite.isPending}
@@ -59,10 +71,10 @@ export default function SpaceCard({
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
-          fill={isFavorited ? "currentColor" : "none"}
+          fill={optimistic ? "currentColor" : "none"}
           stroke="currentColor"
-          strokeWidth={isFavorited ? 0 : 1.5}
-          className={`w-4 h-4 ${isFavorited ? "text-yellow-400" : ""}`}
+          strokeWidth={optimistic ? 0 : 1.5}
+          className={`w-4 h-4 ${optimistic ? "text-yellow-400" : ""}`}
         >
           <path
             strokeLinecap="round"
