@@ -116,19 +116,20 @@ function RecommendedSection() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="flex gap-3 overflow-x-auto pb-1">
       {recommendations.map((rec) => (
-        <SpaceCard
-          key={rec.space_id}
-          spaceId={rec.space_id}
-          name={rec.space_name}
-          type={rec.space_type}
-          capacity={rec.capacity}
-          buildingName={rec.building_name}
-          isFavorited={rec.is_favorited}
-          ribbon={<RecommendationRibbon reason={rec.reason} />}
-          supportingLine={`${rec.distance_km} km away`}
-        />
+        <div key={rec.space_id} className="w-44 flex-shrink-0">
+          <SpaceCard
+            spaceId={rec.space_id}
+            name={rec.space_name}
+            type={rec.space_type}
+            capacity={rec.capacity}
+            buildingName={rec.building_name}
+            isFavorited={rec.is_favorited}
+            ribbon={<RecommendationRibbon reason={rec.reason} />}
+            supportingLine={`${rec.distance_km} km away`}
+          />
+        </div>
       ))}
     </div>
   );
