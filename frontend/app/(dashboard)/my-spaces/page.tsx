@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useLocationStore } from "@/store/locationStore";
-import { useNearbySpaces } from "@/lib/hooks";
+import {
+  useNearbySpaces,
+  useFavoriteSpaces,
+  useSpaces,
+  useBookings,
+  useRecentSpaceVisits,
+  type Space,
+} from "@/lib/hooks";
 import RecommendationRibbon from "@/components/RecommendationRibbon";
 import SpaceCard from "@/components/SpaceCard";
 
@@ -127,9 +134,56 @@ function RecommendedSection() {
   );
 }
 
+// ─── Favorite Spaces section ────────────────────────────────────────────────
+
+function FavoriteSection({ spacesById }: { spacesById: Map<string, Space> }) {
+  const { data: favorites, isLoading } = useFavoriteSpaces();
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  const favoriteSpaces = (favorites ?? [])
+    .map((f) => spacesById.get(f.space_id))
+    .filter((s): s is Space => s !== undefined);
+
+  if (favoriteSpaces.length === 0) {
+    return (
+      <p className="text-sm text-gray-400">
+        No favorite spaces yet. Tap the star on any space card to save it here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-1">
+      {favoriteSpaces.map((space) => (
+        <div key={space.id} className="w-44 flex-shrink-0">
+          <SpaceCard
+            spaceId={space.id}
+            name={space.name}
+            type={space.type}
+            capacity={space.capacity}
+            isFavorited={true}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MySpacesPage() {
+  const { data: spaces, isLoading: spacesLoading } = useSpaces();
+  const spacesById = new Map((spaces ?? []).map((s) => [s.id, s]));
+
   return (
     <div>
       {/* Header */}
@@ -144,32 +198,38 @@ export default function MySpacesPage() {
         Personalized access to spaces you use most
       </p>
 
-      {/* Recommended Spaces */}
-      <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-          Recommended Spaces
-        </h2>
-        <RecommendedSection />
-      </section>
-
-      {/* Favorite Spaces — placeholder until favorites backend is wired */}
+      {/* Favorite Spaces */}
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           Favorite Spaces
         </h2>
-        <p className="text-sm text-gray-400">
-          Your favorite spaces will appear here. Coming soon.
-        </p>
+        {spacesLoading ? (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <FavoriteSection spacesById={spacesById} />
+        )}
       </section>
 
       {/* Recent Spaces — placeholder until recent-space signals are wired */}
-      <section>
+      <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           Recent Spaces
         </h2>
         <p className="text-sm text-gray-400">
           Spaces you visited recently will appear here.
         </p>
+      </section>
+
+      {/* Recommended Spaces */}
+      <section>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          Recommended Spaces
+        </h2>
+        <RecommendedSection />
       </section>
     </div>
   );
