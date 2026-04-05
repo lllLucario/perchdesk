@@ -178,6 +178,81 @@ function FavoriteSection({ spacesById }: { spacesById: Map<string, Space> }) {
   );
 }
 
+// ─── Recent Spaces section ──────────────────────────────────────────────────
+
+interface RecentCard {
+  spaceId: string;
+  space: Space;
+  supportingLine: string;
+}
+
+function RecentSection({ spacesById }: { spacesById: Map<string, Space> }) {
+  const { data: bookings, isLoading: bookingsLoading } = useBookings();
+  const { data: visits, isLoading: visitsLoading } = useRecentSpaceVisits(4);
+
+  const isLoading = bookingsLoading || visitsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  // Build deduplicated recent list: bookings first, then floorplan visits
+  const seen = new Set<string>();
+  const cards: RecentCard[] = [];
+
+  // Recent bookings — deduplicated, newest first
+  const sortedBookings = [...(bookings ?? [])].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+  for (const b of sortedBookings) {
+    if (seen.has(b.space_id)) continue;
+    const space = spacesById.get(b.space_id);
+    if (!space) continue;
+    seen.add(b.space_id);
+    cards.push({ spaceId: b.space_id, space, supportingLine: "Booked recently" });
+  }
+
+  // Recent floorplan visits — fill remaining
+  for (const v of visits ?? []) {
+    if (seen.has(v.space_id)) continue;
+    const space = spacesById.get(v.space_id);
+    if (!space) continue;
+    seen.add(v.space_id);
+    cards.push({ spaceId: v.space_id, space, supportingLine: "Visited recently" });
+  }
+
+  if (cards.length === 0) {
+    return (
+      <p className="text-sm text-gray-400">
+        No recent activity yet. Book a space or visit a floorplan to see it here.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-1">
+      {cards.map((card) => (
+        <div key={card.spaceId} className="w-44 flex-shrink-0">
+          <SpaceCard
+            spaceId={card.spaceId}
+            name={card.space.name}
+            type={card.space.type}
+            capacity={card.space.capacity}
+            isFavorited={card.space.is_favorited}
+            supportingLine={card.supportingLine}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MySpacesPage() {
@@ -214,14 +289,20 @@ export default function MySpacesPage() {
         )}
       </section>
 
-      {/* Recent Spaces — placeholder until recent-space signals are wired */}
+      {/* Recent Spaces */}
       <section className="mb-10">
         <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
           Recent Spaces
         </h2>
-        <p className="text-sm text-gray-400">
-          Spaces you visited recently will appear here.
-        </p>
+        {spacesLoading ? (
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <RecentSection spacesById={spacesById} />
+        )}
       </section>
 
       {/* Recommended Spaces */}
