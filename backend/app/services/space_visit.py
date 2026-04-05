@@ -2,6 +2,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
@@ -19,10 +20,16 @@ async def record_visit(
     Uses upsert semantics: if a row already exists for the (user_id,
     space_id) pair, ``visited_at`` is updated to now.  Otherwise a new
     row is created.
+
+    Race-safe: if a concurrent request inserts the same (user_id,
+    space_id) pair between our SELECT and INSERT, we catch the unique-
+    constraint violation and retry as an UPDATE.
     """
     space = await db.get(Space, space_id)
     if space is None:
         raise NotFoundError(f"Space {space_id} not found.")
+
+    now = datetime.now(UTC)
 
     result = await db.execute(
         select(SpaceVisit).where(
@@ -33,13 +40,29 @@ async def record_visit(
     visit = result.scalar_one_or_none()
 
     if visit is not None:
-        visit.visited_at = datetime.now(UTC)
-    else:
-        visit = SpaceVisit(user_id=user_id, space_id=space_id)
-        db.add(visit)
+        visit.visited_at = now
+        await db.commit()
+        await db.refresh(visit)
+        return visit
 
-    await db.commit()
-    await db.refresh(visit)
+    visit = SpaceVisit(user_id=user_id, space_id=space_id, visited_at=now)
+    db.add(visit)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        # Concurrent insert won the race — fetch and update instead.
+        result = await db.execute(
+            select(SpaceVisit).where(
+                SpaceVisit.user_id == user_id,
+                SpaceVisit.space_id == space_id,
+            )
+        )
+        visit = result.scalar_one()
+        visit.visited_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(visit)
+
     return visit
 
 
