@@ -24,7 +24,7 @@ In particular:
 
 ## Current Backend Reality
 
-The current backend model is centered on:
+The backend model now includes:
 
 - `users`
 - `buildings`
@@ -32,13 +32,19 @@ The current backend model is centered on:
 - `seats`
 - `bookings`
 - `space_rules`
+- `favorite_spaces` — user-scoped space favorites (v1 complete)
+- `favorite_seats` — user-scoped seat favorites (backend groundwork, no
+  frontend UI)
+- `space_visits` — floorplan-entry recency tracking (v1 complete)
 
-The current API model does not yet expose a personalized discovery layer for:
+The current API exposes personalized discovery capabilities for:
 
-- saved spaces
-- saved seats
-- recent spaces
-- recommended spaces
+- saved spaces — `GET /api/v1/me/favorite-spaces`, toggle via
+  `POST`/`DELETE /api/v1/spaces/{id}/favorite`
+- saved seats — `GET /api/v1/me/favorite-seats`, toggle via
+  `POST`/`DELETE /api/v1/seats/{id}/favorite` (backend only)
+- recent spaces — derivable from `bookings` + `space_visits`
+- nearby recommendation — `GET /api/v1/spaces/nearby`
 
 ## Expected Impact Areas
 
@@ -109,120 +115,99 @@ Selection rule:
 Implementation should avoid turning this into a broad page-view tracking system
 in the first phase.
 
-Current implementation note:
+Implementation status:
 
-- if the active implementation only has booking-backed recency available, that
-  should be treated as a temporary subset of the agreed signal model
-- `recently entered floorplan` still requires dedicated persistence or event
-  tracking and remains unfinished until a separate implementation adds it
-- `My Spaces` should consume that signal, but its source-of-truth belongs to
-  the booking-workspace flow that can define successful floorplan entry
+- both `booking_complete` and `opened_floorplan` signals are now available
+- `opened_floorplan` is persisted via `space_visits` table with a race-safe
+  upsert (read-then-insert with IntegrityError catch)
+- the frontend consumes both signals: bookings (filtered to `confirmed` /
+  `checked_in`) take priority, floorplan visits fill remaining slots
+- deduplication is by `space_id`
 
 ### 5. Recommendation sourcing
 
-The UI now reserves space for recommendations, but the backend should not
-overreach in the first pass.
+#### Currently implemented
 
-Current first-phase direction:
+- `Near you` candidates are served by `GET /api/v1/spaces/nearby`, which uses
+  browser-provided user coordinates and parent-building coordinates to return
+  distance-ranked spaces
+- the frontend consumes this endpoint directly for both `For You` on `Home` and
+  `Recommended Spaces` on `My Spaces`
+- each card carries one primary ribbon reason (`Near you` / `Closest available`)
+  and a distance supporting line
 
-- combine `Near you` from the shared `location` domain
-- combine `Popular`
+Consumer guidance (implemented):
 
-Recommended v1 ranking direction:
+- `For You` consumes nearby recommendations as part of a mixed deduplicated
+  stream
+- `My Spaces` renders `Recommended Spaces` as a separate section
+- the same space may appear across multiple sections on `My Spaces`
 
-- keep the pipeline lightweight and explainable
-- use a simple sequence of candidate generation, hard filtering, scoring,
-  downweighting, and lightweight reranking
-- keep the scoring inputs limited to signals the current product can actually
-  support
+#### Planned direction (not yet implemented)
 
-Recommended v1 feature set:
+The following multi-factor ranking pipeline is planned but not yet active in
+the backend. It is documented here as design direction for the next
+implementation phase.
+
+Planned candidate sources:
+
+- `Near you` from the shared `location` domain (implemented)
+- `Popular` from successful booking count (not yet implemented)
+
+Planned feature set:
 
 - `DistanceScore`
 - `AvailabilityScore`
 - `PopularityScore`
 - `PreferenceLiteScore`
 
-Recommended v1 formula:
+Planned formula:
 
 `FinalScore = 0.40 * DistanceScore + 0.30 * AvailabilityScore + 0.20 * PopularityScore + 0.10 * PreferenceLiteScore`
 
-Where `PreferenceLiteScore` should stay narrow in the first phase, for example:
-
-- frequent building affinity
-- frequent space-type affinity
-
-`PopularityScore` v1 definition:
+`PopularityScore` planned definition:
 
 - derive from successful booking count only
 - use a rolling 30-day window
 - apply a `log(1 + booking_count_30d)` style transform before normalization
 - normalize within the same `space_type`
-- keep availability and crowding concerns in separate signals rather than
-  blending them into popularity
+- keep availability and crowding concerns in separate signals
 
-`PreferenceLiteScore` v1 definition:
+`PreferenceLiteScore` planned definition:
 
 - derive from successful booking behavior only
 - use a rolling 60-day window
-- compute:
-  - `BuildingAffinityScore`
-  - `SpaceTypeAffinityScore`
-- combine as:
-  - `PreferenceLiteScore = 0.60 * BuildingAffinityScore + 0.40 * SpaceTypeAffinityScore`
+- compute `BuildingAffinityScore` and `SpaceTypeAffinityScore`
+- combine as `0.60 * BuildingAffinityScore + 0.40 * SpaceTypeAffinityScore`
 - normalize both sub-scores to `[0,1]`
 - default to `0` for users without enough history
 
-`Near you` dependency direction:
-
-- use browser-provided user coordinates from the location capability flow
-- use parent-building coordinates as the physical anchor
-- prefer nearby useful candidates rather than pure distance-only ranking
-- preserve one primary recommendation reason in the returned contract
-
-Selection rule:
+Planned selection rule:
 
 - first take one `Near you` candidate
 - then take one `Popular` candidate
 - deduplicate by `space`
-- if more results are needed, continue filling from the available candidate
-  pools by priority
+- continue filling from available pools by priority
 
-Consumer guidance:
-
-- `For You` should consume mixed recommendation and recent sources as a
-  deduplicated stream
-- `My Spaces` may preserve the same `space` across multiple sections when the
-  overlap is meaningful
-- `Recommended Spaces` should still prefer complementary results rather than
-  unnecessary repetition of favorites or recents
-
-Recommended v1 adjustment guidance:
+Planned adjustment and reranking:
 
 - exclude favorites from `Recommended Spaces` by default
-- do not hard-exclude recents
-- downweight recent items if they still appear in the recommendation candidate
-  pool
-
-Recommended v1 reranking guidance:
-
-- keep reranking lightweight
-- prefer building diversity first
-- do not force obviously weak candidates into the final list only for variety
+- downweight recent items (`AdjustedScore = FinalScore * 0.85`)
+- prefer building diversity in reranking
+- do not force weak candidates for variety alone
 
 Contract guidance:
 
 - each recommended card should carry one primary explanation only
 - avoid a generic unexplained `Recommended` label when a specific reason can be
   shown
-- heavy score breakdown fields should remain optional diagnostics rather than
-  mandatory product-facing contract fields in v1
+- heavy score breakdown fields should remain optional diagnostics, not mandatory
+  product-facing contract fields
 
-Popularity non-goals for v1:
+Popularity non-goals:
 
-- do not derive popularity from passive impressions
-- do not derive popularity from hover-only or weak exposure events
-- do not treat all-time historical volume as the default popularity signal
+- do not derive popularity from passive impressions or hover-only events
+- do not treat all-time historical volume as the default signal
 
 The important product requirement is explainability, not sophistication.
 
@@ -257,12 +242,13 @@ Expected backend work may include:
 - integration with location-aware nearby recommendation inputs or contracts
 - backend tests for duplicate prevention and access control
 
-## Questions To Resolve During Implementation
+## Questions Resolved During Implementation
 
-The following questions remain open and should be decided at implementation time.
+The following questions were open at authoring time and have since been resolved.
 
-- which existing space response shapes should include `is_favorited` — to be
-  decided during Task 3 (PR 2: `feat/my-spaces-favorite-contract`)
+- `is_favorited` is enriched on all space list and detail GET endpoints using
+  the requesting user's favorites; admin-only write endpoints return the schema
+  default (`false`) — resolved in PR 2 (`feat/my-spaces-favorite-contract`)
 
 The following questions were open at authoring time and have since been
 answered in `docs/features/my-spaces/recommendation-spec.md`.
