@@ -24,7 +24,7 @@ In particular:
 
 ## Current Backend Reality
 
-The current backend model is centered on:
+The backend model now includes:
 
 - `users`
 - `buildings`
@@ -32,13 +32,19 @@ The current backend model is centered on:
 - `seats`
 - `bookings`
 - `space_rules`
+- `favorite_spaces` — user-scoped space favorites (v1 complete)
+- `favorite_seats` — user-scoped seat favorites (backend groundwork, no
+  frontend UI)
+- `space_visits` — floorplan-entry recency tracking (v1 complete)
 
-The current API model does not yet expose a personalized discovery layer for:
+The current API exposes personalized discovery capabilities for:
 
-- saved spaces
-- saved seats
-- recent spaces
-- recommended spaces
+- saved spaces — `GET /api/v1/me/favorite-spaces`, toggle via
+  `POST`/`DELETE /api/v1/spaces/{id}/favorite`
+- saved seats — `GET /api/v1/me/favorite-seats`, toggle via
+  `POST`/`DELETE /api/v1/seats/{id}/favorite` (backend only)
+- recent spaces — derivable from `bookings` + `space_visits`
+- nearby recommendation — `GET /api/v1/spaces/nearby`
 
 ## Expected Impact Areas
 
@@ -109,14 +115,14 @@ Selection rule:
 Implementation should avoid turning this into a broad page-view tracking system
 in the first phase.
 
-Current implementation note:
+Implementation status:
 
-- if the active implementation only has booking-backed recency available, that
-  should be treated as a temporary subset of the agreed signal model
-- `recently entered floorplan` still requires dedicated persistence or event
-  tracking and remains unfinished until a separate implementation adds it
-- `My Spaces` should consume that signal, but its source-of-truth belongs to
-  the booking-workspace flow that can define successful floorplan entry
+- both `booking_complete` and `opened_floorplan` signals are now available
+- `opened_floorplan` is persisted via `space_visits` table with a race-safe
+  upsert (read-then-insert with IntegrityError catch)
+- the frontend consumes both signals: bookings (filtered to `confirmed` /
+  `checked_in`) take priority, floorplan visits fill remaining slots
+- deduplication is by `space_id`
 
 ### 5. Recommendation sourcing
 
@@ -257,12 +263,13 @@ Expected backend work may include:
 - integration with location-aware nearby recommendation inputs or contracts
 - backend tests for duplicate prevention and access control
 
-## Questions To Resolve During Implementation
+## Questions Resolved During Implementation
 
-The following questions remain open and should be decided at implementation time.
+The following questions were open at authoring time and have since been resolved.
 
-- which existing space response shapes should include `is_favorited` — to be
-  decided during Task 3 (PR 2: `feat/my-spaces-favorite-contract`)
+- `is_favorited` is enriched on all space list and detail GET endpoints using
+  the requesting user's favorites; admin-only write endpoints return the schema
+  default (`false`) — resolved in PR 2 (`feat/my-spaces-favorite-contract`)
 
 The following questions were open at authoring time and have since been
 answered in `docs/features/my-spaces/recommendation-spec.md`.
