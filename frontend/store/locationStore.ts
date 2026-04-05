@@ -30,8 +30,9 @@ interface LocationState {
   /**
    * Request the device's current position.
    *
-   * Must be called from an intentional user action — never triggered
-   * automatically on page load.
+   * Called automatically on first authenticated Home page visit (the browser
+   * shows its own permission prompt) or manually via a "Use my location"
+   * button on other surfaces.
    */
   requestLocation: () => void;
 

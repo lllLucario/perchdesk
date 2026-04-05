@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -140,6 +141,14 @@ export default function HomePage() {
   const { data: spaces, isLoading: spacesLoading } = useSpaces();
   const { data: buildingsData } = useBuildings();
   const { permission, coordinates, requestLocation } = useLocationStore();
+
+  // Auto-request location on first authenticated visit so nearby features
+  // light up without requiring a manual click.
+  useEffect(() => {
+    if (isAuthenticated && permission === "idle") {
+      requestLocation();
+    }
+  }, [isAuthenticated, permission, requestLocation]);
 
   const nearbyParams =
     isAuthenticated && permission === "granted" && coordinates !== null
