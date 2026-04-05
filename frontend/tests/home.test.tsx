@@ -348,6 +348,65 @@ describe("HomePage — authenticated", () => {
     );
   });
 
+  test("For You shows favorite spaces in mixed stream", async () => {
+    mockApiResolved({
+      spaces: [
+        { id: "fav1", name: "Fav Library", type: "library", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: true },
+      ],
+      favoriteSpaces: [
+        { id: "f1", user_id: "u1", space_id: "fav1", created_at: new Date().toISOString() },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getAllByText("Fav Library").length).toBeGreaterThan(0));
+    expect(screen.getByText("Favorite")).toBeInTheDocument();
+  });
+
+  test("For You shows visited-recently spaces in mixed stream", async () => {
+    mockApiResolved({
+      spaces: [
+        { id: "v1", name: "Visited Space", type: "office", capacity: 5, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+      ],
+      recentVisits: [
+        { id: "rv1", user_id: "u1", space_id: "v1", visited_at: new Date().toISOString() },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getAllByText("Visited Space").length).toBeGreaterThan(0));
+    expect(screen.getByText("Visited recently")).toBeInTheDocument();
+  });
+
+  test("For You deduplicates spaces across sources", async () => {
+    // Same space is both favorited and recently booked — should appear only once
+    mockApiResolved({
+      spaces: [
+        { id: "dup1", name: "Dup Space", type: "library", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: true },
+      ],
+      favoriteSpaces: [
+        { id: "f1", user_id: "u1", space_id: "dup1", created_at: new Date().toISOString() },
+      ],
+      bookings: [
+        {
+          id: "bk1", space_id: "dup1", space_name: "Dup Space", space_type: "library",
+          building_name: null, seat_id: "s1", start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(), status: "confirmed", user_id: "u1",
+          checked_in_at: null, created_at: new Date().toISOString(), seat_label: "A1",
+          seat_position: { x: 0, y: 0 }, space_layout_config: null, building_id: null,
+        },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getAllByText("Dup Space").length).toBeGreaterThan(0));
+    // In the For You section (.flex-shrink-0 cards), the space should appear only once
+    const forYouCards = document.querySelectorAll(".flex-shrink-0");
+    const dupCount = Array.from(forYouCards).filter(
+      (c) => c.textContent?.includes("Dup Space")
+    ).length;
+    expect(dupCount).toBe(1);
+    // Should appear as Favorite (higher priority than recent booking)
+    expect(screen.getByText("Favorite")).toBeInTheDocument();
+  });
+
   test("For You shows recommendation cards when location granted", async () => {
     useLocationStore.setState({
       permission: "granted",
