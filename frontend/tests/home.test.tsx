@@ -160,6 +160,23 @@ describe("HomePage — authenticated", () => {
     expect(skeletons.length).toBeGreaterThanOrEqual(4);
   });
 
+  test("For You shows skeletons when favorites/spaces still loading", async () => {
+    // Simulate staggered loading: bookings resolve immediately but
+    // favorites and spaces are still pending. The section must show
+    // skeletons, not the empty "No personalised spaces yet." fallback.
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.includes("/bookings")) return Promise.resolve([]);
+      // spaces, favorites, and visits stay pending
+      return new Promise(() => {});
+    });
+    await renderHome();
+    // Should still be in loading state, showing skeletons
+    const skeletons = document.querySelectorAll(".animate-pulse");
+    expect(skeletons.length).toBeGreaterThanOrEqual(4);
+    // Must NOT show the empty fallback
+    expect(screen.queryByText("No personalised spaces yet.")).not.toBeInTheDocument();
+  });
+
   test("renders space cards in Recent Spaces after load", async () => {
     mockApiResolved({
       spaces: [

@@ -137,7 +137,7 @@ function buildForYouStream({
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
-  const { data: spaces, isLoading } = useSpaces();
+  const { data: spaces, isLoading: spacesLoading } = useSpaces();
   const { data: buildingsData } = useBuildings();
   const { permission, coordinates, requestLocation } = useLocationStore();
 
@@ -147,8 +147,8 @@ export default function HomePage() {
       : null;
   const { data: nearbyRecs, isLoading: nearbyLoading, isError: nearbyError } = useNearbySpaces(nearbyParams);
   const { data: bookings, isLoading: bookingsLoading } = useBookings();
-  const { data: favoriteSpaces } = useFavoriteSpaces();
-  const { data: recentVisits } = useRecentSpaceVisits(4);
+  const { data: favoriteSpaces, isLoading: favoritesLoading } = useFavoriteSpaces();
+  const { data: recentVisits, isLoading: visitsLoading } = useRecentSpaceVisits(4);
 
   // Build space lookup for enriching favorite/visit IDs with card data
   const spacesById = new Map((spaces ?? []).map((s) => [s.id, s]));
@@ -182,7 +182,8 @@ export default function HomePage() {
     recommendations: nearbyRecs ?? [],
   });
 
-  const forYouLoading = bookingsLoading || (permission === "loading") ||
+  const forYouLoading = spacesLoading || bookingsLoading || favoritesLoading ||
+    visitsLoading || (permission === "loading") ||
     (permission === "granted" && nearbyLoading);
 
   const recentSpaces = spaces?.slice(0, 4) ?? [];
@@ -314,7 +315,7 @@ export default function HomePage() {
               Sign in
             </Link>
           </div>
-        ) : isLoading ? (
+        ) : spacesLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
