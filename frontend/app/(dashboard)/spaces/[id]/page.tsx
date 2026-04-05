@@ -6,6 +6,7 @@ import { useQueries } from "@tanstack/react-query";
 import {
   useSpace,
   useSpaceRules,
+  useRecordSpaceVisit,
   type Seat,
   type SeatAvailability,
 } from "@/lib/hooks";
@@ -53,6 +54,18 @@ export default function SpaceFloorplanPage({
 
   const { data: space, isLoading } = useSpace(id);
   const { data: rules } = useSpaceRules(id);
+
+  // Record floorplan-entry visit once the space data has loaded successfully.
+  // The ref tracks the last-recorded space id so that client-side navigation
+  // to a different space (component reuse with a new id) fires a new visit.
+  const recordVisit = useRecordSpaceVisit();
+  const visitRecordedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (space && visitRecordedFor.current !== id) {
+      visitRecordedFor.current = id;
+      recordVisit.mutate(id);
+    }
+  }, [space, id, recordVisit]);
 
   const {
     mode,

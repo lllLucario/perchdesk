@@ -421,3 +421,12 @@ export function useToggleFavoriteSpace() {
     },
   });
 }
+
+// ----- Space visits (floorplan-entry recency) -----
+
+export function useRecordSpaceVisit() {
+  return useMutation({
+    mutationFn: (spaceId: string) =>
+      api.post<unknown>(`/api/v1/spaces/${spaceId}/visit`, {}),
+  });
+}
