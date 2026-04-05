@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, bookings, buildings, favorites, seats, spaces
+from app.api.v1 import auth, bookings, buildings, favorites, seats, space_visits, spaces
 
 router = APIRouter(prefix="/api/v1")
 
@@ -10,3 +10,4 @@ router.include_router(spaces.router)
 router.include_router(seats.router)
 router.include_router(bookings.router)
 router.include_router(favorites.router)
+router.include_router(space_visits.router)
