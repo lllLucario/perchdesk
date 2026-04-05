@@ -207,10 +207,13 @@ function RecentSection({ spacesById }: { spacesById: Map<string, Space> }) {
   const seen = new Set<string>();
   const cards: RecentCard[] = [];
 
-  // Recent bookings — deduplicated, newest first
-  const sortedBookings = [...(bookings ?? [])].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  // Recent bookings — active/successful only, deduplicated, newest first
+  const activeStatuses = new Set(["confirmed", "checked_in"]);
+  const sortedBookings = [...(bookings ?? [])]
+    .filter((b) => activeStatuses.has(b.status))
+    .sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   for (const b of sortedBookings) {
     if (seen.has(b.space_id)) continue;
     const space = spacesById.get(b.space_id);

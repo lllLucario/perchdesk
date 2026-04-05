@@ -259,6 +259,54 @@ describe("MySpacesPage", () => {
     });
   });
 
+  it("excludes cancelled and expired bookings from recent spaces", async () => {
+    mockApiResolved({
+      spaces: [SPACE_A, SPACE_B],
+      bookings: [
+        {
+          id: "bk-cancelled",
+          user_id: "u1",
+          seat_id: "seat1",
+          space_id: "s1",
+          start_time: "2026-01-05T09:00:00Z",
+          end_time: "2026-01-05T10:00:00Z",
+          status: "cancelled",
+          checked_in_at: null,
+          created_at: "2026-01-05T00:00:00Z",
+          seat_label: "A1",
+          seat_position: { x: 0, y: 0 },
+          space_name: "Study Room A",
+          space_layout_config: null,
+          building_id: "b1",
+          building_name: "Building 1",
+        },
+        {
+          id: "bk-expired",
+          user_id: "u1",
+          seat_id: "seat2",
+          space_id: "s2",
+          start_time: "2026-01-04T09:00:00Z",
+          end_time: "2026-01-04T10:00:00Z",
+          status: "expired",
+          checked_in_at: null,
+          created_at: "2026-01-04T00:00:00Z",
+          seat_label: "B1",
+          seat_position: { x: 0, y: 0 },
+          space_name: "Office Hub B",
+          space_layout_config: null,
+          building_id: "b1",
+          building_name: "Building 1",
+        },
+      ],
+    });
+    renderWithProviders(<MySpacesPage />);
+    await waitFor(() => {
+      // Neither cancelled nor expired bookings should appear
+      expect(screen.queryByText("Booked recently")).not.toBeInTheDocument();
+      expect(screen.getByText(/No recent activity yet/)).toBeInTheDocument();
+    });
+  });
+
   it("shows empty state when no recent activity exists", async () => {
     mockApiResolved({ spaces: [SPACE_A] });
     renderWithProviders(<MySpacesPage />);

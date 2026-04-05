@@ -418,6 +418,7 @@ export function useToggleFavoriteSpace() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["buildings"] });
+      queryClient.invalidateQueries({ queryKey: ["me", "favorite-spaces"] });
     },
   });
 }

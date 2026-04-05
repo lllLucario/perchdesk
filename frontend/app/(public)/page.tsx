@@ -158,9 +158,12 @@ export default function HomePage() {
     if (!bookings) return [];
     const seen = new Set<string>();
     const ids: string[] = [];
-    const sorted = [...bookings].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    const activeStatuses = new Set(["confirmed", "checked_in"]);
+    const sorted = [...bookings]
+      .filter((b) => activeStatuses.has(b.status))
+      .sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     for (const b of sorted) {
       if (!seen.has(b.space_id)) {
         seen.add(b.space_id);
