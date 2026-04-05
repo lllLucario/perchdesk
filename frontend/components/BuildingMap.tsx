@@ -131,8 +131,10 @@ function MapRecenterOnLocation({ lat, lng }: { lat: number; lng: number }) {
 
 // On initial load, ensures at least the nearest building is visible in the
 // viewport.  If no building markers fall within the current bounds, the map
-// expands to include the center point and the closest building (by straight-
-// line distance) with generous padding so the marker is not pinned to the edge.
+// zooms out from the current center (user location) until the nearest building
+// is visible, with buffer so the marker is not pinned to the edge.
+//
+// The center stays on the user's position so they retain directional context.
 function AutoFitNearestBuilding({
   buildings,
 }: {
@@ -167,12 +169,31 @@ function AutoFitNearestBuilding({
         }
       }
 
-      // Fit bounds to include current center + nearest building with padding.
-      const fitBounds = L.latLngBounds(
-        [center.lat, center.lng],
-        [nearest.latitude, nearest.longitude]
-      );
-      map.fitBounds(fitBounds, { padding: [60, 60], maxZoom: 14 });
+      // Zoom out from current center until the nearest building is visible.
+      // fitBounds would shift the center to the midpoint — instead we find the
+      // right zoom level that keeps center fixed and the building within view.
+      const nearestLatLng = L.latLng(nearest.latitude, nearest.longitude);
+      let targetZoom = map.getZoom();
+      const minZoom = map.getMinZoom();
+
+      while (targetZoom > minZoom) {
+        targetZoom -= 1;
+        // Compute what the bounds would be at this zoom level, centered on
+        // the current center.  getBoundsAtZoom is not a Leaflet API, so we
+        // project manually: get the pixel position of the building at the
+        // candidate zoom, check if it falls within the container with buffer.
+        const containerSize = map.getSize();
+        const buffer = 60; // px buffer from edge
+        const centerPx = map.project(center, targetZoom);
+        const buildingPx = map.project(nearestLatLng, targetZoom);
+        const dx = Math.abs(buildingPx.x - centerPx.x);
+        const dy = Math.abs(buildingPx.y - centerPx.y);
+        if (dx < containerSize.x / 2 - buffer && dy < containerSize.y / 2 - buffer) {
+          break;
+        }
+      }
+
+      map.setView(center, targetZoom, { animate: true });
       hasFitted.current = true;
     }, 200);
 
