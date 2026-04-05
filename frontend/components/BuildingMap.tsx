@@ -129,6 +129,59 @@ function MapRecenterOnLocation({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
+// On initial load, ensures at least the nearest building is visible in the
+// viewport.  If no building markers fall within the current bounds, the map
+// expands to include the center point and the closest building (by straight-
+// line distance) with generous padding so the marker is not pinned to the edge.
+function AutoFitNearestBuilding({
+  buildings,
+}: {
+  buildings: BuildingWithCoords[];
+}) {
+  const map = useMap();
+  const hasFitted = useRef(false);
+
+  useEffect(() => {
+    if (hasFitted.current || buildings.length === 0) return;
+
+    // Wait a tick for the map to settle after mount.
+    const id = setTimeout(() => {
+      const bounds = map.getBounds();
+      const anyVisible = buildings.some((b) =>
+        bounds.contains([b.latitude, b.longitude])
+      );
+      if (anyVisible) {
+        hasFitted.current = true;
+        return;
+      }
+
+      // Find nearest building to map center.
+      const center = map.getCenter();
+      let nearest = buildings[0];
+      let minDist = Infinity;
+      for (const b of buildings) {
+        const dist = center.distanceTo(L.latLng(b.latitude, b.longitude));
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = b;
+        }
+      }
+
+      // Fit bounds to include current center + nearest building with padding.
+      const fitBounds = L.latLngBounds(
+        [center.lat, center.lng],
+        [nearest.latitude, nearest.longitude]
+      );
+      map.fitBounds(fitBounds, { padding: [60, 60], maxZoom: 14 });
+      hasFitted.current = true;
+    }, 200);
+
+    return () => clearTimeout(id);
+  }, [buildings, map]);
+
+  return null;
+}
+
 // ─── Public component ─────────────────────────────────────────────────────────
 
 interface Props {
@@ -161,6 +214,7 @@ export default function BuildingMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <ViewportTracker onBoundsChange={onBoundsChange} />
+      <AutoFitNearestBuilding buildings={buildings} />
       <MapFlyTo selectedId={selectedId} buildings={buildings} />
       <MapRecenterOnLocation lat={center[0]} lng={center[1]} />
       {buildings.map((b) => (
