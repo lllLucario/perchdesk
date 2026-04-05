@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.space import Space
 from app.models.space_rules import SpaceRules
-from app.models.user import User
 
 
 @pytest.fixture
