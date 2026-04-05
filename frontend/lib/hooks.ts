@@ -424,9 +424,41 @@ export function useToggleFavoriteSpace() {
 
 // ----- Space visits (floorplan-entry recency) -----
 
+export interface SpaceVisitResult {
+  id: string;
+  user_id: string;
+  space_id: string;
+  visited_at: string;
+}
+
 export function useRecordSpaceVisit() {
   return useMutation({
     mutationFn: (spaceId: string) =>
       api.post<unknown>(`/api/v1/spaces/${spaceId}/visit`, {}),
+  });
+}
+
+export function useRecentSpaceVisits(limit = 10) {
+  return useQuery<SpaceVisitResult[]>({
+    queryKey: ["me", "recent-spaces", limit],
+    queryFn: () =>
+      api.get<SpaceVisitResult[]>(`/api/v1/me/recent-spaces?limit=${limit}`),
+  });
+}
+
+// ----- Favorite spaces list -----
+
+export interface FavoriteSpaceResult {
+  id: string;
+  user_id: string;
+  space_id: string;
+  created_at: string;
+}
+
+export function useFavoriteSpaces() {
+  return useQuery<FavoriteSpaceResult[]>({
+    queryKey: ["me", "favorite-spaces"],
+    queryFn: () =>
+      api.get<FavoriteSpaceResult[]>("/api/v1/me/favorite-spaces"),
   });
 }

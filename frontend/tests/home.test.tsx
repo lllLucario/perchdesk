@@ -56,14 +56,20 @@ function mockApiResolved({
   spaces = [],
   buildings = [],
   bookings = [],
+  favoriteSpaces = [],
+  recentVisits = [],
 }: {
   spaces?: object[];
   buildings?: object[];
   bookings?: object[];
+  favoriteSpaces?: object[];
+  recentVisits?: object[];
 } = {}) {
   mockApi.get.mockImplementation((url: string) => {
     if (url.includes("/bookings")) return Promise.resolve(bookings);
     if (url.includes("/buildings")) return Promise.resolve(buildings);
+    if (url.includes("/me/favorite-spaces")) return Promise.resolve(favoriteSpaces);
+    if (url.includes("/me/recent-spaces")) return Promise.resolve(recentVisits);
     return Promise.resolve(spaces);
   });
 }
@@ -154,6 +160,23 @@ describe("HomePage — authenticated", () => {
     expect(skeletons.length).toBeGreaterThanOrEqual(4);
   });
 
+  test("For You shows skeletons when favorites/spaces still loading", async () => {
+    // Simulate staggered loading: bookings resolve immediately but
+    // favorites and spaces are still pending. The section must show
+    // skeletons, not the empty "No personalised spaces yet." fallback.
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.includes("/bookings")) return Promise.resolve([]);
+      // spaces, favorites, and visits stay pending
+      return new Promise(() => {});
+    });
+    await renderHome();
+    // Should still be in loading state, showing skeletons
+    const skeletons = document.querySelectorAll(".animate-pulse");
+    expect(skeletons.length).toBeGreaterThanOrEqual(4);
+    // Must NOT show the empty fallback
+    expect(screen.queryByText("No personalised spaces yet.")).not.toBeInTheDocument();
+  });
+
   test("renders space cards in Recent Spaces after load", async () => {
     mockApiResolved({
       spaces: [
@@ -200,6 +223,9 @@ describe("HomePage — authenticated", () => {
 
   test("For You shows recent booking card in mixed stream", async () => {
     mockApiResolved({
+      spaces: [
+        { id: "s1", name: "My Library", type: "library", capacity: 20, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+      ],
       bookings: [
         {
           id: "bk1",
@@ -222,7 +248,7 @@ describe("HomePage — authenticated", () => {
       ],
     });
     await renderHome();
-    await waitFor(() => expect(screen.getByText("My Library")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("My Library").length).toBeGreaterThan(0));
     expect(screen.getByText("Booked recently")).toBeInTheDocument();
   });
 
@@ -232,6 +258,10 @@ describe("HomePage — authenticated", () => {
     // The card for Space B (bk2) should appear before Space A (bk1).
     const now = Date.now();
     mockApiResolved({
+      spaces: [
+        { id: "sA", name: "Space A", type: "library", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+        { id: "sB", name: "Space B", type: "library", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+      ],
       bookings: [
         {
           id: "bk1",
@@ -240,12 +270,12 @@ describe("HomePage — authenticated", () => {
           space_type: "library",
           building_name: "Building X",
           seat_id: "seat1",
-          start_time: new Date(now + 7 * 24 * 3600 * 1000).toISOString(), // far future
+          start_time: new Date(now + 7 * 24 * 3600 * 1000).toISOString(),
           end_time: new Date(now + 7 * 24 * 3600 * 1000 + 3600000).toISOString(),
           status: "confirmed",
           user_id: "u1",
           checked_in_at: null,
-          created_at: new Date(now - 2000).toISOString(), // booked earlier
+          created_at: new Date(now - 2000).toISOString(),
           seat_label: "A1",
           seat_position: { x: 0, y: 0 },
           space_layout_config: null,
@@ -258,12 +288,12 @@ describe("HomePage — authenticated", () => {
           space_type: "library",
           building_name: "Building X",
           seat_id: "seat2",
-          start_time: new Date(now + 3600 * 1000).toISOString(), // near future
+          start_time: new Date(now + 3600 * 1000).toISOString(),
           end_time: new Date(now + 7200 * 1000).toISOString(),
           status: "confirmed",
           user_id: "u1",
           checked_in_at: null,
-          created_at: new Date(now - 1000).toISOString(), // booked more recently
+          created_at: new Date(now - 1000).toISOString(),
           seat_label: "B1",
           seat_position: { x: 0, y: 0 },
           space_layout_config: null,
@@ -273,10 +303,11 @@ describe("HomePage — authenticated", () => {
     });
     await renderHome();
     await waitFor(() => {
-      expect(screen.getByText("Space A")).toBeInTheDocument();
-      expect(screen.getByText("Space B")).toBeInTheDocument();
+      expect(screen.getAllByText("Space A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Space B").length).toBeGreaterThan(0);
     });
-    const cards = document.querySelectorAll("[data-testid='recent-card'], .flex-shrink-0");
+    // Scope to the For You horizontal scroll container (.flex-shrink-0 cards)
+    const cards = document.querySelectorAll(".flex-shrink-0");
     const texts = Array.from(cards).map((c) => c.textContent ?? "");
     const indexA = texts.findIndex((t) => t.includes("Space A"));
     const indexB = texts.findIndex((t) => t.includes("Space B"));
@@ -332,6 +363,65 @@ describe("HomePage — authenticated", () => {
     await waitFor(() =>
       expect(screen.getByText(/Location unavailable/)).toBeInTheDocument()
     );
+  });
+
+  test("For You shows favorite spaces in mixed stream", async () => {
+    mockApiResolved({
+      spaces: [
+        { id: "fav1", name: "Fav Library", type: "library", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: true },
+      ],
+      favoriteSpaces: [
+        { id: "f1", user_id: "u1", space_id: "fav1", created_at: new Date().toISOString() },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getAllByText("Fav Library").length).toBeGreaterThan(0));
+    expect(screen.getByText("Favorite")).toBeInTheDocument();
+  });
+
+  test("For You shows visited-recently spaces in mixed stream", async () => {
+    mockApiResolved({
+      spaces: [
+        { id: "v1", name: "Visited Space", type: "office", capacity: 5, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+      ],
+      recentVisits: [
+        { id: "rv1", user_id: "u1", space_id: "v1", visited_at: new Date().toISOString() },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getAllByText("Visited Space").length).toBeGreaterThan(0));
+    expect(screen.getByText("Visited recently")).toBeInTheDocument();
+  });
+
+  test("For You deduplicates spaces across sources", async () => {
+    // Same space is both favorited and recently booked — should appear only once
+    mockApiResolved({
+      spaces: [
+        { id: "dup1", name: "Dup Space", type: "library", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: true },
+      ],
+      favoriteSpaces: [
+        { id: "f1", user_id: "u1", space_id: "dup1", created_at: new Date().toISOString() },
+      ],
+      bookings: [
+        {
+          id: "bk1", space_id: "dup1", space_name: "Dup Space", space_type: "library",
+          building_name: null, seat_id: "s1", start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(), status: "confirmed", user_id: "u1",
+          checked_in_at: null, created_at: new Date().toISOString(), seat_label: "A1",
+          seat_position: { x: 0, y: 0 }, space_layout_config: null, building_id: null,
+        },
+      ],
+    });
+    await renderHome();
+    await waitFor(() => expect(screen.getAllByText("Dup Space").length).toBeGreaterThan(0));
+    // In the For You section (.flex-shrink-0 cards), the space should appear only once
+    const forYouCards = document.querySelectorAll(".flex-shrink-0");
+    const dupCount = Array.from(forYouCards).filter(
+      (c) => c.textContent?.includes("Dup Space")
+    ).length;
+    expect(dupCount).toBe(1);
+    // Should appear as Favorite (higher priority than recent booking)
+    expect(screen.getByText("Favorite")).toBeInTheDocument();
   });
 
   test("For You shows recommendation cards when location granted", async () => {
