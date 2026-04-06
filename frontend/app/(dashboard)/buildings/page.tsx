@@ -52,7 +52,7 @@ export default function BuildingsPage() {
         <span className="font-medium text-foreground">Buildings</span>
       </nav>
 
-      <div className="section-frame mb-8 flex flex-col gap-5 px-6 py-6 md:flex-row md:items-end md:justify-between md:px-8">
+      <div className="mb-6 flex flex-col gap-4 rounded-[2rem] px-2 py-2 md:flex-row md:items-end md:justify-between md:px-3">
         <div>
           <p className="section-kicker mb-3">Browse buildings</p>
           <h1 className="text-4xl text-foreground">Buildings</h1>
@@ -75,14 +75,14 @@ export default function BuildingsPage() {
           {buildings?.map((building) => (
             <div
               key={building.id}
-              className="panel-surface overflow-hidden rounded-[1.75rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_52%),var(--color-surface)] transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
+              className="panel-surface overflow-hidden rounded-[1.75rem] transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
             >
               {/* Card body — click to open modal */}
               <button
                 className="w-full text-left"
                 onClick={() => setSelectedBuilding(building)}
               >
-                <div className="flex h-36 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.34),_transparent_56%),linear-gradient(135deg,_#eff7ea,_#d8e8cc)]">
+                <div className="flex h-36 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
                   <span className="text-3xl">🏛</span>
                 </div>
                 <div className="px-5 pt-4 pb-3">

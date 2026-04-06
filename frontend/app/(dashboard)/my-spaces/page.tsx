@@ -275,7 +275,7 @@ export default function MySpacesPage() {
         <span className="font-medium text-foreground">My Spaces</span>
       </nav>
 
-      <div className="section-frame mb-8 px-6 py-6 md:px-8">
+      <div className="mb-6 rounded-[2rem] px-2 py-2 md:px-3">
         <p className="section-kicker mb-3">Personalized access</p>
         <h1 className="text-4xl text-foreground">My Spaces</h1>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
@@ -284,7 +284,7 @@ export default function MySpacesPage() {
       </div>
 
       {/* Favorite Spaces */}
-      <section className="section-frame mb-10 px-5 py-6 md:px-6">
+      <section className="mb-8 px-1 pt-3 md:px-0">
         <h2 className={sectionTitleClass}>
           Favorite Spaces
         </h2>
@@ -300,7 +300,7 @@ export default function MySpacesPage() {
       </section>
 
       {/* Recent Spaces */}
-      <section className="section-frame mb-10 px-5 py-6 md:px-6">
+      <section className="mb-8 px-1 pt-3 md:px-0">
         <h2 className={sectionTitleClass}>
           Recent Spaces
         </h2>
@@ -316,7 +316,7 @@ export default function MySpacesPage() {
       </section>
 
       {/* Recommended Spaces */}
-      <section className="section-frame px-5 py-6 md:px-6">
+      <section className="px-1 pt-3 md:px-0">
         <h2 className={sectionTitleClass}>
           Recommended Spaces
         </h2>
