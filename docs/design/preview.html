@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design System Preview: PerchDesk Green Editorial (Light)</title>
+<style>
+  :root {
+    --color-near-black: #161a16;
+    --color-moss: #6f9367;
+    --color-sage: #8cad82;
+    --color-error: #a14b45;
+    --color-focus-blue: #3898ec;
+    --color-success: #7d9a6d;
+    --color-paper-sage: #f1f5ed;
+    --color-ivory-mist: #f7faf4;
+    --color-white: #ffffff;
+    --color-soft-reed: #e1e9db;
+    --color-dark-moss: #2d342d;
+    --color-deep-forest: #161a16;
+    --color-pine-charcoal: #40493f;
+    --color-olive-gray: #536850;
+    --color-stone-moss: #7f907c;
+    --color-deep-olive: #324130;
+    --color-mist-silver: #aebaa9;
+    --color-border-mist: #e6ecdf;
+    --color-border-reed: #d9e3d2;
+    --color-border-dark: #2d342d;
+    --color-ring-sage: #c4d1bc;
+    --color-ring-deep: #b3c2ab;
+    --font-serif: Georgia, "Times New Roman", Times, serif;
+    --font-sans: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
+    --bg-page: #f1f5ed;
+    --bg-card: #f7faf4;
+    --bg-nav: rgba(241, 245, 237, 0.92);
+    --text-primary: #161a16;
+    --text-secondary: #536850;
+    --text-tertiary: #7f907c;
+    --border-color: #e6ecdf;
+    --border-subtle: #e6ecdf;
+    --section-label-color: #6f9367;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg-page); color: var(--text-primary); font-family: var(--font-sans); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  .nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 16px 40px; background: var(--bg-nav); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-color); }
+  .nav-brand { display: flex; align-items: center; gap: 10px; color: var(--text-primary); font-family: var(--font-serif); font-size: 20px; font-weight: 500; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--color-moss); color: var(--color-ivory-mist); font-family: var(--font-serif); font-size: 16px; }
+  .nav-links { display: flex; align-items: center; gap: 32px; }
+  .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 15px; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--text-primary); }
+  .nav-cta, .btn-brand { border: none; border-radius: 12px; background: var(--color-moss); color: var(--color-ivory-mist); font-family: var(--font-sans); font-size: 15px; font-weight: 500; cursor: pointer; box-shadow: #6f9367 0 0 0 0, #6f9367 0 0 0 1px; }
+  .nav-cta { padding: 8px 20px; }
+  .hero { position: relative; overflow: hidden; padding: 120px 40px 100px; text-align: center; }
+  .hero::before { content: ""; position: absolute; top: 50%; left: 50%; width: 720px; height: 720px; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(111, 147, 103, 0.10) 0%, rgba(140, 173, 130, 0.05) 42%, transparent 72%); pointer-events: none; }
+  .hero h1 { position: relative; margin-bottom: 24px; color: var(--text-primary); font-family: var(--font-serif); font-size: 64px; font-weight: 500; line-height: 1.1; }
+  .hero h1 span { color: var(--color-moss); }
+  .hero p { position: relative; margin-bottom: 40px; color: var(--text-secondary); font-size: 20px; }
+  .hero-buttons { position: relative; display: flex; justify-content: center; gap: 16px; }
+  .btn-brand, .btn-soft { padding: 12px 24px; font-size: 16px; }
+  .btn-soft { border: none; border-radius: 8px; background: var(--color-soft-reed); color: var(--color-pine-charcoal); font-family: var(--font-sans); font-weight: 500; cursor: pointer; box-shadow: #e1e9db 0 0 0 0, #c4d1bc 0 0 0 1px; }
+  .section { max-width: 1200px; margin: 0 auto; padding: 80px 40px; }
+  .section-title { margin-bottom: 12px; color: var(--section-label-color); font-size: 14px; font-weight: 500; letter-spacing: 2.5px; text-transform: uppercase; }
+  .section-heading { margin-bottom: 48px; color: var(--text-primary); font-family: var(--font-serif); font-size: 36px; font-weight: 500; line-height: 1.2; }
+  .section-divider { max-width: 1200px; margin: 0 auto; border: none; border-top: 1px solid var(--border-subtle); }
+  .color-grid, .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .color-swatch, .feature-card { overflow: hidden; border: 1px solid var(--border-color); border-radius: 12px; background: var(--bg-card); }
+  .color-swatch-block { height: 80px; }
+  .color-swatch-info, .feature-card-body { padding: 12px; }
+  .color-swatch-name { margin-bottom: 2px; font-size: 13px; font-weight: 600; }
+  .color-swatch-hex, .meta { color: var(--text-tertiary); font-family: var(--font-mono); font-size: 12px; }
+  .feature-card h3 { margin-bottom: 8px; font-family: var(--font-serif); font-size: 22px; font-weight: 500; }
+  .feature-card p { color: var(--text-secondary); margin-bottom: 12px; }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; background: var(--color-soft-reed); color: var(--color-pine-charcoal); font-size: 12px; font-weight: 500; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-brand"><span class="logo-mark">P</span>PerchDesk</div>
+    <div class="nav-links">
+      <a href="#palette">Palette</a>
+      <a href="#type">Type</a>
+      <a href="#components">Components</a>
+      <button class="nav-cta">Book a space</button>
+    </div>
+  </nav>
+  <header class="hero">
+    <h1>Quiet design for <span>focused spaces</span></h1>
+    <p>A green editorial system for library rooms, shared desks, and booking flows that should feel calm before they feel clever.</p>
+    <div class="hero-buttons">
+      <button class="btn-brand">Primary action</button>
+      <button class="btn-soft">Secondary action</button>
+    </div>
+  </header>
+  <section class="section" id="palette">
+    <div class="section-title">Color system</div>
+    <h2 class="section-heading">Muted moss, sage paper, and olive neutrals.</h2>
+    <div class="color-grid">
+      <div class="color-swatch"><div class="color-swatch-block" style="background:#6f9367"></div><div class="color-swatch-info"><div class="color-swatch-name">Moss Brand</div><div class="color-swatch-hex">#6f9367</div></div></div>
+      <div class="color-swatch"><div class="color-swatch-block" style="background:#8cad82"></div><div class="color-swatch-info"><div class="color-swatch-name">Sage Accent</div><div class="color-swatch-hex">#8cad82</div></div></div>
+      <div class="color-swatch"><div class="color-swatch-block" style="background:#f1f5ed"></div><div class="color-swatch-info"><div class="color-swatch-name">Paper Sage</div><div class="color-swatch-hex">#f1f5ed</div></div></div>
+      <div class="color-swatch"><div class="color-swatch-block" style="background:#e1e9db"></div><div class="color-swatch-info"><div class="color-swatch-name">Soft Reed</div><div class="color-swatch-hex">#e1e9db</div></div></div>
+      <div class="color-swatch"><div class="color-swatch-block" style="background:#161a16"></div><div class="color-swatch-info"><div class="color-swatch-name">Deep Forest</div><div class="color-swatch-hex">#161a16</div></div></div>
+      <div class="color-swatch"><div class="color-swatch-block" style="background:#2d342d"></div><div class="color-swatch-info"><div class="color-swatch-name">Dark Moss Surface</div><div class="color-swatch-hex">#2d342d</div></div></div>
+    </div>
+  </section>
+  <hr class="section-divider">
+  <section class="section" id="type">
+    <div class="section-title">Typography</div>
+    <h2 class="section-heading">Serif for authority, sans for booking utility.</h2>
+    <div class="feature-card"><div class="feature-card-body"><h3>PerchDesk should read like a composed place.</h3><p>Headlines carry a quiet editorial tone. UI copy stays direct and efficient so times, rules, and availability never become decorative.</p><div class="meta">Georgia for headings · system-ui for interface</div></div></div>
+  </section>
+  <hr class="section-divider">
+  <section class="section" id="components">
+    <div class="section-title">Components</div>
+    <h2 class="section-heading">Calm containers, low-contrast borders, no loud UI chrome.</h2>
+    <div class="card-grid">
+      <article class="feature-card"><div class="feature-card-body"><h3>Discovery cards</h3><p>Used for buildings, spaces, and recommendations. The hierarchy comes from spacing and type, not oversized badges.</p><div class="pill-row"><span class="pill">Available now</span><span class="pill">Near campus</span></div></div></article>
+      <article class="feature-card"><div class="feature-card-body"><h3>Booking summary</h3><p>Operational panels should feel stable and readable, with green reserved for confirmation and selected state.</p><div class="pill-row"><span class="pill">Checked in</span><span class="pill">3 hours</span></div></div></article>
+      <article class="feature-card"><div class="feature-card-body"><h3>Seat state language</h3><p>Availability should feel clear without turning the whole screen into a heatmap. Muted green works best when it is selective.</p><div class="pill-row"><span class="pill">Selected</span><span class="pill">Quiet zone</span></div></div></article>
+    </div>
+  </section>
+</body>
+</html>
