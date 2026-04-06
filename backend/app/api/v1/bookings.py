@@ -25,7 +25,7 @@ async def create_booking(
     data: BookingCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> object:
+) -> BookingResponse:
     return await booking_service.create_booking(db, current_user.id, data)
 
 
@@ -34,7 +34,7 @@ async def get_booking(
     booking_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> object:
+) -> BookingResponse:
     return await booking_service.get_booking(db, booking_id, current_user.id)
 
 
@@ -43,7 +43,7 @@ async def cancel_booking(
     booking_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> object:
+) -> BookingResponse:
     return await booking_service.cancel_booking(db, booking_id, current_user.id)
 
 
@@ -52,7 +52,7 @@ async def check_in(
     booking_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> object:
+) -> BookingResponse:
     return await booking_service.check_in(db, booking_id, current_user.id)
 
 

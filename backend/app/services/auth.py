@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +13,10 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
+
+# Dummy hash used to keep constant-time comparison when the user does not exist,
+# preventing timing-based user enumeration.
+_DUMMY_HASH = hash_password("__timing_safe_dummy__")
 
 
 async def register(db: AsyncSession, data: RegisterRequest) -> User:
@@ -33,7 +39,10 @@ async def register(db: AsyncSession, data: RegisterRequest) -> User:
 async def login(db: AsyncSession, data: LoginRequest) -> TokenResponse:
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
-    if user is None or not verify_password(data.password, user.hashed_password):
+    # Always run verify_password to prevent timing-based user enumeration.
+    stored_hash = user.hashed_password if user is not None else _DUMMY_HASH
+    password_ok = verify_password(data.password, stored_hash)
+    if user is None or not password_ok:
         raise UnauthorizedError("Invalid email or password.")
 
     return TokenResponse(
@@ -50,9 +59,12 @@ async def refresh_tokens(db: AsyncSession, refresh_token: str) -> TokenResponse:
     except ValueError:
         raise UnauthorizedError("Invalid refresh token.")
 
-    import uuid
+    try:
+        user_id = uuid.UUID(payload["sub"])
+    except (ValueError, KeyError):
+        raise UnauthorizedError("Invalid refresh token.")
 
-    user = await db.get(User, uuid.UUID(payload["sub"]))
+    user = await db.get(User, user_id)
     if user is None:
         raise NotFoundError("User not found.")
 

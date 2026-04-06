@@ -34,7 +34,7 @@ async def create_seat(
     data: SeatCreate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SeatResponse:
     return await seat_service.create_seat(db, space_id, data)
 
 
@@ -65,7 +65,7 @@ async def update_seat(
     data: SeatUpdate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SeatResponse:
     return await seat_service.update_seat(db, seat_id, data)
 
 

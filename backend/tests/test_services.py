@@ -29,9 +29,11 @@ from app.schemas.space import SpaceCreate, SpaceUpdate
 from app.schemas.space_rules import SpaceRulesUpdate
 from app.services import auth as auth_service
 from app.services import booking as booking_service
+from app.services import favorite as favorite_service
 from app.services import seat as seat_service
 from app.services import space as space_service
 from app.services import space_rules as rules_service
+from app.services import space_visit as visit_service
 
 AEST = ZoneInfo("Australia/Sydney")
 
@@ -1135,3 +1137,312 @@ async def test_cancel_library_after_start_time(
 
     with pytest.raises(BookingRuleViolationError, match="before the start time"):
         await booking_service.cancel_booking(db_session, booking.id, test_user.id)
+
+
+# ─── Favorite Service ──────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_list_favorite_spaces_empty(db_session: AsyncSession, test_user: User):
+    result = await favorite_service.list_favorite_spaces(db_session, test_user.id)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_add_favorite_space_success(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    fav = await favorite_service.add_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
+    assert fav.user_id == test_user.id
+    assert fav.space_id == space_with_rules.id
+    assert fav.created_at is not None
+
+
+@pytest.mark.asyncio
+async def test_add_favorite_space_duplicate_raises(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    await favorite_service.add_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
+    with pytest.raises(DuplicateError):
+        await favorite_service.add_favorite_space(
+            db_session, test_user.id, space_with_rules.id
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_favorite_space_nonexistent_raises(
+    db_session: AsyncSession, test_user: User
+):
+    with pytest.raises(NotFoundError):
+        await favorite_service.add_favorite_space(
+            db_session, test_user.id, uuid.uuid4()
+        )
+
+
+@pytest.mark.asyncio
+async def test_remove_favorite_space_success(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    await favorite_service.add_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
+    await favorite_service.remove_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
+    result = await favorite_service.list_favorite_spaces(db_session, test_user.id)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_remove_favorite_space_not_favorited_raises(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    with pytest.raises(NotFoundError):
+        await favorite_service.remove_favorite_space(
+            db_session, test_user.id, space_with_rules.id
+        )
+
+
+@pytest.mark.asyncio
+async def test_remove_favorite_space_nonexistent_raises(
+    db_session: AsyncSession, test_user: User
+):
+    with pytest.raises(NotFoundError):
+        await favorite_service.remove_favorite_space(
+            db_session, test_user.id, uuid.uuid4()
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_favorite_spaces_returns_added(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    await favorite_service.add_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
+    result = await favorite_service.list_favorite_spaces(db_session, test_user.id)
+    assert len(result) == 1
+    assert result[0].space_id == space_with_rules.id
+
+
+@pytest.mark.asyncio
+async def test_get_favorited_space_ids_empty_input(
+    db_session: AsyncSession, test_user: User
+):
+    result = await favorite_service.get_favorited_space_ids(
+        db_session, test_user.id, []
+    )
+    assert result == set()
+
+
+@pytest.mark.asyncio
+async def test_get_favorited_space_ids_returns_subset(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    await favorite_service.add_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
+    other_id = uuid.uuid4()
+    result = await favorite_service.get_favorited_space_ids(
+        db_session, test_user.id, [space_with_rules.id, other_id]
+    )
+    assert result == {space_with_rules.id}
+
+
+@pytest.mark.asyncio
+async def test_add_favorite_seat_success(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    fav = await favorite_service.add_favorite_seat(
+        db_session, test_user.id, available_seat.id
+    )
+    assert fav.user_id == test_user.id
+    assert fav.seat_id == available_seat.id
+
+
+@pytest.mark.asyncio
+async def test_add_favorite_seat_duplicate_raises(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    await favorite_service.add_favorite_seat(
+        db_session, test_user.id, available_seat.id
+    )
+    with pytest.raises(DuplicateError):
+        await favorite_service.add_favorite_seat(
+            db_session, test_user.id, available_seat.id
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_favorite_seat_nonexistent_raises(
+    db_session: AsyncSession, test_user: User
+):
+    with pytest.raises(NotFoundError):
+        await favorite_service.add_favorite_seat(
+            db_session, test_user.id, uuid.uuid4()
+        )
+
+
+@pytest.mark.asyncio
+async def test_remove_favorite_seat_success(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    await favorite_service.add_favorite_seat(
+        db_session, test_user.id, available_seat.id
+    )
+    await favorite_service.remove_favorite_seat(
+        db_session, test_user.id, available_seat.id
+    )
+    result = await favorite_service.list_favorite_seats(db_session, test_user.id)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_remove_favorite_seat_not_favorited_raises(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    with pytest.raises(NotFoundError):
+        await favorite_service.remove_favorite_seat(
+            db_session, test_user.id, available_seat.id
+        )
+
+
+@pytest.mark.asyncio
+async def test_remove_favorite_seat_nonexistent_raises(
+    db_session: AsyncSession, test_user: User
+):
+    with pytest.raises(NotFoundError):
+        await favorite_service.remove_favorite_seat(
+            db_session, test_user.id, uuid.uuid4()
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_favorite_seats_empty(db_session: AsyncSession, test_user: User):
+    result = await favorite_service.list_favorite_seats(db_session, test_user.id)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_list_favorite_seats_returns_added(
+    db_session: AsyncSession, test_user: User, available_seat: Seat
+):
+    await favorite_service.add_favorite_seat(
+        db_session, test_user.id, available_seat.id
+    )
+    result = await favorite_service.list_favorite_seats(db_session, test_user.id)
+    assert len(result) == 1
+    assert result[0].seat_id == available_seat.id
+
+
+# ─── Space Visit Service ───────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_record_visit_creates_new(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    visit = await visit_service.record_visit(
+        db_session, test_user.id, space_with_rules.id
+    )
+    assert visit.user_id == test_user.id
+    assert visit.space_id == space_with_rules.id
+    assert visit.visited_at is not None
+
+
+@pytest.mark.asyncio
+async def test_record_visit_upserts_existing(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    visit1 = await visit_service.record_visit(
+        db_session, test_user.id, space_with_rules.id
+    )
+    first_time = visit1.visited_at
+    # Normalize to naive for SQLite compatibility
+    if first_time.tzinfo is not None:
+        first_time = first_time.replace(tzinfo=None)
+
+    visit2 = await visit_service.record_visit(
+        db_session, test_user.id, space_with_rules.id
+    )
+    second_time = visit2.visited_at
+    if second_time.tzinfo is not None:
+        second_time = second_time.replace(tzinfo=None)
+
+    # Same row, updated timestamp
+    assert visit2.id == visit1.id
+    assert second_time >= first_time
+
+
+@pytest.mark.asyncio
+async def test_record_visit_nonexistent_space_raises(
+    db_session: AsyncSession, test_user: User
+):
+    with pytest.raises(NotFoundError):
+        await visit_service.record_visit(
+            db_session, test_user.id, uuid.uuid4()
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_recent_visits_empty(
+    db_session: AsyncSession, test_user: User
+):
+    result = await visit_service.list_recent_visits(db_session, test_user.id)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_list_recent_visits_ordered_by_recency(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    # Create a second space
+    space2 = Space(name="Second Visit Space", type="office", capacity=5)
+    db_session.add(space2)
+    await db_session.flush()
+    rules2 = SpaceRules(
+        space_id=space2.id,
+        max_duration_minutes=480,
+        max_advance_days=7,
+        time_unit="hourly",
+    )
+    db_session.add(rules2)
+    await db_session.commit()
+    await db_session.refresh(space2)
+
+    await visit_service.record_visit(db_session, test_user.id, space_with_rules.id)
+    await visit_service.record_visit(db_session, test_user.id, space2.id)
+
+    result = await visit_service.list_recent_visits(db_session, test_user.id)
+    assert len(result) == 2
+    # Most recent first
+    assert result[0].space_id == space2.id
+    assert result[1].space_id == space_with_rules.id
+
+
+@pytest.mark.asyncio
+async def test_list_recent_visits_respects_limit(
+    db_session: AsyncSession, test_user: User, space_with_rules: Space
+):
+    space2 = Space(name="Limit Test Space", type="office", capacity=5)
+    db_session.add(space2)
+    await db_session.flush()
+    rules2 = SpaceRules(
+        space_id=space2.id,
+        max_duration_minutes=480,
+        max_advance_days=7,
+        time_unit="hourly",
+    )
+    db_session.add(rules2)
+    await db_session.commit()
+    await db_session.refresh(space2)
+
+    await visit_service.record_visit(db_session, test_user.id, space_with_rules.id)
+    await visit_service.record_visit(db_session, test_user.id, space2.id)
+
+    result = await visit_service.list_recent_visits(db_session, test_user.id, limit=1)
+    assert len(result) == 1
