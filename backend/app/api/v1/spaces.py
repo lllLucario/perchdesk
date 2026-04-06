@@ -47,7 +47,7 @@ async def create_space(
     data: SpaceCreate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SpaceResponse:
     return await space_service.create_space(db, data)
 
 
@@ -113,7 +113,7 @@ async def update_space(
     data: SpaceUpdate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SpaceResponse:
     return await space_service.update_space(db, space_id, data)
 
 
@@ -131,7 +131,7 @@ async def get_rules(
     space_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> object:
+) -> SpaceRulesResponse:
     return await rules_service.get_rules(db, space_id)
 
 
@@ -141,7 +141,7 @@ async def update_rules(
     data: SpaceRulesUpdate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SpaceRulesResponse:
     return await rules_service.update_rules(db, space_id, data)
 
 
@@ -151,7 +151,7 @@ async def upload_floor_plan(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SpaceResponse:
     if file.content_type not in ("image/png", "image/jpeg"):
         raise BookingRuleViolationError("Only PNG and JPEG images are accepted.")
 
@@ -174,7 +174,7 @@ async def delete_floor_plan(
     space_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_admin),
-) -> object:
+) -> SpaceResponse:
     space = await space_service.get_space(db, space_id)
     layout = dict(space.layout_config or {})
     bg = layout.pop("background_image", None)
