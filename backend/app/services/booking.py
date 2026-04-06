@@ -220,7 +220,8 @@ async def create_booking(
     await db.commit()
     # Reload with relationships so BookingResponse can populate enriched fields.
     loaded = await _load_booking_with_relations(db, booking.id)
-    assert loaded is not None
+    if loaded is None:
+        raise NotFoundError("Booking not found after creation.")
     return loaded
 
 
@@ -257,7 +258,8 @@ async def cancel_booking(
     await db.commit()
     # Reload to reflect updated status with relationships intact.
     loaded = await _load_booking_with_relations(db, booking_id)
-    assert loaded is not None
+    if loaded is None:
+        raise NotFoundError("Booking not found after update.")
     return loaded
 
 
@@ -285,7 +287,8 @@ async def check_in(
     await db.commit()
     # Reload to reflect updated status with relationships intact.
     loaded = await _load_booking_with_relations(db, booking_id)
-    assert loaded is not None
+    if loaded is None:
+        raise NotFoundError("Booking not found after check-in.")
     return loaded
 
 
