@@ -29,9 +29,11 @@ from app.schemas.space import SpaceCreate, SpaceUpdate
 from app.schemas.space_rules import SpaceRulesUpdate
 from app.services import auth as auth_service
 from app.services import booking as booking_service
+from app.services import favorite as favorite_service
 from app.services import seat as seat_service
 from app.services import space as space_service
 from app.services import space_rules as rules_service
+from app.services import space_visit as visit_service
 
 AEST = ZoneInfo("Australia/Sydney")
 
@@ -1139,8 +1141,6 @@ async def test_cancel_library_after_start_time(
 
 # ─── Favorite Service ──────────────────────────────────────────────────────
 
-from app.services import favorite as favorite_service
-
 
 @pytest.mark.asyncio
 async def test_list_favorite_spaces_empty(db_session: AsyncSession, test_user: User):
@@ -1340,8 +1340,6 @@ async def test_list_favorite_seats_returns_added(
 
 
 # ─── Space Visit Service ───────────────────────────────────────────────────
-
-from app.services import space_visit as visit_service
 
 
 @pytest.mark.asyncio
