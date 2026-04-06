@@ -168,17 +168,17 @@ accessibility.
 
 ## Summary
 
-| Category | Count | Priority |
-|----------|-------|----------|
-| Code quality | 7 issues | Mix of quick fixes and moderate refactors |
-| Test coverage gaps | 3 areas | Highest ROI — favorite/space_visit services are at 34-38% |
-| Security | 3 issues | Timing attack and JWT parsing are easy fixes |
-| Accessibility | 2 areas | Important for completeness, larger effort |
+| Category | Count | Status |
+|----------|-------|--------|
+| Code quality | 7 issues | ✅ Fixed |
+| Test coverage gaps | 3 areas | ✅ Fixed |
+| Security | 3 issues | ✅ Fixed |
+| Accessibility | 2 areas | Pending — deferred to pre-production |
 | Hardcoded values | 2 items | Low priority |
 
-Recommended fix order:
-1. Backend service tests (favorite, space_visit) — biggest coverage number jump
-2. Assert → raise, JWT parsing fix, timing attack fix — quick security wins
-3. Route return types `-> object` — systematic but straightforward
-4. Dead code cleanup (refreshToken, duplicate tests, smoke test)
-5. Accessibility pass — when preparing for production
+Fix progress:
+1. ✅ Backend service tests (favorite, space_visit) — coverage: favorite 38%→95%, space_visit 34%→80%, total 86%→91%
+2. ✅ Assert → raise, JWT parsing fix, timing attack fix
+3. ✅ Route return types `-> object` → concrete Pydantic response models (12 handlers)
+4. ✅ Dead code cleanup (refreshToken removed, duplicate tests consolidated, smoke test removed)
+5. ⬜ Accessibility pass — modal focus trapping, ARIA coverage, keyboard navigation, color contrast audit
