@@ -60,6 +60,30 @@ It should not communicate:
 - Inputs and primary CTA: 12px
 - Featured containers: 16-24px
 - Prefer ring or border depth over heavy shadows
+- Large sections should not rely on visible borders by default
+- For page-sized groups, use barely-there tint and spacing before adding a box
+- If a border is necessary, reduce its contrast so it reads as structure, not decoration
+
+## Surface Density
+
+PerchDesk should feel lighter than a typical app dashboard.
+
+- Avoid wrapping every section in a fully visible container
+- Hero, Buildings, My Spaces, and My Bookings should feel page-native, not card-native
+- Use vertical rhythm to separate sections before adding framing
+- When a layout starts to feel crowded or overly boxed, first reduce border visibility, then reduce top/bottom padding
+- Keep enough air for calm reading, but do not let sections become oversized empty slabs
+
+## Section Framing
+
+Use this order when deciding how to separate content:
+
+1. heading and spacing
+2. subtle background tint
+3. faint divider or low-contrast edge
+4. fully visible container
+
+The fourth option should be the exception, not the default.
 
 ## Theme Rule
 

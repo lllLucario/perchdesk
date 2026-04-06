@@ -21,12 +21,16 @@ Reusable components should feel quiet, stable, and intentional. They should not 
 - Cards should use spacing and typography for hierarchy before relying on color fills
 - Avoid card-within-card nesting unless the inner container has a clear semantic role
 - Booking summary panels should feel stable and operational, not promotional
+- Reusable cards may carry a light tint, but they should not make the whole page feel boxed in
+- For large panels, lower border visibility and reduce top/bottom padding before removing useful structure entirely
 
 ## Navigation
 
 - Navigation should stay quiet
 - Active state may use green emphasis, but not every nav item needs chromatic styling
 - The brand title can carry more personality than the rest of the nav
+- Prefer subtle active backgrounds over thick, high-contrast pills
+- Navigation should feel integrated into the page shell rather than sitting inside a loud control bar
 
 ## Tags, Chips, and Status Labels
 
@@ -46,3 +50,4 @@ The following components need strict visual hierarchy:
 On these components:
 - status clarity comes before brand expression
 - brand expression should support, not override, operational meaning
+- supporting controls such as tabs, chips, and filters should stay light enough that booking content remains primary

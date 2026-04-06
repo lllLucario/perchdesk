@@ -162,6 +162,19 @@ If the product adopts custom fonts later, the intended pairing should remain:
 - Booking is operational, but the product should still feel calm
 - Leave deliberate breathing room around titles, filters, and summary blocks
 - Use asymmetry carefully on marketing or overview surfaces; keep operational flows more stable
+- Do not confuse calmness with oversized padding. PerchDesk should breathe, but it should not feel baggy.
+- If a surface already has a strong heading and enough separation from the next section, prefer reducing container padding rather than adding more box treatment.
+
+### Framing Philosophy
+
+PerchDesk should not default to visible boxes around every major section. The product is calmer when sections feel placed on the page rather than trapped inside cards.
+
+- Prefer open composition, spacing, and typography before introducing a visible container
+- Large sections such as hero, discovery groups, personal dashboards, and booking summaries should usually feel lightly framed rather than boxed in
+- If a section needs containment, use the lightest treatment that still preserves hierarchy
+- Borders should often be implicit or nearly invisible; if the border is the first thing a person notices, it is too strong
+- Subtle tinted washes are preferable to solid, opaque blocks for large surface framing
+- Persistent page chrome should be quieter than page content; navigation should guide, not dominate
 
 ### Border Radius Scale
 - 8px for common controls and cards
@@ -179,6 +192,19 @@ If the product adopts custom fonts later, the intended pairing should remain:
 | Inset | `inset 0 0 0 1px` with low opacity | Active or pressed states |
 
 PerchDesk should not feel physically heavy. Depth should be legible but restrained.
+
+### Large Surface Rule
+
+Large surfaces should rarely combine all of the following at once:
+- visible border
+- opaque fill
+- strong shadow
+- generous outer padding
+
+That combination makes the product feel heavier and more dashboard-like than intended. For major sections, choose one or two signals only:
+- spacing + heading
+- soft tint + radius
+- faint divider + rhythm
 
 ## 7. Do's and Don'ts
 

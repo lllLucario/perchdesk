@@ -216,13 +216,13 @@ export default function HomePage() {
   const buildings = isNearbyLocation
     ? (nearbyBuildingsData ?? [])
     : (buildingsData?.slice(0, 4) ?? []);
-  const compactCardClass = "panel-surface block rounded-[1.6rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_38%,white_62%),transparent_58%),var(--color-surface)] px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft";
+  const compactCardClass = "panel-surface block rounded-[1.6rem] px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft";
   const sectionTitleClass = "section-kicker";
   const sectionLinkClass = "text-sm font-medium text-accent hover:text-text-strong";
 
   return (
     <div className="mx-auto max-w-6xl">
-      <section className="section-frame mx-auto max-w-5xl overflow-hidden px-6 py-10 text-center md:px-12 md:py-16">
+      <section className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] px-6 py-8 text-center md:px-10 md:py-12">
         <div className="mx-auto max-w-3xl">
         <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-accent">
           Find your next seat
@@ -243,7 +243,7 @@ export default function HomePage() {
           />
         </div>
         <p className="mt-3 text-xs text-text-soft">Browse below or search above</p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <span className="accent-pill text-xs font-medium">Editorial calm</span>
           <span className="accent-pill text-xs font-medium">Green-first booking</span>
           <span className="accent-pill text-xs font-medium">Desk and room discovery</span>
@@ -253,7 +253,7 @@ export default function HomePage() {
 
       {/* For You — mixed personalized stream, authenticated only */}
       {isAuthenticated && (
-        <section className="section-frame mt-10 mb-12 px-5 py-6 md:px-6">
+        <section className="mt-8 mb-10 px-1 pt-3 md:px-0">
           <div className="mb-4 flex items-center justify-between">
             <h2 className={sectionTitleClass}>
               For You
@@ -272,7 +272,7 @@ export default function HomePage() {
           ) : (
             <>
               {forYouCards.length > 0 && (
-                <div className="flex gap-3 overflow-x-auto pb-1">
+                <div className="-mx-2 flex gap-3 overflow-x-auto px-2 py-4 -my-4">
                   {forYouCards.map((card) => (
                     <div key={card.spaceId} className="w-40 flex-shrink-0">
                       <SpaceCard
@@ -292,7 +292,7 @@ export default function HomePage() {
 
               {/* Location nudge when idle or denied/unavailable */}
               {permission === "idle" && (
-                <div className={`${forYouCards.length > 0 ? "mt-3" : ""} panel-surface flex items-center justify-between rounded-[1.6rem] bg-[color:color-mix(in_srgb,var(--color-accent-muted)_54%,white_46%)] px-5 py-4`}>
+                <div className={`${forYouCards.length > 0 ? "mt-3" : ""} panel-surface flex items-center justify-between rounded-[1.6rem] px-5 py-4`}>
                   <p className="text-sm text-text-muted">Allow location access to see nearby spaces</p>
                   <button
                     onClick={requestLocation}
@@ -330,12 +330,12 @@ export default function HomePage() {
       )}
 
       {/* Recent Spaces */}
-      <section className="section-frame mb-12 px-5 py-6 md:px-6">
+      <section className="mb-10 px-1 pt-3 md:px-0">
         <h2 className={`${sectionTitleClass} mb-4`}>
           Recent Spaces
         </h2>
         {!isAuthenticated ? (
-          <div className="panel-surface rounded-[1.7rem] bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)] px-5 py-6 text-center">
+          <div className="panel-surface rounded-[1.7rem] px-5 py-6 text-center">
             <p className="mb-3 text-sm text-text-soft">Sign in to see your recently used spaces</p>
             <Link
               href="/login"
@@ -371,7 +371,7 @@ export default function HomePage() {
       </section>
 
       {/* Nearby / All Buildings */}
-      <section className="section-frame px-5 py-6 md:px-6">
+      <section className="px-1 pt-3 md:px-0">
         <h2 className={`${sectionTitleClass} mb-4`}>
           {isNearbyLocation ? "Nearby Buildings" : "Buildings"}
         </h2>

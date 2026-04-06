@@ -109,7 +109,7 @@ function ControlRow<S extends string>({
   onSortChange,
 }: FilterRowProps<S>) {
   return (
-    <div className="mb-4 flex flex-col gap-2 rounded-[1.5rem] border border-border bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)] px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+    <div className="mb-4 flex flex-col gap-2 rounded-[1.5rem] bg-transparent px-1 py-2 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex flex-wrap gap-1.5">
         {["All", ...filters].map((f) => (
           <button
@@ -117,8 +117,8 @@ function ControlRow<S extends string>({
             onClick={() => onFilterChange(f)}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${
               activeFilter === f
-                ? "bg-accent text-accent-foreground border-accent shadow-[0_10px_20px_rgba(69,95,57,0.16)]"
-                : "bg-surface text-text-muted border-border hover:border-border-strong hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)]"
+                ? "bg-[color:color-mix(in_srgb,var(--color-accent-muted)_46%,white_54%)] text-text-strong border-border-strong"
+                : "bg-surface text-text-muted border-border hover:border-border-strong hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_18%,white_82%)]"
             }`}
           >
             {f}
@@ -331,7 +331,7 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
   const hint = relativeTimeHint(uxStatus, booking.start_time);
 
   return (
-    <div className="panel-surface rounded-[1.7rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_60%),var(--color-surface)] p-5">
+    <div className="panel-surface rounded-[1.7rem] p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -403,13 +403,13 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
 function ActiveEmpty({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="section-frame py-12 text-center text-text-muted">
+      <div className="py-12 text-center text-text-muted">
         <p className="text-sm">No bookings match the selected filter.</p>
       </div>
     );
   }
   return (
-    <div className="section-frame py-16 text-center text-text-muted">
+    <div className="py-16 text-center text-text-muted">
       <p className="mb-1 font-serif text-3xl text-foreground">No active bookings</p>
       <p className="text-sm mb-4">You have no upcoming or in-progress bookings.</p>
       <Link href="/buildings" className="text-sm text-accent hover:text-text-strong">
@@ -422,13 +422,13 @@ function ActiveEmpty({ filtered }: { filtered: boolean }) {
 function HistoryEmpty({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="section-frame py-12 text-center text-text-muted">
+      <div className="py-12 text-center text-text-muted">
         <p className="text-sm">No bookings match the selected filter.</p>
       </div>
     );
   }
   return (
-    <div className="section-frame py-16 text-center text-text-muted">
+    <div className="py-16 text-center text-text-muted">
       <p className="mb-1 font-serif text-3xl text-foreground">No booking history yet</p>
       <p className="text-sm">Your completed, cancelled, and expired bookings will appear here.</p>
     </div>
@@ -468,7 +468,7 @@ export default function BookingsPage() {
 
   return (
     <div className="page-stack">
-      <div className="section-frame mb-6 px-6 py-6 md:px-8">
+      <div className="mb-5 rounded-[2rem] px-2 py-2 md:px-3">
         <p className="section-kicker mb-3">Booking journal</p>
         <h1 className="mb-2 text-4xl text-foreground">My Bookings</h1>
         <p className="text-sm text-text-muted">
@@ -477,14 +477,14 @@ export default function BookingsPage() {
       </div>
 
       {/* Tab row */}
-      <div className="mb-5 flex gap-2 rounded-[1.5rem] border border-border bg-[color:color-mix(in_srgb,var(--color-accent-muted)_44%,white_56%)] p-2">
+      <div className="mb-4 flex gap-2 rounded-[1.5rem] p-1">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`rounded-[1rem] px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.key
-                ? "bg-surface text-text-strong shadow-[0_12px_24px_rgba(22,26,22,0.06)]"
+                ? "bg-[color:color-mix(in_srgb,var(--color-accent-muted)_30%,white_70%)] text-text-strong"
                 : "text-text-muted hover:text-text-strong"
             }`}
           >

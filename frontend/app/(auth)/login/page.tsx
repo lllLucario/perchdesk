@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/api";
@@ -37,47 +38,91 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-xl shadow p-8">
-        <h1 className="text-2xl font-bold mb-6 text-center">Sign in to PerchDesk</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.16),_transparent_32%),linear-gradient(180deg,_#edf3e8,_#f6faf1)] px-5 py-8 md:px-8 md:py-10">
+      <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <p className="section-kicker mb-4">Quiet booking</p>
+            <h1 className="text-6xl leading-[0.95] text-foreground">
+              Quiet booking for focused spaces.
+            </h1>
+            <p className="mt-5 max-w-lg text-lg text-text-muted">
+              Return to a calmer booking workspace for desks, rooms, and focused corners across campus.
+            </p>
+            <div className="mt-10 space-y-4">
+              {[
+                "Browse buildings without dashboard clutter",
+                "See recent spaces and personal recommendations",
+                "Track bookings in one quiet timeline",
+              ].map((line) => (
+                <div
+                  key={line}
+                  className="flex items-center gap-3 rounded-full bg-[color:color-mix(in_srgb,var(--color-accent-muted)_34%,white_66%)] px-4 py-3 text-sm text-text-strong"
+                >
+                  <span className="brand-mark h-9 w-9 text-sm">P</span>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+        </section>
+
+        <section className="mx-auto w-full max-w-md lg:max-w-none">
+          <div className="rounded-[2rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_18%,transparent),transparent_11rem),color-mix(in_srgb,var(--color-surface)_96%,white_4%)] p-6 shadow-[0_24px_56px_rgba(22,26,22,0.08)] md:p-8">
+            <div className="mb-8">
+              <Link href="/" className="brand-wordmark text-[1.55rem]">
+                <span className="brand-mark">P</span>
+                PerchDesk
+              </Link>
+              <h2 className="mt-6 font-serif text-4xl leading-tight text-foreground">
+                Sign in to PerchDesk
+              </h2>
+              <p className="mt-2 text-sm text-text-muted">
+                Use your account to continue into buildings, spaces, and bookings.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="mb-1 block text-sm font-medium text-text-strong">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full rounded-[1rem] border border-border bg-surface px-3.5 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="mb-1 block text-sm font-medium text-text-strong">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full rounded-[1rem] border border-border bg-surface px-3.5 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
+              {error && <p className="text-sm text-danger">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="button-primary w-full py-3 text-sm font-medium disabled:opacity-50"
+              >
+                {loading ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+
+            <div className="mt-6 flex items-center justify-between gap-3 border-t border-border/70 pt-5 text-sm text-text-muted">
+              <span>No account?</span>
+              <Link href="/register" className="font-medium text-accent hover:text-text-strong">
+                Register
+              </Link>
+            </div>
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-        <p className="mt-4 text-sm text-center text-gray-500">
-          No account?{" "}
-          <a href="/register" className="text-blue-600 hover:underline">
-            Register
-          </a>
-        </p>
+        </section>
       </div>
     </div>
   );

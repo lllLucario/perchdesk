@@ -16,8 +16,8 @@ import { useLocationStore } from "@/store/locationStore";
 const BuildingMap = dynamic(() => import("@/components/BuildingMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-full bg-gray-100 animate-pulse flex items-center justify-center">
-      <span className="text-sm text-gray-400">Loading map…</span>
+    <div className="flex h-full items-center justify-center bg-[color:color-mix(in_srgb,var(--color-accent-muted)_52%,white_48%)] animate-pulse">
+      <span className="text-sm text-text-soft">Loading map…</span>
     </div>
   ),
 });
@@ -58,18 +58,18 @@ export default function BuildingMapPage() {
 
   if (isLoading) {
     return (
-      <div>
-        <div className="h-5 bg-gray-100 rounded w-56 animate-pulse mb-6" />
-        <div className="h-[520px] bg-gray-100 rounded-2xl animate-pulse" />
+      <div className="page-stack">
+        <div className="mb-6 h-5 w-56 animate-pulse rounded bg-surface-muted" />
+        <div className="h-[520px] animate-pulse rounded-[2rem] bg-surface-muted" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div>
+      <div className="page-stack">
         <Breadcrumb />
-        <p className="text-sm text-red-500 mt-4">Failed to load buildings.</p>
+        <p className="mt-4 text-sm text-danger">Failed to load buildings.</p>
       </div>
     );
   }
@@ -77,10 +77,17 @@ export default function BuildingMapPage() {
   // ─── Main layout ──────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div className="page-stack">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
-        <Breadcrumb />
+      <div className="section-frame mb-5 flex flex-col gap-5 px-6 py-6 md:flex-row md:items-end md:justify-between md:px-8">
+        <div>
+          <Breadcrumb />
+          <p className="section-kicker mb-3 mt-4">Map discovery</p>
+          <h1 className="text-4xl text-foreground">Buildings Map</h1>
+          <p className="mt-2 max-w-2xl text-sm text-text-muted">
+            Browse buildings spatially, scan nearby options, and jump into the right space faster.
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <LocationControl
             permission={permission}
@@ -88,7 +95,7 @@ export default function BuildingMapPage() {
           />
           <Link
             href="/buildings"
-            className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5"
+            className="button-secondary px-4 py-2 text-sm font-medium"
           >
             List view
           </Link>
@@ -96,9 +103,9 @@ export default function BuildingMapPage() {
       </div>
 
       {/* Map + sidebar */}
-      <div className="flex gap-0 border border-gray-100 rounded-2xl overflow-hidden h-[520px]">
+      <div className="section-frame flex h-[520px] gap-0 overflow-hidden rounded-[2rem]">
         {/* Sidebar list */}
-        <div className="w-64 flex-shrink-0 overflow-y-auto border-r border-gray-100 bg-white">
+        <div className="w-72 flex-shrink-0 overflow-y-auto border-r border-border bg-[color:color-mix(in_srgb,var(--color-surface)_84%,white_16%)]">
           <BuildingList
             buildings={listBuildings}
             selectedId={selectedId}
@@ -132,16 +139,16 @@ export default function BuildingMapPage() {
 
 function Breadcrumb() {
   return (
-    <nav className="text-sm text-gray-500 flex items-center gap-2">
-      <Link href="/" className="hover:text-gray-700">
+    <nav className="flex items-center gap-2 text-sm text-text-soft">
+      <Link href="/" className="hover:text-text-strong">
         Home
       </Link>
       <span>/</span>
-      <Link href="/buildings" className="hover:text-gray-700">
+      <Link href="/buildings" className="hover:text-text-strong">
         Buildings
       </Link>
       <span>/</span>
-      <span className="text-gray-900 font-medium">Map</span>
+      <span className="font-medium text-foreground">Map</span>
     </nav>
   );
 }
@@ -157,20 +164,20 @@ function LocationControl({
     return (
       <button
         onClick={onRequestLocation}
-        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
+        className="button-primary flex items-center gap-1.5 px-4 py-2 text-sm font-medium"
       >
         <span aria-hidden>📍</span> Use my location
       </button>
     );
   }
   if (permission === "loading") {
-    return <span className="text-sm text-gray-400">Locating…</span>;
+    return <span className="text-sm text-text-soft">Locating…</span>;
   }
   if (permission === "granted") {
-    return <span className="text-sm text-green-600">📍 Location active</span>;
+    return <span className="accent-pill text-sm font-medium">📍 Location active</span>;
   }
   // denied or unavailable
-  return <span className="text-sm text-gray-400">Location unavailable</span>;
+  return <span className="text-sm text-text-soft">Location unavailable</span>;
 }
 
 function BuildingList({
@@ -190,24 +197,24 @@ function BuildingList({
 }) {
   if (boundsError) {
     return (
-      <div className="p-4">
-        <p className="text-sm text-red-500">Failed to load buildings in this area.</p>
-        <p className="text-xs text-gray-400 mt-1">Try moving the map or zooming out.</p>
+      <div className="p-5">
+        <p className="text-sm text-danger">Failed to load buildings in this area.</p>
+        <p className="mt-1 text-xs text-text-soft">Try moving the map or zooming out.</p>
       </div>
     );
   }
 
   if (!buildings || buildings.length === 0) {
     return (
-      <div className="p-4">
-        <p className="text-sm text-gray-400">
+      <div className="p-5">
+        <p className="text-sm text-text-soft">
           {viewportBounds
             ? "No buildings in this area. Try zooming out."
             : "No buildings with location data available."}
         </p>
         <Link
           href="/buildings"
-          className="mt-2 inline-block text-sm text-blue-600 hover:text-blue-700"
+          className="mt-2 inline-block text-sm font-medium text-accent hover:text-text-strong"
         >
           Browse all buildings →
         </Link>
@@ -217,24 +224,26 @@ function BuildingList({
 
   // buildings is non-null and non-empty at this point (guards above).
   return (
-    <div className="divide-y divide-gray-50">
+    <div className="divide-y divide-border">
       {(buildings as BuildingWithCoords[]).map((b) => (
         <div
           key={b.id}
           data-building-id={b.id}
           onClick={() => onSelect(b.id)}
-          className={`px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-            b.id === selectedId ? "bg-blue-50 border-l-2 border-blue-600" : "border-l-2 border-transparent"
-          }`}
+            className={`cursor-pointer border-l-2 px-4 py-4 transition-colors ${
+              b.id === selectedId
+              ? "bg-blue-50 border-l-accent bg-[color:color-mix(in_srgb,var(--color-accent-muted)_58%,white_42%)]"
+              : "border-l-transparent hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_36%,white_64%)]"
+            }`}
         >
-          <p className="font-medium text-gray-900 text-sm">{b.name}</p>
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{b.address}</p>
+          <p className="text-sm font-medium text-foreground">{b.name}</p>
+          <p className="mt-0.5 truncate text-xs text-text-soft">{b.address}</p>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onViewSpaces(b.id);
             }}
-            className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+            className="mt-2 text-xs font-medium text-accent hover:text-text-strong"
           >
             View Spaces →
           </button>
@@ -246,12 +255,12 @@ function BuildingList({
 
 function NoCoordinatesMessage() {
   return (
-    <div className="flex items-center justify-center h-full bg-gray-50">
+    <div className="flex h-full items-center justify-center bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)]">
       <div className="text-center px-6">
-        <p className="text-sm text-gray-500 mb-2">
+        <p className="mb-2 text-sm text-text-muted">
           No buildings have location data yet.
         </p>
-        <Link href="/buildings" className="text-sm text-blue-600 hover:text-blue-700">
+        <Link href="/buildings" className="text-sm font-medium text-accent hover:text-text-strong">
           Browse buildings by list →
         </Link>
       </div>
