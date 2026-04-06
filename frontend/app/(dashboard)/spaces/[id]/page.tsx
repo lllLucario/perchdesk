@@ -308,8 +308,8 @@ export default function SpaceFloorplanPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  if (isLoading) return <p className="text-gray-500 p-4">Loading…</p>;
-  if (!space) return <p className="text-red-500 p-4">Space not found.</p>;
+  if (isLoading) return <p className="p-4 text-text-muted">Loading…</p>;
+  if (!space) return <p className="p-4 text-danger">Space not found.</p>;
 
   const seats = space.seats ?? [];
   const gridSize =
@@ -319,12 +319,12 @@ export default function SpaceFloorplanPage({
   return (
     <div className="flex flex-col gap-4">
       {/* Breadcrumb */}
-      <nav className="text-sm text-gray-500 flex items-center gap-2">
-        <Link href="/" className="hover:text-gray-700">
+      <nav className="flex items-center gap-2 text-sm text-text-soft">
+        <Link href="/" className="hover:text-text-strong">
           Home
         </Link>
         <span>/</span>
-        <Link href="/buildings" className="hover:text-gray-700">
+        <Link href="/buildings" className="hover:text-text-strong">
           Buildings
         </Link>
         {buildingId && (
@@ -332,19 +332,19 @@ export default function SpaceFloorplanPage({
             <span>/</span>
             <Link
               href={`/buildings/${buildingId}`}
-              className="hover:text-gray-700"
+              className="hover:text-text-strong"
             >
               Spaces
             </Link>
           </>
         )}
         <span>/</span>
-        <span className="text-gray-900 font-medium">{space.name}</span>
+        <span className="font-medium text-foreground">{space.name}</span>
       </nav>
 
       {/* Auto-release warning */}
       {rules?.auto_release_minutes && (
-        <div className="px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+        <div className="rounded-[1.35rem] border border-[color:#dec78e] bg-[color:#f6efdc] px-4 py-2.5 text-sm text-[color:#8e6b1f]">
           ⚠ Check in within {rules.auto_release_minutes} min of your start time
           or your booking will be automatically released.
         </div>
@@ -389,28 +389,28 @@ export default function SpaceFloorplanPage({
           />
 
           {/* Seat selection hint */}
-          <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+          <p className="rounded-xl bg-surface-muted px-3 py-2 text-xs text-text-muted shadow-[0_0_0_1px_var(--color-border)]">
             {activeSeatId
               ? `Seat ${activeSeatLabel} selected — click to deselect`
               : "Click a seat on the map to include it in this booking"}
           </p>
 
           {/* Legend */}
-          <div className="flex gap-4 text-xs text-gray-500 flex-wrap">
+          <div className="flex flex-wrap gap-4 text-xs text-text-muted">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-[#1D9E75] inline-block" />
+              <span className="inline-block h-3 w-3 rounded bg-[#6f9367]" />
               Available
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-[#E24B4A] inline-block" />
+              <span className="inline-block h-3 w-3 rounded bg-[#d06b62]" />
               Booked
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-[#378ADD] inline-block" />
+              <span className="inline-block h-3 w-3 rounded bg-[#5d8fc9]" />
               My Booking
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-[#B4B2A9] inline-block" />
+              <span className="inline-block h-3 w-3 rounded bg-[#a7afa2]" />
               Maintenance
             </span>
           </div>
