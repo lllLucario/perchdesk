@@ -147,35 +147,41 @@ export default function AdminManagePage() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Manage Spaces & Seats</h1>
+    <div className="page-stack">
+      <div className="section-frame mb-6 px-6 py-6 md:px-8">
+        <p className="section-kicker mb-3">Admin workspace</p>
+        <h1 className="text-4xl text-foreground">Manage Spaces & Seats</h1>
+        <p className="mt-2 max-w-2xl text-sm text-text-muted">
+          Create spaces, upload floor plans, and edit seat layouts without leaving the design system.
+        </p>
+      </div>
 
       <div className="flex gap-6">
         {/* Space list sidebar */}
         <div className="w-64 shrink-0">
-          <div className="bg-white border rounded-xl p-4">
+          <div className="panel-surface rounded-[1.6rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_56%),var(--color-surface)] p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-sm">Spaces</h2>
+              <h2 className="text-sm font-semibold text-text-strong">Spaces</h2>
               <button
                 onClick={() => setShowCreateSpace(!showCreateSpace)}
-                className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                className="button-primary px-3 py-1.5 text-xs font-medium"
               >
                 + New
               </button>
             </div>
 
             {showCreateSpace && (
-              <div className="mb-3 p-3 bg-gray-50 rounded-lg border space-y-2">
+              <div className="mb-3 space-y-2 rounded-[1.2rem] border border-border bg-[color:color-mix(in_srgb,var(--color-accent-muted)_48%,white_52%)] p-3">
                 <input
                   value={newSpaceName}
                   onChange={(e) => setNewSpaceName(e.target.value)}
                   placeholder="Space name"
-                  className="w-full border rounded px-2 py-1 text-sm"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
                 />
                 <select
                   value={newSpaceType}
                   onChange={(e) => setNewSpaceType(e.target.value as "library" | "office")}
-                  className="w-full border rounded px-2 py-1 text-sm"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
                 >
                   <option value="library">Library</option>
                   <option value="office">Office</option>
@@ -185,20 +191,20 @@ export default function AdminManagePage() {
                   value={newSpaceCapacity}
                   onChange={(e) => setNewSpaceCapacity(Number(e.target.value))}
                   placeholder="Capacity"
-                  className="w-full border rounded px-2 py-1 text-sm"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
                   min={1}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={handleCreateSpace}
                     disabled={createSpace.isPending}
-                    className="flex-1 bg-blue-600 text-white py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+                    className="button-primary flex-1 py-2 text-xs font-medium disabled:opacity-50"
                   >
                     {createSpace.isPending ? "Creating…" : "Create"}
                   </button>
                   <button
                     onClick={() => setShowCreateSpace(false)}
-                    className="flex-1 border py-1 rounded text-xs hover:bg-gray-100"
+                    className="button-secondary flex-1 py-2 text-xs font-medium"
                   >
                     Cancel
                   </button>
@@ -206,15 +212,15 @@ export default function AdminManagePage() {
               </div>
             )}
 
-            {spacesLoading && <p className="text-sm text-gray-400">Loading…</p>}
+            {spacesLoading && <p className="text-sm text-text-soft">Loading…</p>}
             <ul className="space-y-1">
               {spaces?.map((s) => (
                 <li key={s.id}>
                   <div
-                    className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-sm cursor-pointer ${
+                    className={`flex cursor-pointer items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors ${
                       selectedSpaceId === s.id
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "hover:bg-gray-50"
+                        ? "bg-[color:color-mix(in_srgb,var(--color-accent-muted)_60%,white_40%)] font-medium text-text-strong"
+                        : "hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_32%,white_68%)]"
                     }`}
                     onClick={() => setSelectedSpaceId(s.id)}
                   >
@@ -224,7 +230,7 @@ export default function AdminManagePage() {
                         e.stopPropagation();
                         handleDeleteSpace(s.id);
                       }}
-                      className="text-red-400 hover:text-red-600 ml-1 text-xs"
+                      className="ml-1 text-xs text-danger/70 hover:text-danger"
                       title="Delete space"
                     >
                       ✕
@@ -239,14 +245,14 @@ export default function AdminManagePage() {
         {/* Seat map editor */}
         <div className="flex-1">
           {!selectedSpaceId ? (
-            <div className="bg-white border rounded-xl p-8 text-center text-gray-400">
+            <div className="section-frame rounded-[1.8rem] p-8 text-center text-text-soft">
               Select a space to edit its seat layout
             </div>
           ) : (
-            <div className="bg-white border rounded-xl p-4">
+            <div className="section-frame rounded-[1.8rem] p-5">
               <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <h2 className="font-semibold">{space?.name}</h2>
-                <span className="text-xs text-gray-400">{seats.length} seats</span>
+                <h2 className="font-serif text-2xl text-foreground">{space?.name}</h2>
+                <span className="accent-pill text-xs font-medium">{seats.length} seats</span>
 
                 {/* Toolbar */}
                 <div className="flex gap-1 ml-auto">
@@ -254,10 +260,10 @@ export default function AdminManagePage() {
                     <button
                       key={m}
                       onClick={() => setToolMode(m)}
-                      className={`px-3 py-1 rounded text-xs font-medium border transition-colors capitalize ${
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                         toolMode === m
-                          ? "bg-blue-600 text-white border-blue-600"
-                          : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                          ? "bg-accent text-accent-foreground shadow-[0_10px_20px_rgba(69,95,57,0.16)]"
+                          : "border border-border bg-surface text-text-muted hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_36%,white_64%)]"
                       }`}
                     >
                       {m === "add" ? "+ Add" : m === "delete" ? "✕ Delete" : m === "edit" ? "✎ Edit" : "↖ Select"}
@@ -268,12 +274,12 @@ export default function AdminManagePage() {
                 {/* Label prefix (add mode only) */}
                 {toolMode === "add" && (
                   <div className="flex items-center gap-1 text-sm">
-                    <label className="text-xs text-gray-500">Prefix:</label>
+                    <label className="text-xs text-text-soft">Prefix:</label>
                     <input
                       value={labelPrefix}
                       onChange={(e) => setLabelPrefix(e.target.value.toUpperCase())}
                       maxLength={3}
-                      className="w-12 border rounded px-2 py-0.5 text-sm text-center"
+                      className="w-12 rounded-lg border border-border bg-surface px-2 py-0.5 text-center text-sm text-foreground"
                     />
                   </div>
                 )}
@@ -281,18 +287,18 @@ export default function AdminManagePage() {
 
               {/* Tool hint */}
               {toolMode === "add" && (
-                <p className="text-xs text-blue-600 mb-2">Click on the grid to place a seat</p>
+                <p className="mb-2 text-xs text-accent">Click on the grid to place a seat</p>
               )}
               {toolMode === "delete" && (
-                <p className="text-xs text-red-500 mb-2">Click a seat to delete it</p>
+                <p className="mb-2 text-xs text-danger">Click a seat to delete it</p>
               )}
               {toolMode === "edit" && (
-                <p className="text-xs text-yellow-600 mb-2">Click a seat to edit its label or status</p>
+                <p className="mb-2 text-xs text-text-muted">Click a seat to edit its label or status</p>
               )}
 
               {/* Floor plan controls */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <label className={`px-3 py-1 rounded text-xs font-medium border cursor-pointer transition-colors ${uploadFloorPlan.isPending ? "opacity-50" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}>
+                <label className={`rounded-full px-3 py-1.5 text-xs font-medium border cursor-pointer transition-colors ${uploadFloorPlan.isPending ? "opacity-50" : "border-border bg-surface text-text-muted hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_36%,white_64%)]"}`}>
                   {uploadFloorPlan.isPending ? "Uploading…" : "⬆ Upload Floor Plan"}
                   <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleFloorPlanUpload} disabled={uploadFloorPlan.isPending} />
                 </label>
@@ -300,20 +306,20 @@ export default function AdminManagePage() {
                   <button
                     onClick={handleFloorPlanDelete}
                     disabled={deleteFloorPlan.isPending}
-                    className="px-3 py-1 rounded text-xs font-medium border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
+                    className="rounded-full border border-[color:color-mix(in_srgb,var(--color-danger)_28%,white_72%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)] px-3 py-1.5 text-xs font-medium text-danger disabled:opacity-50"
                   >
                     ✕ Remove Floor Plan
                   </button>
                 )}
                 <button
                   onClick={() => setShowGrid((v) => !v)}
-                  className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${showGrid ? "bg-blue-50 text-blue-600 border-blue-200" : "bg-white text-gray-400 border-gray-200"}`}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${showGrid ? "bg-[color:color-mix(in_srgb,var(--color-accent-muted)_58%,white_42%)] text-text-strong border-border-strong" : "bg-surface text-text-soft border-border"}`}
                 >
                   # Grid {showGrid ? "On" : "Off"}
                 </button>
               </div>
 
-              {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+              {error && <p className="mb-2 text-xs text-danger">{error}</p>}
 
               <SeatMapCanvas
                 seats={seats}
@@ -328,7 +334,7 @@ export default function AdminManagePage() {
               />
 
               {/* Legend */}
-              <div className="flex gap-4 mt-3 text-xs text-gray-500">
+              <div className="mt-3 flex gap-4 text-xs text-text-soft">
                 <span className="flex items-center gap-1">
                   <span className="w-3 h-3 rounded inline-block bg-[#1D9E75]" /> Available
                 </span>
@@ -343,41 +349,41 @@ export default function AdminManagePage() {
 
       {/* Edit seat dialog */}
       {editingSeat && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-80 shadow-xl">
-            <h3 className="font-semibold mb-4">Edit Seat</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-80 rounded-[1.6rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_55%),var(--color-surface)] p-6 shadow-xl">
+            <h3 className="mb-4 font-serif text-2xl text-foreground">Edit Seat</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium mb-1">Label</label>
+                <label className="mb-1 block text-xs font-medium text-text-strong">Label</label>
                 <input
                   value={editLabel}
                   onChange={(e) => setEditLabel(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Status</label>
+                <label className="mb-1 block text-xs font-medium text-text-strong">Status</label>
                 <select
                   value={editStatus}
                   onChange={(e) => setEditStatus(e.target.value)}
-                  className="w-full border rounded px-2 py-1.5 text-sm"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground"
                 >
                   <option value="available">Available</option>
                   <option value="maintenance">Maintenance</option>
                 </select>
               </div>
-              {error && <p className="text-xs text-red-500">{error}</p>}
+              {error && <p className="text-xs text-danger">{error}</p>}
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={handleSaveEdit}
                   disabled={updateSeat.isPending}
-                  className="flex-1 bg-blue-600 text-white py-2 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                  className="button-primary flex-1 py-2 text-sm disabled:opacity-50"
                 >
                   {updateSeat.isPending ? "Saving…" : "Save"}
                 </button>
                 <button
                   onClick={() => setEditingSeat(null)}
-                  className="flex-1 border py-2 rounded text-sm hover:bg-gray-50"
+                  className="button-secondary flex-1 py-2 text-sm"
                 >
                   Cancel
                 </button>

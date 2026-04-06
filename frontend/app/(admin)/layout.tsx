@@ -23,18 +23,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="app-shell">
       <nav className="app-nav">
         <div className="app-nav-inner">
-          <div className="flex items-center gap-6">
+          <div className="app-nav-group">
             <span className="brand-wordmark">
               <span className="brand-mark">P</span>
               PerchDesk Admin
             </span>
-            <Link href="/spaces" className="nav-link">
-              Back to App
-            </Link>
+            <div className="app-nav-links">
+              <Link href="/spaces/manage" className="nav-link nav-link-active">
+                Manage Spaces
+              </Link>
+              <Link href="/spaces" className="nav-link">
+                Back to App
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
-      <main className="shell-main">{children}</main>
+      <main className="shell-main shell-page">
+        <div className="page-stack">{children}</div>
+      </main>
     </div>
   );
 }
