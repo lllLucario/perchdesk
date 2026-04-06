@@ -117,7 +117,7 @@ function RecommendedSection() {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1">
+    <div className="-mx-2 flex gap-3 overflow-x-auto px-2 py-4 -my-4">
       {recommendations.map((rec) => (
         <div key={rec.space_id} className="w-44 flex-shrink-0">
           <SpaceCard
@@ -164,7 +164,7 @@ function FavoriteSection({ spacesById }: { spacesById: Map<string, Space> }) {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1">
+    <div className="-mx-2 flex gap-3 overflow-x-auto px-2 py-4 -my-4">
       {favoriteSpaces.map((space) => (
         <div key={space.id} className="w-44 flex-shrink-0">
           <SpaceCard
@@ -241,7 +241,7 @@ function RecentSection({ spacesById }: { spacesById: Map<string, Space> }) {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1">
+    <div className="-mx-2 flex gap-3 overflow-x-auto px-2 py-4 -my-4">
       {cards.map((card) => (
         <div key={card.spaceId} className="w-44 flex-shrink-0">
           <SpaceCard

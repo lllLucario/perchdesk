@@ -58,15 +58,13 @@ export default function SpaceCard({
 
   return (
     <div
-      className="panel-surface relative cursor-pointer overflow-hidden rounded-[1.8rem] px-4 py-4 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft hover:shadow-[0_18px_40px_rgba(22,26,22,0.09)]"
+      className="relative cursor-pointer overflow-visible rounded-[1.8rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] px-4 py-4 shadow-[0_2px_4px_rgba(22,26,22,0.06),0_8px_16px_-4px_rgba(22,26,22,0.10),0_20px_40px_-8px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_4px_8px_rgba(22,26,22,0.06),0_12px_24px_-4px_rgba(22,26,22,0.12),0_28px_48px_-8px_rgba(22,26,22,0.10)]"
       onClick={() => router.push(`/spaces/${spaceId}`)}
     >
-      <div className="absolute inset-x-0 top-0 h-14 bg-[radial-gradient(circle_at_top_left,rgba(137,179,116,0.14),transparent_70%)]" />
-
       {/* Favorite star */}
       <button
         aria-label={optimistic ? "Remove from favorites" : "Add to favorites"}
-        className="absolute right-3 top-3 rounded-full border border-transparent bg-surface/72 p-1.5 text-text-soft transition-colors hover:border-border hover:text-accent"
+        className="absolute right-3 top-3 rounded-full border border-transparent bg-transparent p-1.5 text-text-soft transition-colors hover:border-border hover:bg-surface/85 hover:text-accent"
         onClick={handleStarClick}
         disabled={toggleFavorite.isPending}
       >
@@ -86,7 +84,7 @@ export default function SpaceCard({
         </svg>
       </button>
 
-      {ribbon && <div className="mb-2">{ribbon}</div>}
+      {ribbon && <div className="-ml-4 -mt-4 mb-3">{ribbon}</div>}
       <p className="line-clamp-1 pr-6 font-serif text-xl leading-tight text-foreground">{name}</p>
       <p className="mt-1 text-xs capitalize text-text-muted">
         {type} · {capacity} seats

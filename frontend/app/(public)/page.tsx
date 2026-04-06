@@ -272,7 +272,7 @@ export default function HomePage() {
           ) : (
             <>
               {forYouCards.length > 0 && (
-                <div className="flex gap-3 overflow-x-auto pb-1">
+                <div className="-mx-2 flex gap-3 overflow-x-auto px-2 py-4 -my-4">
                   {forYouCards.map((card) => (
                     <div key={card.spaceId} className="w-40 flex-shrink-0">
                       <SpaceCard
