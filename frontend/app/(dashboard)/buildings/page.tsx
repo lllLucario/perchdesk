@@ -10,19 +10,21 @@ export default function BuildingsPage() {
   const router = useRouter();
   const { data: buildings, isLoading, isError } = useBuildings();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const breadcrumbClass = "mb-6 flex items-center gap-2 text-sm text-text-soft";
+  const crumbLinkClass = "hover:text-text-strong";
 
   if (isLoading) {
     return (
-      <div>
-        <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+      <div className="page-stack">
+        <nav className={breadcrumbClass}>
+          <Link href="/" className={crumbLinkClass}>Home</Link>
           <span>/</span>
-          <span className="text-gray-900 font-medium">Buildings</span>
+          <span className="font-medium text-foreground">Buildings</span>
         </nav>
-        <h1 className="text-xl font-semibold text-gray-900 mb-6">Buildings</h1>
+        <h1 className="mb-6 text-4xl text-foreground">Buildings</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-56 bg-gray-100 rounded-2xl animate-pulse" />
+            <div key={i} className="h-56 animate-pulse rounded-[1.75rem] bg-surface-muted" />
           ))}
         </div>
       </div>
@@ -31,55 +33,61 @@ export default function BuildingsPage() {
 
   if (isError) {
     return (
-      <div>
-        <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+      <div className="page-stack">
+        <nav className={breadcrumbClass}>
+          <Link href="/" className={crumbLinkClass}>Home</Link>
           <span>/</span>
-          <span className="text-gray-900 font-medium">Buildings</span>
+          <span className="font-medium text-foreground">Buildings</span>
         </nav>
-        <p className="text-sm text-red-500">Failed to load buildings.</p>
+        <p className="text-sm text-danger">Failed to load buildings.</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
-        <Link href="/" className="hover:text-gray-700">Home</Link>
+    <div className="page-stack">
+      <nav className={breadcrumbClass}>
+        <Link href="/" className={crumbLinkClass}>Home</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">Buildings</span>
+        <span className="font-medium text-foreground">Buildings</span>
       </nav>
 
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Buildings</h1>
+      <div className="section-frame mb-8 flex flex-col gap-5 px-6 py-6 md:flex-row md:items-end md:justify-between md:px-8">
+        <div>
+          <p className="section-kicker mb-3">Browse buildings</p>
+          <h1 className="text-4xl text-foreground">Buildings</h1>
+          <p className="mt-2 text-sm text-text-muted">
+            Browse the places where PerchDesk can guide you into rooms, desks, and quiet corners.
+          </p>
+        </div>
         <Link
           href="/buildings/map"
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5"
+          className="button-secondary flex items-center gap-1.5 px-4 py-2 text-sm font-medium"
         >
           <span aria-hidden>🗺</span> Map view
         </Link>
       </div>
 
       {buildings && buildings.length === 0 ? (
-        <p className="text-sm text-gray-400">No buildings available.</p>
+        <p className="text-sm text-text-soft">No buildings available.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {buildings?.map((building) => (
             <div
               key={building.id}
-              className="bg-white border border-gray-100 rounded-2xl overflow-hidden hover:shadow-md transition-shadow"
+              className="panel-surface overflow-hidden rounded-[1.75rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_52%),var(--color-surface)] transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
             >
               {/* Card body — click to open modal */}
               <button
                 className="w-full text-left"
                 onClick={() => setSelectedBuilding(building)}
               >
-                <div className="h-32 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                <div className="flex h-36 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.34),_transparent_56%),linear-gradient(135deg,_#eff7ea,_#d8e8cc)]">
                   <span className="text-3xl">🏛</span>
                 </div>
                 <div className="px-5 pt-4 pb-3">
-                  <p className="font-medium text-gray-900">{building.name}</p>
-                  <p className="text-sm text-gray-400 mt-0.5">{building.address}</p>
+                  <p className="font-serif text-2xl leading-tight text-foreground">{building.name}</p>
+                  <p className="mt-1 text-sm text-text-muted">{building.address}</p>
                 </div>
               </button>
 
@@ -87,7 +95,7 @@ export default function BuildingsPage() {
               <div className="px-5 pb-4">
                 <button
                   onClick={() => router.push(`/buildings/${building.id}`)}
-                  className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="button-primary w-full py-2 text-sm font-medium"
                 >
                   View Spaces
                 </button>

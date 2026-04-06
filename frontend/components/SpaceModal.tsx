@@ -23,29 +23,29 @@ export default function SpaceModal({ space, buildingName, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(22,26,22,0.48)]"
       onClick={onClose}
     >
       <div
-        className="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+        className="relative mx-4 w-full max-w-md overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header placeholder */}
-        <div className="h-28 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+        <div className="flex h-28 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(140,173,130,0.32),_transparent_58%),linear-gradient(135deg,_#eef4e8,_#dde6d5)]">
           <span className="text-4xl">{typeEmoji}</span>
         </div>
 
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm text-sm"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(247,250,244,0.92)] text-text-soft shadow-[0_0_0_1px_var(--color-border)] hover:text-foreground"
           aria-label="Close"
         >
           ✕
         </button>
 
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-0.5">{space.name}</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+          <h2 className="mb-0.5 font-serif text-2xl leading-tight text-foreground">{space.name}</h2>
+          <div className="mb-4 flex items-center gap-2 text-sm text-text-muted">
             {buildingName && <span>{buildingName}</span>}
             {buildingName && <span>·</span>}
             <span>{typeLabel}</span>
@@ -54,13 +54,13 @@ export default function SpaceModal({ space, buildingName, onClose }: Props) {
           </div>
 
           {space.description && (
-            <p className="text-sm text-gray-600 mb-4">{space.description}</p>
+            <p className="mb-4 text-sm text-text-muted">{space.description}</p>
           )}
 
           {rules && (
-            <div className="mb-5 bg-gray-50 rounded-xl p-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Booking Rules</p>
-              <div className="space-y-1 text-sm text-gray-700">
+            <div className="mb-5 rounded-[1.25rem] bg-surface-muted p-4 shadow-[0_0_0_1px_var(--color-border)]">
+              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-text-soft">Booking Rules</p>
+              <div className="space-y-1 text-sm text-text-strong">
                 <p>Max duration: {rules.max_duration_minutes / 60}h per booking</p>
                 <p>Book up to: {rules.max_advance_days} days in advance</p>
                 <p>
@@ -72,7 +72,7 @@ export default function SpaceModal({ space, buildingName, onClose }: Props) {
                     : "Full day"}
                 </p>
                 {rules.auto_release_minutes && (
-                  <p className="text-amber-600">
+                  <p className="text-[color:#8e6b1f]">
                     Auto-released after {rules.auto_release_minutes} min if not checked in
                   </p>
                 )}
@@ -82,7 +82,7 @@ export default function SpaceModal({ space, buildingName, onClose }: Props) {
 
           <button
             onClick={handleBookSeat}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="button-primary w-full py-2.5 text-sm font-medium"
           >
             Book a Seat →
           </button>

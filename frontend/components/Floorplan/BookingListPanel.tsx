@@ -48,13 +48,13 @@ export default function BookingListPanel({
   onDeleteBooking,
 }: BookingListPanelProps) {
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col gap-3 min-w-0">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+    <div className="panel-surface flex min-w-0 flex-col gap-3 rounded-[1.6rem] p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-soft">
         Booking List
       </p>
 
       {bookings.length === 0 ? (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-text-soft">
           No bookings yet. Select slots and a seat, then click &ldquo;Add Booking&rdquo;.
         </p>
       ) : (
@@ -65,7 +65,7 @@ export default function BookingListPanel({
             return (
               <div
                 key={booking.id}
-                className="rounded-xl p-3 transition-all"
+                className="rounded-[1.15rem] p-3 transition-all"
                 style={{
                   border: isEditing
                     ? `2px solid ${booking.color}`
@@ -79,7 +79,7 @@ export default function BookingListPanel({
                     className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: booking.color }}
                   />
-                  <span className="text-sm font-medium text-gray-900 truncate">
+                  <span className="truncate text-sm font-medium text-foreground">
                     {booking.seatLabel ? `Seat ${booking.seatLabel}` : "No seat yet"}
                   </span>
                   {isEditing && (
@@ -93,23 +93,23 @@ export default function BookingListPanel({
                 </div>
 
                 {/* Slot summary */}
-                <p className="text-xs text-gray-500 mb-0.5">{formatSlotSummary(booking.slots)}</p>
+                <p className="mb-0.5 text-xs text-text-muted">{formatSlotSummary(booking.slots)}</p>
 
                 {/* Duration */}
-                <p className="text-xs text-gray-400 mb-2">{booking.slots.length}h total</p>
+                <p className="mb-2 text-xs text-text-soft">{booking.slots.length}h total</p>
 
                 {/* Actions — visible in creating mode (not while editing this item) */}
                 {mode === "creating" && (
                   <div className="flex gap-3">
                     <button
                       onClick={() => onEditBooking(booking.id)}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-xs font-medium text-accent hover:text-text-strong"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => onDeleteBooking(booking.id)}
-                      className="text-xs text-red-500 hover:text-red-600 font-medium"
+                      className="text-xs font-medium text-danger"
                     >
                       Delete
                     </button>

@@ -26,17 +26,17 @@ function ResultRow({ result }: { result: BookingResult }) {
   return (
     <div
       className={[
-        "border rounded-xl p-4 flex items-start gap-3",
+        "flex items-start gap-3 rounded-[1.35rem] border p-4",
         isSuccess
-          ? "border-green-100 bg-green-50"
-          : "border-red-100 bg-red-50",
+          ? "border-[color:color-mix(in_srgb,var(--color-accent)_20%,white_80%)] bg-[color:color-mix(in_srgb,var(--color-accent)_10%,white_90%)]"
+          : "border-[color:color-mix(in_srgb,var(--color-danger)_24%,white_76%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)]",
       ].join(" ")}
     >
       {/* Status icon */}
       <span
         className={[
           "mt-0.5 text-lg leading-none",
-          isSuccess ? "text-green-600" : "text-red-500",
+          isSuccess ? "text-accent" : "text-danger",
         ].join(" ")}
         aria-hidden
       >
@@ -49,23 +49,23 @@ function ResultRow({ result }: { result: BookingResult }) {
             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
             style={{ backgroundColor: result.planColor }}
           />
-          <span className="text-sm font-medium text-gray-900">
+          <span className="text-sm font-medium text-foreground">
             Seat {result.seatLabel ?? "—"}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-text-muted">
             {formatDate(result.start)} · {formatRange(result.start, result.end)}
           </span>
         </div>
 
         {isSuccess ? (
-          <p className="text-xs text-green-700 mt-1">
+          <p className="mt-1 text-xs text-text-strong">
             Booking confirmed
             {result.bookingId && (
-              <span className="text-green-600 opacity-70"> · #{result.bookingId.slice(0, 8)}</span>
+              <span className="text-accent opacity-70"> · #{result.bookingId.slice(0, 8)}</span>
             )}
           </p>
         ) : (
-          <p className="text-xs text-red-600 mt-1">
+          <p className="mt-1 text-xs text-danger">
             {result.errorMessage ?? "Booking failed"}
           </p>
         )}
@@ -84,17 +84,17 @@ export default function ResultPage() {
   if (!checkoutResults) {
     return (
       <div className="flex flex-col gap-6">
-        <nav className="text-sm text-gray-500 flex items-center gap-2">
-          <Link href="/" className="hover:text-gray-700">Home</Link>
+        <nav className="flex items-center gap-2 text-sm text-text-soft">
+          <Link href="/" className="hover:text-text-strong">Home</Link>
           <span>/</span>
-          <span className="text-gray-900 font-medium">Booking Result</span>
+          <span className="font-medium text-foreground">Booking Result</span>
         </nav>
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium mb-2">Nothing to show</p>
-          <p className="text-sm mb-6">Complete the booking flow to see your results here.</p>
+        <div className="py-16 text-center text-text-soft">
+          <p className="mb-2 font-serif text-3xl text-foreground">Nothing to show</p>
+          <p className="mb-6 text-sm">Complete the booking flow to see your results here.</p>
           <Link
             href="/buildings"
-            className="inline-block px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="button-primary inline-block px-4 py-2 text-sm font-medium"
           >
             Browse Spaces
           </Link>
@@ -122,33 +122,33 @@ export default function ResultPage() {
   return (
     <div className="flex flex-col gap-6 max-w-lg">
       {/* Breadcrumb */}
-      <nav className="text-sm text-gray-500 flex items-center gap-2">
-        <Link href="/" className="hover:text-gray-700">Home</Link>
+      <nav className="flex items-center gap-2 text-sm text-text-soft">
+        <Link href="/" className="hover:text-text-strong">Home</Link>
         <span>/</span>
-        <Link href="/buildings" className="hover:text-gray-700">Buildings</Link>
+        <Link href="/buildings" className="hover:text-text-strong">Buildings</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">Booking Result</span>
+        <span className="font-medium text-foreground">Booking Result</span>
       </nav>
 
       {/* Summary banner */}
       <div
         className={[
-          "rounded-2xl px-5 py-4 border",
+          "rounded-[1.7rem] border px-5 py-4",
           isAllSuccess
-            ? "bg-green-50 border-green-100"
+            ? "border-[color:color-mix(in_srgb,var(--color-accent)_20%,white_80%)] bg-[color:color-mix(in_srgb,var(--color-accent)_10%,white_90%)]"
             : isAllFailed
-            ? "bg-red-50 border-red-100"
-            : "bg-amber-50 border-amber-100",
+            ? "border-[color:color-mix(in_srgb,var(--color-danger)_22%,white_78%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)]"
+            : "border-[color:#dec78e] bg-[color:#f6efdc]",
         ].join(" ")}
       >
         <h1
           className={[
-            "text-lg font-semibold",
+            "font-serif text-3xl leading-tight",
             isAllSuccess
-              ? "text-green-800"
+              ? "text-text-strong"
               : isAllFailed
-              ? "text-red-800"
-              : "text-amber-800",
+              ? "text-danger"
+              : "text-[color:#8e6b1f]",
           ].join(" ")}
         >
           {isAllSuccess && "All bookings confirmed!"}
@@ -159,10 +159,10 @@ export default function ResultPage() {
           className={[
             "text-sm mt-1",
             isAllSuccess
-              ? "text-green-700"
+              ? "text-text-muted"
               : isAllFailed
-              ? "text-red-700"
-              : "text-amber-700",
+              ? "text-danger"
+              : "text-[color:#8e6b1f]",
           ].join(" ")}
         >
           {isAllSuccess &&
@@ -186,14 +186,14 @@ export default function ResultPage() {
         {!isAllFailed && (
           <button
             onClick={handleDone}
-            className="w-full bg-gray-900 text-white py-3 rounded-xl text-sm font-medium hover:bg-gray-800 transition-colors"
+            className="button-primary w-full py-3 text-sm font-medium"
           >
             View My Bookings
           </button>
         )}
         <button
           onClick={handleBookAgain}
-          className="w-full border border-gray-200 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+          className="button-secondary w-full py-3 text-sm font-medium"
         >
           Book Another Space
         </button>

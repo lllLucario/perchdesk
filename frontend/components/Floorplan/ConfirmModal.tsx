@@ -22,19 +22,19 @@ function BookingSummaryRow({ booking }: { booking: Booking }) {
     .join(", ");
 
   return (
-    <div className="py-3 border-b border-gray-100 last:border-b-0">
+    <div className="border-b border-border py-3 last:border-b-0">
       <div className="flex items-center gap-2 mb-0.5">
         <span
           className="w-2.5 h-2.5 rounded-full flex-shrink-0"
           style={{ backgroundColor: booking.color }}
         />
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-foreground">
           Seat {booking.seatLabel ?? "—"}
         </span>
-        <span className="text-xs text-gray-400 ml-auto">{booking.date}</span>
+        <span className="ml-auto text-xs text-text-soft">{booking.date}</span>
       </div>
-      <p className="text-sm text-gray-600 pl-[18px]">{rangeLabels}</p>
-      <p className="text-xs text-gray-400 mt-0.5 pl-[18px]">
+      <p className="pl-[18px] text-sm text-text-muted">{rangeLabels}</p>
+      <p className="mt-0.5 pl-[18px] text-xs text-text-soft">
         Will create {bookingCount} {bookingCount === 1 ? "booking" : "bookings"}
         {bookingCount > 1 && " (non-contiguous slots)"}
       </p>
@@ -105,17 +105,17 @@ export default function ConfirmModal({ bookings, onClose }: ConfirmModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(22,26,22,0.48)]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 flex flex-col">
+      <div className="mx-4 flex w-full max-w-md flex-col rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2
             id="confirm-modal-title"
-            className="text-base font-semibold text-gray-900"
+            className="font-serif text-2xl leading-tight text-foreground"
           >
             Confirm {totalBookings === 1 ? "Booking" : "Bookings"}
           </h2>
@@ -123,7 +123,7 @@ export default function ConfirmModal({ bookings, onClose }: ConfirmModalProps) {
             onClick={onClose}
             disabled={isSubmitting}
             aria-label="Close"
-            className="text-gray-400 hover:text-gray-600 disabled:opacity-40 text-xl leading-none"
+            className="text-xl leading-none text-text-soft hover:text-foreground disabled:opacity-40"
           >
             ×
           </button>
@@ -137,18 +137,18 @@ export default function ConfirmModal({ bookings, onClose }: ConfirmModalProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-5 py-4 border-t border-gray-100">
+        <div className="flex gap-3 border-t border-border px-5 py-4">
           <button
             onClick={onClose}
             disabled={isSubmitting}
-            className="flex-1 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-40 transition-colors"
+            className="button-secondary flex-1 py-2.5 text-sm font-medium disabled:opacity-40"
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className="flex-1 bg-gray-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            className="button-primary flex-1 py-2.5 text-sm font-medium disabled:opacity-50"
           >
             {isSubmitting ? "Submitting…" : "Confirm"}
           </button>

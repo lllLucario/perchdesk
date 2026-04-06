@@ -129,30 +129,30 @@ export default function SlotPicker({
   }, [selectedDate]);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl p-4 flex flex-col gap-4 min-w-0">
+    <div className="panel-surface flex min-w-0 flex-col gap-4 rounded-[1.6rem] p-4">
       {/* Date picker */}
       <div>
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">Date</p>
+        <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-text-soft">Date</p>
         <input
           type="date"
           value={selectedDate}
           min={todayISO}
           max={maxDate}
           onChange={(e) => onDateChange(e.target.value)}
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[#3898ec]"
         />
       </div>
 
       {/* Removed slots feedback */}
       {removedSlotsFeedback && (
-        <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <p className="rounded-xl border border-[color:#dec78e] bg-[color:#f6efdc] px-3 py-2 text-xs text-[color:#8e6b1f]">
           {removedSlotsFeedback}
         </p>
       )}
 
       {/* Slot blocks */}
       <div className="flex-1 min-h-0">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5">
+        <p className="mb-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-text-soft">
           Time Slots
         </p>
         <div
@@ -208,7 +208,7 @@ export default function SlotPicker({
             return (
               <div key={hour}>
                 {showDivider && (
-                  <p className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest px-1 pt-2 pb-0.5 first:pt-0">
+                  <p className="px-1 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-text-soft first:pt-0">
                     {getTimeOfDay(hour)}
                   </p>
                 )}
@@ -220,10 +220,10 @@ export default function SlotPicker({
                   data-active-slot={isActive ? "true" : undefined}
                   data-hint-slot={isHint ? "true" : undefined}
                   className={[
-                    "w-full text-left px-3 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors",
+                    "flex w-full items-center justify-between rounded-xl px-3 py-1.5 text-left text-xs transition-colors",
                     isDisabled
                       ? "opacity-40 cursor-not-allowed"
-                      : "hover:bg-gray-50 cursor-pointer",
+                      : "cursor-pointer hover:bg-surface-muted",
                     isActive ? "font-medium" : "",
                   ]
                     .filter(Boolean)
@@ -245,7 +245,7 @@ export default function SlotPicker({
                         ? { color: activeBookingColor }
                         : isMyBooking
                         ? { color: MY_BOOKING_COLOR }
-                        : { color: "#6B7280" }
+                        : { color: "var(--color-text-muted)" }
                     }
                   >
                     {pad(hour)}:00–{pad(hour + 1)}:00
@@ -256,7 +256,7 @@ export default function SlotPicker({
                     </span>
                   )}
                   {isHint && (
-                    <span className="text-[10px] text-gray-400" aria-label="Suggested start">
+                    <span className="text-[10px] text-text-soft" aria-label="Suggested start">
                       ↑ Start here
                     </span>
                   )}
@@ -282,14 +282,14 @@ export default function SlotPicker({
             <button
               onClick={onAddBooking}
               disabled={!isValidBooking}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="button-primary w-full py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
             >
               Add Booking
             </button>
             {hasBookings && (
               <button
                 onClick={onCheckout}
-                className="w-full bg-gray-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+                className="w-full rounded-xl border border-[color:color-mix(in_srgb,var(--color-foreground)_16%,transparent)] bg-foreground py-2 text-sm font-medium text-background"
               >
                 Submit
               </button>
@@ -302,19 +302,19 @@ export default function SlotPicker({
             <button
               onClick={onSaveChanges}
               disabled={!isValidBooking}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="button-primary w-full py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40"
             >
               Save Changes
             </button>
             <button
               onClick={onCancelEditing}
-              className="w-full border border-gray-200 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="button-secondary w-full py-2 text-sm font-medium"
             >
               Cancel Editing
             </button>
             <button
               onClick={onDeleteBooking}
-              className="w-full border border-red-200 text-red-600 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors"
+              className="w-full rounded-xl border border-[color:color-mix(in_srgb,var(--color-danger)_28%,white_72%)] py-2 text-sm font-medium text-danger hover:bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)]"
             >
               Delete
             </button>

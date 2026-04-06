@@ -58,13 +58,15 @@ export default function SpaceCard({
 
   return (
     <div
-      className="relative bg-white border border-gray-100 rounded-xl px-4 py-4 hover:shadow-md transition-shadow cursor-pointer"
+      className="panel-surface relative cursor-pointer overflow-hidden rounded-[1.8rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%),transparent_55%),var(--color-surface)] px-4 py-4 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft hover:shadow-[0_18px_40px_rgba(22,26,22,0.09)]"
       onClick={() => router.push(`/spaces/${spaceId}`)}
     >
+      <div className="absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_top_left,rgba(137,179,116,0.24),transparent_70%)]" />
+
       {/* Favorite star */}
       <button
         aria-label={optimistic ? "Remove from favorites" : "Add to favorites"}
-        className="absolute top-2 right-2 p-1 text-gray-300 hover:text-yellow-400 transition-colors"
+        className="absolute right-3 top-3 rounded-full border border-transparent bg-surface/85 p-1.5 text-text-soft transition-colors hover:border-border hover:text-accent"
         onClick={handleStarClick}
         disabled={toggleFavorite.isPending}
       >
@@ -74,7 +76,7 @@ export default function SpaceCard({
           fill={optimistic ? "currentColor" : "none"}
           stroke="currentColor"
           strokeWidth={optimistic ? 0 : 1.5}
-          className={`w-4 h-4 ${optimistic ? "text-yellow-400" : ""}`}
+          className={`h-4 w-4 ${optimistic ? "text-accent" : ""}`}
         >
           <path
             strokeLinecap="round"
@@ -85,15 +87,17 @@ export default function SpaceCard({
       </button>
 
       {ribbon && <div className="mb-2">{ribbon}</div>}
-      <p className="font-medium text-gray-900 text-sm line-clamp-1 pr-6">{name}</p>
-      <p className="text-xs text-gray-400 mt-0.5 capitalize">
+      <p className="line-clamp-1 pr-6 font-serif text-xl leading-tight text-foreground">{name}</p>
+      <p className="mt-1 text-xs capitalize text-text-muted">
         {type} · {capacity} seats
       </p>
       {buildingName && (
-        <p className="text-xs text-gray-400 mt-0.5">{buildingName}</p>
+        <p className="mt-1 text-xs text-text-soft">{buildingName}</p>
       )}
       {supportingLine && (
-        <p className="text-xs text-blue-500 mt-1">{supportingLine}</p>
+        <p className="mt-3 inline-flex rounded-full bg-[color:color-mix(in_srgb,var(--color-accent-muted)_78%,white_22%)] px-2.5 py-1 text-[11px] font-semibold text-text-strong">
+          {supportingLine}
+        </p>
       )}
     </div>
   );
