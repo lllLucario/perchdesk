@@ -20,14 +20,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!isAuthenticated || user?.role !== "admin") return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b px-6 py-3 flex items-center gap-6">
-        <span className="font-bold text-lg">PerchDesk Admin</span>
-        <Link href="/spaces" className="text-sm text-gray-500 hover:text-gray-800">
-          ← Back to App
-        </Link>
+    <div className="app-shell">
+      <nav className="app-nav">
+        <div className="app-nav-inner">
+          <div className="flex items-center gap-6">
+            <span className="brand-wordmark">
+              <span className="brand-mark">P</span>
+              PerchDesk Admin
+            </span>
+            <Link href="/spaces" className="nav-link">
+              Back to App
+            </Link>
+          </div>
+        </div>
       </nav>
-      <main className="p-6">{children}</main>
+      <main className="shell-main">{children}</main>
     </div>
   );
 }

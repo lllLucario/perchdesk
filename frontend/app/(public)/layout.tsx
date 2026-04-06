@@ -9,53 +9,56 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
   const { isAuthenticated, user, logout } = useAuthStore();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link href="/" className="font-bold text-lg text-blue-600 hover:text-blue-700">
-            PerchDesk
-          </Link>
-          {isAuthenticated && (
-            <>
-              <Link href="/buildings" className="text-sm text-gray-600 hover:text-gray-900">
-                Buildings
-              </Link>
-              <Link href="/my-spaces" className="text-sm text-gray-600 hover:text-gray-900">
-                My Spaces
-              </Link>
-              <Link href="/bookings" className="text-sm text-gray-600 hover:text-gray-900">
-                My Bookings
-              </Link>
-              {user?.role === "admin" && (
-                <Link href="/spaces/manage" className="text-sm text-purple-600 hover:text-purple-800">
-                  Admin
-                </Link>
-              )}
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <>
-              <span className="text-sm text-gray-600">{user?.name}</span>
-              <button
-                onClick={() => { logout(); router.push("/login"); }}
-                className="text-sm text-red-500 hover:underline"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/login"
-              className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700"
-            >
-              Sign in
+    <div className="app-shell">
+      <nav className="app-nav">
+        <div className="app-nav-inner">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="brand-wordmark">
+              <span className="brand-mark">P</span>
+              PerchDesk
             </Link>
-          )}
+            {isAuthenticated && (
+              <>
+                <Link href="/buildings" className="nav-link">
+                  Buildings
+                </Link>
+                <Link href="/my-spaces" className="nav-link">
+                  My Spaces
+                </Link>
+                <Link href="/bookings" className="nav-link">
+                  My Bookings
+                </Link>
+                {user?.role === "admin" && (
+                  <Link href="/spaces/manage" className="nav-link nav-link-accent">
+                    Admin
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            {isAuthenticated ? (
+              <>
+                <span className="text-sm text-text-muted">{user?.name}</span>
+                <button
+                  onClick={() => { logout(); router.push("/login"); }}
+                  className="nav-link nav-link-danger text-sm"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                className="button-primary px-4 py-2 text-sm font-medium"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         </div>
       </nav>
-      <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
+      <main className="shell-main">{children}</main>
     </div>
   );
 }
