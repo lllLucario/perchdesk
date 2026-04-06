@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   useSpaces,
   useBuildings,
@@ -136,7 +135,6 @@ function buildForYouStream({
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const router = useRouter();
   const { isAuthenticated } = useAuthStore();
   const { data: spaces, isLoading: spacesLoading } = useSpaces();
   const { data: buildingsData } = useBuildings();
@@ -218,13 +216,14 @@ export default function HomePage() {
   const buildings = isNearbyLocation
     ? (nearbyBuildingsData ?? [])
     : (buildingsData?.slice(0, 4) ?? []);
-  const compactCardClass = "panel-surface block rounded-[1.6rem] px-5 py-4 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft";
-  const sectionTitleClass = "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-soft";
+  const compactCardClass = "panel-surface block rounded-[1.6rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_38%,white_62%),transparent_58%),var(--color-surface)] px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft";
+  const sectionTitleClass = "section-kicker";
   const sectionLinkClass = "text-sm font-medium text-accent hover:text-text-strong";
 
   return (
     <div className="mx-auto max-w-6xl">
-      <section className="mx-auto max-w-3xl py-10 text-center md:py-16">
+      <section className="section-frame mx-auto max-w-5xl overflow-hidden px-6 py-10 text-center md:px-12 md:py-16">
+        <div className="mx-auto max-w-3xl">
         <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-accent">
           Find your next seat
         </p>
@@ -239,17 +238,23 @@ export default function HomePage() {
           <input
             type="text"
             placeholder="Search for a building or space…"
-            className="w-full rounded-[1.4rem] border border-border bg-surface px-5 py-4 text-sm text-foreground placeholder:text-text-soft shadow-[0_18px_40px_rgba(22,26,22,0.05)] focus:outline-none focus:ring-2 focus:ring-[#3898ec]"
+            className="w-full rounded-[1.4rem] border border-border bg-surface px-5 py-4 text-sm text-foreground placeholder:text-text-soft shadow-[0_18px_40px_rgba(22,26,22,0.05)] focus:outline-none focus:ring-2 focus:ring-accent"
             readOnly
           />
         </div>
         <p className="mt-3 text-xs text-text-soft">Browse below or search above</p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <span className="accent-pill text-xs font-medium">Editorial calm</span>
+          <span className="accent-pill text-xs font-medium">Green-first booking</span>
+          <span className="accent-pill text-xs font-medium">Desk and room discovery</span>
+        </div>
+        </div>
       </section>
 
       {/* For You — mixed personalized stream, authenticated only */}
       {isAuthenticated && (
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
+        <section className="section-frame mt-10 mb-12 px-5 py-6 md:px-6">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className={sectionTitleClass}>
               For You
             </h2>
@@ -287,7 +292,7 @@ export default function HomePage() {
 
               {/* Location nudge when idle or denied/unavailable */}
               {permission === "idle" && (
-                <div className={`${forYouCards.length > 0 ? "mt-3" : ""} panel-surface flex items-center justify-between rounded-[1.6rem] px-5 py-4`}>
+                <div className={`${forYouCards.length > 0 ? "mt-3" : ""} panel-surface flex items-center justify-between rounded-[1.6rem] bg-[color:color-mix(in_srgb,var(--color-accent-muted)_54%,white_46%)] px-5 py-4`}>
                   <p className="text-sm text-text-muted">Allow location access to see nearby spaces</p>
                   <button
                     onClick={requestLocation}
@@ -325,12 +330,12 @@ export default function HomePage() {
       )}
 
       {/* Recent Spaces */}
-      <section className="mb-12">
+      <section className="section-frame mb-12 px-5 py-6 md:px-6">
         <h2 className={`${sectionTitleClass} mb-4`}>
           Recent Spaces
         </h2>
         {!isAuthenticated ? (
-          <div className="panel-surface rounded-[1.7rem] px-5 py-6 text-center">
+          <div className="panel-surface rounded-[1.7rem] bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)] px-5 py-6 text-center">
             <p className="mb-3 text-sm text-text-soft">Sign in to see your recently used spaces</p>
             <Link
               href="/login"
@@ -366,7 +371,7 @@ export default function HomePage() {
       </section>
 
       {/* Nearby / All Buildings */}
-      <section>
+      <section className="section-frame px-5 py-6 md:px-6">
         <h2 className={`${sectionTitleClass} mb-4`}>
           {isNearbyLocation ? "Nearby Buildings" : "Buildings"}
         </h2>

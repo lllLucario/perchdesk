@@ -15,7 +15,7 @@ export default function BuildingsPage() {
 
   if (isLoading) {
     return (
-      <div>
+      <div className="page-stack">
         <nav className={breadcrumbClass}>
           <Link href="/" className={crumbLinkClass}>Home</Link>
           <span>/</span>
@@ -33,7 +33,7 @@ export default function BuildingsPage() {
 
   if (isError) {
     return (
-      <div>
+      <div className="page-stack">
         <nav className={breadcrumbClass}>
           <Link href="/" className={crumbLinkClass}>Home</Link>
           <span>/</span>
@@ -45,15 +45,16 @@ export default function BuildingsPage() {
   }
 
   return (
-    <div>
+    <div className="page-stack">
       <nav className={breadcrumbClass}>
         <Link href="/" className={crumbLinkClass}>Home</Link>
         <span>/</span>
         <span className="font-medium text-foreground">Buildings</span>
       </nav>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="section-frame mb-8 flex flex-col gap-5 px-6 py-6 md:flex-row md:items-end md:justify-between md:px-8">
         <div>
+          <p className="section-kicker mb-3">Browse buildings</p>
           <h1 className="text-4xl text-foreground">Buildings</h1>
           <p className="mt-2 text-sm text-text-muted">
             Browse the places where PerchDesk can guide you into rooms, desks, and quiet corners.
@@ -74,14 +75,14 @@ export default function BuildingsPage() {
           {buildings?.map((building) => (
             <div
               key={building.id}
-              className="panel-surface overflow-hidden rounded-[1.75rem] transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
+              className="panel-surface overflow-hidden rounded-[1.75rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_52%),var(--color-surface)] transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
             >
               {/* Card body — click to open modal */}
               <button
                 className="w-full text-left"
                 onClick={() => setSelectedBuilding(building)}
               >
-                <div className="flex h-32 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(140,173,130,0.28),_transparent_58%),linear-gradient(135deg,_#eef4e8,_#dce6d4)]">
+                <div className="flex h-36 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.34),_transparent_56%),linear-gradient(135deg,_#eff7ea,_#d8e8cc)]">
                   <span className="text-3xl">🏛</span>
                 </div>
                 <div className="px-5 pt-4 pb-3">

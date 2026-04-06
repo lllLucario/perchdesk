@@ -264,10 +264,10 @@ export default function MySpacesPage() {
   const { data: spaces, isLoading: spacesLoading } = useSpaces();
   const spacesById = new Map((spaces ?? []).map((s) => [s.id, s]));
   const breadcrumbClass = "mb-6 flex items-center gap-2 text-sm text-text-soft";
-  const sectionTitleClass = "mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-soft";
+  const sectionTitleClass = "section-kicker mb-4";
 
   return (
-    <div>
+    <div className="page-stack">
       {/* Header */}
       <nav className={breadcrumbClass}>
         <Link href="/" className="hover:text-text-strong">Home</Link>
@@ -275,13 +275,16 @@ export default function MySpacesPage() {
         <span className="font-medium text-foreground">My Spaces</span>
       </nav>
 
-      <h1 className="text-4xl text-foreground">My Spaces</h1>
-      <p className="mb-8 mt-2 max-w-2xl text-sm text-text-muted">
-        Personalized access to spaces you use most
-      </p>
+      <div className="section-frame mb-8 px-6 py-6 md:px-8">
+        <p className="section-kicker mb-3">Personalized access</p>
+        <h1 className="text-4xl text-foreground">My Spaces</h1>
+        <p className="mt-2 max-w-2xl text-sm text-text-muted">
+          Personalized access to spaces you use most
+        </p>
+      </div>
 
       {/* Favorite Spaces */}
-      <section className="mb-10">
+      <section className="section-frame mb-10 px-5 py-6 md:px-6">
         <h2 className={sectionTitleClass}>
           Favorite Spaces
         </h2>
@@ -297,7 +300,7 @@ export default function MySpacesPage() {
       </section>
 
       {/* Recent Spaces */}
-      <section className="mb-10">
+      <section className="section-frame mb-10 px-5 py-6 md:px-6">
         <h2 className={sectionTitleClass}>
           Recent Spaces
         </h2>
@@ -313,7 +316,7 @@ export default function MySpacesPage() {
       </section>
 
       {/* Recommended Spaces */}
-      <section>
+      <section className="section-frame px-5 py-6 md:px-6">
         <h2 className={sectionTitleClass}>
           Recommended Spaces
         </h2>

@@ -109,7 +109,7 @@ function ControlRow<S extends string>({
   onSortChange,
 }: FilterRowProps<S>) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
+    <div className="mb-4 flex flex-col gap-2 rounded-[1.5rem] border border-border bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)] px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex flex-wrap gap-1.5">
         {["All", ...filters].map((f) => (
           <button
@@ -117,8 +117,8 @@ function ControlRow<S extends string>({
             onClick={() => onFilterChange(f)}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${
               activeFilter === f
-                ? "bg-accent text-accent-foreground border-accent"
-                : "bg-surface text-text-muted border-border hover:border-border-strong"
+                ? "bg-accent text-accent-foreground border-accent shadow-[0_10px_20px_rgba(69,95,57,0.16)]"
+                : "bg-surface text-text-muted border-border hover:border-border-strong hover:bg-[color:color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%)]"
             }`}
           >
             {f}
@@ -129,7 +129,7 @@ function ControlRow<S extends string>({
         <select
           value={activeSort}
           onChange={(e) => onSortChange(e.target.value as S)}
-          className="rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-text-strong focus:outline-none focus:ring-1 focus:ring-[#3898ec]"
+          className="rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-text-strong focus:outline-none focus:ring-1 focus:ring-accent"
           aria-label="Sort bookings"
         >
           {sorts.map((s) => (
@@ -199,7 +199,7 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[1.8rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[1.8rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_42%,white_58%),transparent_52%),var(--color-surface)] shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -331,7 +331,7 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
   const hint = relativeTimeHint(uxStatus, booking.start_time);
 
   return (
-    <div className="panel-surface rounded-[1.55rem] p-4">
+    <div className="panel-surface rounded-[1.7rem] border border-border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%),transparent_60%),var(--color-surface)] p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
@@ -403,13 +403,13 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
 function ActiveEmpty({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="py-12 text-center text-text-muted">
+      <div className="section-frame py-12 text-center text-text-muted">
         <p className="text-sm">No bookings match the selected filter.</p>
       </div>
     );
   }
   return (
-    <div className="py-16 text-center text-text-muted">
+    <div className="section-frame py-16 text-center text-text-muted">
       <p className="mb-1 font-serif text-3xl text-foreground">No active bookings</p>
       <p className="text-sm mb-4">You have no upcoming or in-progress bookings.</p>
       <Link href="/buildings" className="text-sm text-accent hover:text-text-strong">
@@ -422,13 +422,13 @@ function ActiveEmpty({ filtered }: { filtered: boolean }) {
 function HistoryEmpty({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="py-12 text-center text-text-muted">
+      <div className="section-frame py-12 text-center text-text-muted">
         <p className="text-sm">No bookings match the selected filter.</p>
       </div>
     );
   }
   return (
-    <div className="py-16 text-center text-text-muted">
+    <div className="section-frame py-16 text-center text-text-muted">
       <p className="mb-1 font-serif text-3xl text-foreground">No booking history yet</p>
       <p className="text-sm">Your completed, cancelled, and expired bookings will appear here.</p>
     </div>
@@ -467,22 +467,25 @@ export default function BookingsPage() {
   ];
 
   return (
-    <div>
-      <h1 className="mb-2 text-4xl text-foreground">My Bookings</h1>
-      <p className="mb-4 text-sm text-text-muted">
-        Track what is booked, what needs check-in, and what has already finished.
-      </p>
+    <div className="page-stack">
+      <div className="section-frame mb-6 px-6 py-6 md:px-8">
+        <p className="section-kicker mb-3">Booking journal</p>
+        <h1 className="mb-2 text-4xl text-foreground">My Bookings</h1>
+        <p className="text-sm text-text-muted">
+          Track what is booked, what needs check-in, and what has already finished.
+        </p>
+      </div>
 
       {/* Tab row */}
-      <div className="mb-5 flex gap-1 border-b border-border">
+      <div className="mb-5 flex gap-2 rounded-[1.5rem] border border-border bg-[color:color-mix(in_srgb,var(--color-accent-muted)_44%,white_56%)] p-2">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`rounded-[1rem] px-4 py-2 text-sm font-medium transition-colors ${
               activeTab === tab.key
-                ? "border-accent text-accent"
-                : "border-transparent text-text-muted hover:text-text-strong"
+                ? "bg-surface text-text-strong shadow-[0_12px_24px_rgba(22,26,22,0.06)]"
+                : "text-text-muted hover:text-text-strong"
             }`}
           >
             {tab.label}

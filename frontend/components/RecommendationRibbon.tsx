@@ -22,7 +22,7 @@ export default function RecommendationRibbon({ reason }: RecommendationRibbonPro
 
   return (
     <span
-      className="inline-flex items-center rounded-md bg-accent px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-foreground shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_85%,black_15%)]"
+      className="inline-flex items-center rounded-md bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-accent-soft)_85%,white_15%),color-mix(in_srgb,var(--color-accent)_82%,black_18%))] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-foreground shadow-[0_8px_16px_rgba(69,95,57,0.14),0_0_0_1px_color-mix(in_srgb,var(--color-accent)_85%,black_15%)]"
       style={{
         clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)",
         paddingRight: "0.8rem",
