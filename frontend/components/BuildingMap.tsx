@@ -100,21 +100,50 @@ function MapFlyTo({
   return null;
 }
 
+/**
+ * Compute the maximum zoom level at which `target` is visible from `center`
+ * with at least `buffer` px of padding from the container edge.  Returns
+ * `startZoom` if the target is already visible, or steps down until it fits.
+ */
+function zoomToInclude(
+  map: L.Map,
+  center: L.LatLng,
+  target: L.LatLng,
+  startZoom: number,
+  buffer = 60,
+): number {
+  const containerSize = map.getSize();
+  let zoom = startZoom;
+  const minZoom = map.getMinZoom();
+  while (zoom > minZoom) {
+    const centerPx = map.project(center, zoom);
+    const targetPx = map.project(target, zoom);
+    const dx = Math.abs(targetPx.x - centerPx.x);
+    const dy = Math.abs(targetPx.y - centerPx.y);
+    if (dx < containerSize.x / 2 - buffer && dy < containerSize.y / 2 - buffer) {
+      return zoom;
+    }
+    zoom -= 1;
+  }
+  return zoom;
+}
+
 // Recenters the map imperatively when the user's location coordinates arrive.
-//
-// react-leaflet's MapContainer.center is mount-only — updating the prop after
-// the map has been created has no effect on the viewport.  This component uses
-// useMap() to flyTo the new center whenever lat/lng change, mirroring the
-// MapFlyTo pattern used for building selection.
-//
-// Primitive lat/lng values are used as the useEffect dependency instead of the
-// center array to avoid a new reference on every render triggering the effect.
+// Also adjusts zoom so the nearest building remains visible from the new center.
 //
 // The isFirstRender guard skips the initial mount so the map does not fly to
 // the default Sydney coordinates redundantly (MapContainer already positions
 // the map there on creation).  Subsequent center changes — i.e. the user
 // grants location and coordinates become available — do trigger a fly-to.
-function MapRecenterOnLocation({ lat, lng }: { lat: number; lng: number }) {
+function MapRecenterOnLocation({
+  lat,
+  lng,
+  buildings,
+}: {
+  lat: number;
+  lng: number;
+  buildings: BuildingWithCoords[];
+}) {
   const map = useMap();
   const isFirstRender = useRef(true);
 
@@ -123,8 +152,87 @@ function MapRecenterOnLocation({ lat, lng }: { lat: number; lng: number }) {
       isFirstRender.current = false;
       return;
     }
-    map.flyTo([lat, lng], Math.max(map.getZoom(), 13), { duration: 0.8 });
+
+    const center = L.latLng(lat, lng);
+    let zoom = Math.max(map.getZoom(), 13);
+
+    // Find nearest building and ensure the zoom level includes it.
+    if (buildings.length > 0) {
+      let nearest = buildings[0];
+      let minDist = Infinity;
+      for (const b of buildings) {
+        const dist = center.distanceTo(L.latLng(b.latitude, b.longitude));
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = b;
+        }
+      }
+      zoom = zoomToInclude(
+        map,
+        center,
+        L.latLng(nearest.latitude, nearest.longitude),
+        zoom,
+      );
+    }
+
+    map.flyTo([lat, lng], zoom, { duration: 0.8 });
   }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
+
+// On initial load, ensures at least the nearest building is visible in the
+// viewport.  If no building markers fall within the current bounds, the map
+// zooms out from the current center (user location) until the nearest building
+// is visible, with buffer so the marker is not pinned to the edge.
+//
+// The center stays on the user's position so they retain directional context.
+function AutoFitNearestBuilding({
+  buildings,
+}: {
+  buildings: BuildingWithCoords[];
+}) {
+  const map = useMap();
+  const hasFitted = useRef(false);
+
+  useEffect(() => {
+    if (hasFitted.current || buildings.length === 0) return;
+
+    // Wait a tick for the map to settle after mount.
+    const id = setTimeout(() => {
+      const bounds = map.getBounds();
+      const anyVisible = buildings.some((b) =>
+        bounds.contains([b.latitude, b.longitude])
+      );
+      if (anyVisible) {
+        hasFitted.current = true;
+        return;
+      }
+
+      // Find nearest building to map center.
+      const center = map.getCenter();
+      let nearest = buildings[0];
+      let minDist = Infinity;
+      for (const b of buildings) {
+        const dist = center.distanceTo(L.latLng(b.latitude, b.longitude));
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = b;
+        }
+      }
+
+      const targetZoom = zoomToInclude(
+        map,
+        center,
+        L.latLng(nearest.latitude, nearest.longitude),
+        map.getZoom(),
+      );
+      map.setView(center, targetZoom, { animate: true });
+      hasFitted.current = true;
+    }, 200);
+
+    return () => clearTimeout(id);
+  }, [buildings, map]);
 
   return null;
 }
@@ -161,8 +269,9 @@ export default function BuildingMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <ViewportTracker onBoundsChange={onBoundsChange} />
+      <AutoFitNearestBuilding buildings={buildings} />
       <MapFlyTo selectedId={selectedId} buildings={buildings} />
-      <MapRecenterOnLocation lat={center[0]} lng={center[1]} />
+      <MapRecenterOnLocation lat={center[0]} lng={center[1]} buildings={buildings} />
       {buildings.map((b) => (
         <Marker
           key={b.id}
