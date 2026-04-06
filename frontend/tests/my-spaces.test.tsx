@@ -3,7 +3,7 @@
  * card decoration rules, empty states, and loading behavior.
  */
 import React from "react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, fireEvent } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import { useLocationStore } from "@/store/locationStore";
 
@@ -409,5 +409,80 @@ describe("MySpacesPage", () => {
     const { container } = renderWithProviders(<MySpacesPage />);
     const skeletons = container.querySelectorAll(".animate-pulse");
     expect(skeletons.length).toBeGreaterThanOrEqual(4);
+  });
+});
+
+// ─── RecommendationRibbon component ──────────────────────────────────────────
+
+import RecommendationRibbon from "@/components/RecommendationRibbon";
+
+describe("RecommendationRibbon", () => {
+  it("renders 'Near you' for near_you reason", () => {
+    renderWithProviders(<RecommendationRibbon reason="near_you" />);
+    expect(screen.getByText("Near you")).toBeInTheDocument();
+  });
+
+  it("renders 'Closest available' for closest_available reason", () => {
+    renderWithProviders(<RecommendationRibbon reason="closest_available" />);
+    expect(screen.getByText("Closest available")).toBeInTheDocument();
+  });
+
+  it("has accessible aria-label", () => {
+    renderWithProviders(<RecommendationRibbon reason="near_you" />);
+    expect(screen.getByLabelText("Recommended: Near you")).toBeInTheDocument();
+  });
+});
+
+// ─── Location state branch coverage ─────────────────────────────────────────
+
+describe("MySpacesPage — location interactions", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetLocation();
+  });
+
+  it("calls requestLocation when Use my location is clicked", async () => {
+    const mockRequest = jest.fn();
+    useLocationStore.setState({ requestLocation: mockRequest });
+    mockApiResolved({ spaces: [SPACE_A] });
+    renderWithProviders(<MySpacesPage />);
+    fireEvent.click(screen.getByText("Use my location"));
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows unavailable fallback message", async () => {
+    useLocationStore.setState({
+      permission: "unavailable",
+      coordinates: null,
+      acquiredAt: null,
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApiResolved({ spaces: [SPACE_A] });
+    renderWithProviders(<MySpacesPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/Location is unavailable/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows error message when nearby API fails", async () => {
+    useLocationStore.setState({
+      permission: "granted",
+      coordinates: { latitude: -33.87, longitude: 151.21, accuracy: 10 },
+      acquiredAt: Date.now(),
+      requestLocation: jest.fn(),
+      clearLocation: jest.fn(),
+    });
+    mockApi.get.mockImplementation((url: string) => {
+      if (url.includes("/spaces/nearby")) return Promise.reject(new Error("Network error"));
+      if (url.includes("/me/favorite-spaces")) return Promise.resolve([]);
+      if (url.includes("/me/recent-spaces")) return Promise.resolve([]);
+      if (url.includes("/bookings")) return Promise.resolve([]);
+      return Promise.resolve([SPACE_A]);
+    });
+    renderWithProviders(<MySpacesPage />);
+    await waitFor(() => {
+      expect(screen.getByText(/Could not load nearby spaces/)).toBeInTheDocument();
+    });
   });
 });

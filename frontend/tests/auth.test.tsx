@@ -62,7 +62,7 @@ describe("LoginPage", () => {
   });
 
   test("successful login stores token and redirects", async () => {
-    mockApi.post.mockResolvedValue({ access_token: "tok123", refresh_token: "ref123" });
+    mockApi.post.mockResolvedValue({ access_token: "tok123" });
     mockApi.get.mockResolvedValue({ id: "u1", email: "u@test.com", name: "User", role: "user" });
 
     await renderLogin();
