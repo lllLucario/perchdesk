@@ -18,6 +18,7 @@ import SpaceCard from "@/components/SpaceCard";
 
 function RecommendedSection() {
   const { permission, coordinates, requestLocation } = useLocationStore();
+  const helperLinkClass = "text-accent hover:text-text-strong";
 
   const nearbyParams =
     permission === "granted" && coordinates !== null
@@ -28,13 +29,13 @@ function RecommendedSection() {
 
   if (permission === "idle") {
     return (
-      <div className="bg-white border border-gray-100 rounded-xl px-5 py-6 text-center">
-        <p className="text-sm text-gray-500 mb-3">
+      <div className="panel-surface rounded-[1.7rem] px-5 py-6 text-center">
+        <p className="mb-3 text-sm text-text-muted">
           Allow location access to see spaces near you
         </p>
         <button
           onClick={requestLocation}
-          className="text-sm text-blue-600 font-medium hover:underline"
+          className="button-secondary px-4 py-2 text-sm font-medium"
         >
           Use my location
         </button>
@@ -46,7 +47,7 @@ function RecommendedSection() {
     return (
       <div className="flex gap-3 overflow-x-auto pb-1">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-36 w-44 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
         ))}
       </div>
     );
@@ -54,9 +55,9 @@ function RecommendedSection() {
 
   if (permission === "denied") {
     return (
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-text-soft">
         Location access was denied. You can still browse spaces via{" "}
-        <Link href="/buildings" className="text-blue-600 hover:underline">
+        <Link href="/buildings" className={helperLinkClass}>
           Buildings
         </Link>
         .
@@ -66,9 +67,9 @@ function RecommendedSection() {
 
   if (permission === "unavailable") {
     return (
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-text-soft">
         Location is unavailable on this device. Browse spaces via{" "}
-        <Link href="/buildings" className="text-blue-600 hover:underline">
+        <Link href="/buildings" className={helperLinkClass}>
           Buildings
         </Link>
         .
@@ -81,7 +82,7 @@ function RecommendedSection() {
     return (
       <div className="flex gap-3 overflow-x-auto pb-1">
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-36 w-44 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
         ))}
       </div>
     );
@@ -89,13 +90,13 @@ function RecommendedSection() {
 
   if (isError) {
     return (
-      <p className="text-sm text-red-400">
+      <p className="text-sm text-danger">
         Could not load nearby spaces. Check your connection and{" "}
-        <button onClick={() => window.location.reload()} className="underline hover:text-red-500">
+        <button onClick={() => window.location.reload()} className="underline">
           try again
         </button>
         , or{" "}
-        <Link href="/buildings" className="underline hover:text-red-500">
+        <Link href="/buildings" className="underline">
           browse buildings
         </Link>
         .
@@ -105,9 +106,9 @@ function RecommendedSection() {
 
   if (!recommendations || recommendations.length === 0) {
     return (
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-text-soft">
         No nearby spaces found. Try{" "}
-        <Link href="/buildings" className="text-blue-600 hover:underline">
+        <Link href="/buildings" className={helperLinkClass}>
           browsing buildings
         </Link>{" "}
         instead.
@@ -144,7 +145,7 @@ function FavoriteSection({ spacesById }: { spacesById: Map<string, Space> }) {
     return (
       <div className="flex gap-3 overflow-x-auto pb-1">
         {[...Array(2)].map((_, i) => (
-          <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-36 w-44 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
         ))}
       </div>
     );
@@ -156,7 +157,7 @@ function FavoriteSection({ spacesById }: { spacesById: Map<string, Space> }) {
 
   if (favoriteSpaces.length === 0) {
     return (
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-text-soft">
         No favorite spaces yet. Tap the star on any space card to save it here.
       </p>
     );
@@ -197,7 +198,7 @@ function RecentSection({ spacesById }: { spacesById: Map<string, Space> }) {
     return (
       <div className="flex gap-3 overflow-x-auto pb-1">
         {[...Array(2)].map((_, i) => (
-          <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-36 w-44 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
         ))}
       </div>
     );
@@ -233,7 +234,7 @@ function RecentSection({ spacesById }: { spacesById: Map<string, Space> }) {
 
   if (cards.length === 0) {
     return (
-      <p className="text-sm text-gray-400">
+      <p className="text-sm text-text-soft">
         No recent activity yet. Book a space or visit a floorplan to see it here.
       </p>
     );
@@ -262,30 +263,32 @@ function RecentSection({ spacesById }: { spacesById: Map<string, Space> }) {
 export default function MySpacesPage() {
   const { data: spaces, isLoading: spacesLoading } = useSpaces();
   const spacesById = new Map((spaces ?? []).map((s) => [s.id, s]));
+  const breadcrumbClass = "mb-6 flex items-center gap-2 text-sm text-text-soft";
+  const sectionTitleClass = "mb-4 text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-text-soft";
 
   return (
     <div>
       {/* Header */}
-      <nav className="text-sm text-gray-500 mb-6 flex items-center gap-2">
-        <Link href="/" className="hover:text-gray-700">Home</Link>
+      <nav className={breadcrumbClass}>
+        <Link href="/" className="hover:text-text-strong">Home</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">My Spaces</span>
+        <span className="font-medium text-foreground">My Spaces</span>
       </nav>
 
-      <h1 className="text-xl font-semibold text-gray-900">My Spaces</h1>
-      <p className="text-sm text-gray-400 mt-1 mb-8">
+      <h1 className="text-4xl text-foreground">My Spaces</h1>
+      <p className="mb-8 mt-2 max-w-2xl text-sm text-text-muted">
         Personalized access to spaces you use most
       </p>
 
       {/* Favorite Spaces */}
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <h2 className={sectionTitleClass}>
           Favorite Spaces
         </h2>
         {spacesLoading ? (
           <div className="flex gap-3 overflow-x-auto pb-1">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+              <div key={i} className="h-36 w-44 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
             ))}
           </div>
         ) : (
@@ -295,13 +298,13 @@ export default function MySpacesPage() {
 
       {/* Recent Spaces */}
       <section className="mb-10">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <h2 className={sectionTitleClass}>
           Recent Spaces
         </h2>
         {spacesLoading ? (
           <div className="flex gap-3 overflow-x-auto pb-1">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className="w-44 h-36 flex-shrink-0 bg-gray-100 rounded-xl animate-pulse" />
+              <div key={i} className="h-36 w-44 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
             ))}
           </div>
         ) : (
@@ -311,7 +314,7 @@ export default function MySpacesPage() {
 
       {/* Recommended Spaces */}
       <section>
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <h2 className={sectionTitleClass}>
           Recommended Spaces
         </h2>
         <RecommendedSection />
