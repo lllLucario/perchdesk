@@ -22,9 +22,10 @@ export default function RecommendationRibbon({ reason }: RecommendationRibbonPro
 
   return (
     <span
-      className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide text-white bg-blue-500 pl-2 pr-3 py-0.5 rounded-sm"
+      className="inline-flex items-center rounded-md bg-accent px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-foreground shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-accent)_85%,black_15%)]"
       style={{
         clipPath: "polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)",
+        paddingRight: "0.8rem",
       }}
       aria-label={`Recommended: ${label}`}
     >

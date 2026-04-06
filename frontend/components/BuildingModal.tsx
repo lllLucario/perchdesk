@@ -19,41 +19,41 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(22,26,22,0.48)]"
       onClick={onClose}
     >
       <div
-        className="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden"
+        className="relative mx-4 w-full max-w-md overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Hero placeholder */}
-        <div className="h-36 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+        <div className="flex h-36 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(140,173,130,0.35),_transparent_58%),linear-gradient(135deg,_#edf3e8,_#dbe5d3)]">
           <span className="text-4xl">🏛</span>
         </div>
 
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-sm text-sm"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[rgba(247,250,244,0.92)] text-text-soft shadow-[0_0_0_1px_var(--color-border)] hover:text-foreground"
           aria-label="Close"
         >
           ✕
         </button>
 
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">{building.name}</h2>
-          <p className="text-sm text-gray-500 mb-4">{building.address}</p>
+          <h2 className="mb-1 font-serif text-2xl leading-tight text-foreground">{building.name}</h2>
+          <p className="mb-4 text-sm text-text-muted">{building.address}</p>
 
           {building.description && (
-            <p className="text-sm text-gray-600 mb-4">{building.description}</p>
+            <p className="mb-4 text-sm text-text-muted">{building.description}</p>
           )}
 
           {(building.opening_hours || spaceCount !== undefined) && (
-            <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+            <div className="mb-4 grid grid-cols-2 gap-3 text-sm">
               {building.opening_hours && (
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Opening Hours</p>
+                  <p className="mb-1 text-xs uppercase tracking-[0.14em] text-text-soft">Opening Hours</p>
                   {Object.entries(building.opening_hours).map(([k, v]) => (
-                    <p key={k} className="text-gray-700 capitalize">
+                    <p key={k} className="capitalize text-text-strong">
                       {k}: {v}
                     </p>
                   ))}
@@ -61,8 +61,8 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
               )}
               {spaceCount !== undefined && (
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Spaces</p>
-                  <p className="text-gray-700">{spaceCount} spaces</p>
+                  <p className="mb-1 text-xs uppercase tracking-[0.14em] text-text-soft">Spaces</p>
+                  <p className="text-text-strong">{spaceCount} spaces</p>
                 </div>
               )}
             </div>
@@ -70,12 +70,12 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
 
           {building.facilities && building.facilities.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Facilities</p>
+              <p className="mb-2 text-xs uppercase tracking-[0.14em] text-text-soft">Facilities</p>
               <div className="flex flex-wrap gap-1.5">
                 {building.facilities.map((f) => (
                   <span
                     key={f}
-                    className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs"
+                    className="rounded-full bg-surface-muted px-2.5 py-1 text-xs text-text-strong shadow-[0_0_0_1px_var(--color-border)]"
                   >
                     {f}
                   </span>
@@ -86,7 +86,7 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
 
           <button
             onClick={handleViewSpaces}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="button-primary w-full py-2.5 text-sm font-medium"
           >
             View Spaces →
           </button>
