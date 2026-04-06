@@ -117,8 +117,8 @@ function ControlRow<S extends string>({
             onClick={() => onFilterChange(f)}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${
               activeFilter === f
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                ? "bg-accent text-accent-foreground border-accent"
+                : "bg-surface text-text-muted border-border hover:border-border-strong"
             }`}
           >
             {f}
@@ -129,7 +129,7 @@ function ControlRow<S extends string>({
         <select
           value={activeSort}
           onChange={(e) => onSortChange(e.target.value as S)}
-          className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className="rounded-xl border border-border bg-surface px-2.5 py-1.5 text-xs text-text-strong focus:outline-none focus:ring-1 focus:ring-[#3898ec]"
           aria-label="Sort bookings"
         >
           {sorts.map((s) => (
@@ -199,15 +199,15 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[1.8rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b">
-          <h2 className="text-base font-semibold text-gray-900">Booking Details</h2>
+        <div className="flex items-center justify-between border-b border-border px-6 pb-3 pt-5">
+          <h2 className="font-serif text-2xl leading-tight text-foreground">Booking Details</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+            className="text-lg leading-none text-text-soft hover:text-foreground"
             aria-label="Close"
           >
             ✕
@@ -219,32 +219,32 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
           {/* Meta */}
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="font-medium text-gray-900">{booking.space_name}</span>
+              <span className="font-medium text-foreground">{booking.space_name}</span>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[uxStatus]}`}>
                 {uxStatus}
               </span>
             </div>
             {booking.building_name && (
-              <p className="text-sm text-gray-500 mb-1">{booking.building_name}</p>
+              <p className="mb-1 text-sm text-text-muted">{booking.building_name}</p>
             )}
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-text-strong">
               {dateLabel} · {timeRange} · Seat {booking.seat_label} · {duration}
             </p>
           </div>
 
           {/* Detail fields */}
-          <dl className="text-sm space-y-1 text-gray-600">
+          <dl className="space-y-1 text-sm text-text-muted">
             <div className="flex gap-2">
-              <dt className="text-gray-400 w-28 shrink-0">Booking ID</dt>
+              <dt className="w-28 shrink-0 text-text-soft">Booking ID</dt>
               <dd className="font-mono text-xs break-all">{booking.id}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-gray-400 w-28 shrink-0">Created</dt>
+              <dt className="w-28 shrink-0 text-text-soft">Created</dt>
               <dd>{formatDateTime(booking.created_at)}</dd>
             </div>
             {booking.checked_in_at && (
               <div className="flex gap-2">
-                <dt className="text-gray-400 w-28 shrink-0">Checked in</dt>
+                <dt className="w-28 shrink-0 text-text-soft">Checked in</dt>
                 <dd>{formatDateTime(booking.checked_in_at)}</dd>
               </div>
             )}
@@ -252,7 +252,7 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
 
           {/* Floorplan preview */}
           <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Floorplan preview</p>
+            <p className="mb-2 text-xs uppercase tracking-[0.14em] text-text-soft">Floorplan preview</p>
             {layoutCfg !== null ? (
               <SeatMapCanvas
                 seats={[previewSeat]}
@@ -265,7 +265,7 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
                 showGrid={backgroundImage === null}
               />
             ) : (
-              <div className="flex items-center justify-center h-32 bg-gray-50 border rounded-lg text-sm text-gray-400">
+              <div className="flex h-32 items-center justify-center rounded-xl border border-border bg-surface-muted text-sm text-text-soft">
                 No floorplan available for this space
               </div>
             )}
@@ -273,16 +273,16 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
         </div>
 
         {/* Footer actions */}
-        <div className="px-6 pb-5 pt-3 border-t space-y-2">
+        <div className="space-y-2 border-t border-border px-6 pb-5 pt-3">
           {(checkIn.error || cancelBooking.error) && (
-            <p className="text-xs text-red-600">
+            <p className="text-xs text-danger">
               {((checkIn.error || cancelBooking.error) as Error).message}
             </p>
           )}
           <div className="flex justify-between items-center gap-3">
             <button
               onClick={onClose}
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-text-muted hover:text-text-strong"
             >
               Close
             </button>
@@ -291,7 +291,7 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
                 <button
                   onClick={() => checkIn.mutate(booking.id, { onSuccess: onClose })}
                   disabled={checkIn.isPending}
-                  className="text-sm bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  className="button-primary px-4 py-2 text-sm disabled:opacity-50"
                 >
                   Check In
                 </button>
@@ -300,7 +300,7 @@ function BookingDetailModal({ booking, uxStatus, onClose }: BookingDetailModalPr
                 <button
                   onClick={() => cancelBooking.mutate(booking.id, { onSuccess: onClose })}
                   disabled={cancelBooking.isPending}
-                  className="text-sm bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-100 disabled:opacity-50"
+                  className="rounded-xl border border-[color:color-mix(in_srgb,var(--color-danger)_28%,white_72%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)] px-4 py-2 text-sm text-danger disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -331,11 +331,11 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
   const hint = relativeTimeHint(uxStatus, booking.start_time);
 
   return (
-    <div className="bg-white border rounded-xl p-4">
+    <div className="panel-surface rounded-[1.55rem] p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-            <span className="font-medium text-gray-900 truncate">{booking.space_name}</span>
+            <span className="truncate font-serif text-2xl leading-tight text-foreground">{booking.space_name}</span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${STATUS_BADGE[uxStatus]}`}
             >
@@ -343,18 +343,18 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
             </span>
           </div>
           {booking.building_name && (
-            <p className="text-sm text-gray-500 mb-1">{booking.building_name}</p>
+            <p className="mb-1 text-sm text-text-muted">{booking.building_name}</p>
           )}
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-text-strong">
             {dateLabel}
-            <span className="mx-1.5 text-gray-300">·</span>
+            <span className="mx-1.5 text-border-strong">·</span>
             {timeRange}
-            <span className="mx-1.5 text-gray-300">·</span>
+            <span className="mx-1.5 text-border-strong">·</span>
             Seat {booking.seat_label}
-            <span className="mx-1.5 text-gray-300">·</span>
+            <span className="mx-1.5 text-border-strong">·</span>
             {duration}
           </p>
-          {hint && <p className="text-xs text-gray-500 mt-1">{hint}</p>}
+          {hint && <p className="mt-1 text-xs text-text-muted">{hint}</p>}
         </div>
       </div>
 
@@ -362,7 +362,7 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
       <div className="flex gap-2 mt-3 flex-wrap">
         <button
           onClick={onViewDetails}
-          className="text-xs text-blue-600 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100"
+          className="button-secondary px-3 py-1.5 text-xs"
         >
           View Details
         </button>
@@ -370,7 +370,7 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
           <button
             onClick={() => cancelBooking.mutate(booking.id)}
             disabled={cancelBooking.isPending}
-            className="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-50"
+            className="rounded-xl border border-[color:color-mix(in_srgb,var(--color-danger)_28%,white_72%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)] px-3 py-1.5 text-xs text-danger disabled:opacity-50"
           >
             Cancel
           </button>
@@ -380,14 +380,14 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
             <button
               onClick={() => checkIn.mutate(booking.id)}
               disabled={checkIn.isPending}
-              className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50"
+              className="button-primary px-3 py-1.5 text-xs disabled:opacity-50"
             >
               Check In
             </button>
             <button
               onClick={() => cancelBooking.mutate(booking.id)}
               disabled={cancelBooking.isPending}
-              className="text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-50"
+              className="rounded-xl border border-[color:color-mix(in_srgb,var(--color-danger)_28%,white_72%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)] px-3 py-1.5 text-xs text-danger disabled:opacity-50"
             >
               Cancel
             </button>
@@ -403,16 +403,16 @@ function BookingCard({ booking, uxStatus, onViewDetails }: BookingCardProps) {
 function ActiveEmpty({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="py-12 text-center text-text-muted">
         <p className="text-sm">No bookings match the selected filter.</p>
       </div>
     );
   }
   return (
-    <div className="text-center py-16 text-gray-500">
-      <p className="text-base font-medium text-gray-700 mb-1">No active bookings</p>
+    <div className="py-16 text-center text-text-muted">
+      <p className="mb-1 font-serif text-3xl text-foreground">No active bookings</p>
       <p className="text-sm mb-4">You have no upcoming or in-progress bookings.</p>
-      <Link href="/buildings" className="text-sm text-blue-600 hover:underline">
+      <Link href="/buildings" className="text-sm text-accent hover:text-text-strong">
         Browse spaces to make a booking
       </Link>
     </div>
@@ -422,14 +422,14 @@ function ActiveEmpty({ filtered }: { filtered: boolean }) {
 function HistoryEmpty({ filtered }: { filtered: boolean }) {
   if (filtered) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="py-12 text-center text-text-muted">
         <p className="text-sm">No bookings match the selected filter.</p>
       </div>
     );
   }
   return (
-    <div className="text-center py-16 text-gray-500">
-      <p className="text-base font-medium text-gray-700 mb-1">No booking history yet</p>
+    <div className="py-16 text-center text-text-muted">
+      <p className="mb-1 font-serif text-3xl text-foreground">No booking history yet</p>
       <p className="text-sm">Your completed, cancelled, and expired bookings will appear here.</p>
     </div>
   );
@@ -459,7 +459,7 @@ export default function BookingsPage() {
   const visibleActive = applyActiveFilterSort(allActiveBookings, activeFilter, activeSort);
   const visibleHistory = applyHistoryFilterSort(allHistoryBookings, historyFilter, historySort);
 
-  if (isLoading) return <p className="text-gray-500">Loading bookings…</p>;
+  if (isLoading) return <p className="text-text-muted">Loading bookings…</p>;
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "active", label: "Active Bookings", count: allActiveBookings.length },
@@ -468,23 +468,26 @@ export default function BookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">My Bookings</h1>
+      <h1 className="mb-2 text-4xl text-foreground">My Bookings</h1>
+      <p className="mb-4 text-sm text-text-muted">
+        Track what is booked, what needs check-in, and what has already finished.
+      </p>
 
       {/* Tab row */}
-      <div className="flex gap-1 border-b mb-5">
+      <div className="mb-5 flex gap-1 border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab.key
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-accent text-accent"
+                : "border-transparent text-text-muted hover:text-text-strong"
             }`}
           >
             {tab.label}
             {tab.count > 0 && (
-              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">
+              <span className="ml-1.5 rounded-full bg-surface-muted px-1.5 py-0.5 text-xs text-text-strong">
                 {tab.count}
               </span>
             )}
