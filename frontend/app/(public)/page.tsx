@@ -423,9 +423,9 @@ export default function HomePage() {
               <Link
                 key={b.name}
                 href="/buildings"
-                className="w-56 flex-shrink-0 overflow-hidden rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-surface transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
+                className="w-56 flex-shrink-0 rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] shadow-[0_1px_3px_rgba(22,26,22,0.06),0_4px_8px_-2px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_2px_6px_rgba(22,26,22,0.08),0_8px_16px_-4px_rgba(22,26,22,0.10)]"
               >
-                <div className="flex h-28 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
+                <div className="flex h-28 items-center justify-center overflow-hidden rounded-t-[1.65rem] bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
                   <span className="text-3xl">🏛</span>
                 </div>
                 <div className="px-4 pt-3 pb-4">
@@ -441,9 +441,9 @@ export default function HomePage() {
               <Link
                 key={building.id}
                 href={`/buildings/${building.id}`}
-                className="w-56 flex-shrink-0 overflow-hidden rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-surface transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft"
+                className="w-56 flex-shrink-0 rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] shadow-[0_1px_3px_rgba(22,26,22,0.06),0_4px_8px_-2px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_2px_6px_rgba(22,26,22,0.08),0_8px_16px_-4px_rgba(22,26,22,0.10)]"
               >
-                <div className="flex h-28 items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
+                <div className="flex h-28 items-center justify-center overflow-hidden rounded-t-[1.65rem] bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
                   <span className="text-3xl">🏛</span>
                 </div>
                 <div className="px-4 pt-3 pb-4">
