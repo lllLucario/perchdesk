@@ -214,14 +214,14 @@ class TestRemoveFavoriteSpace:
         )
         assert list_resp.json() == []
 
-    async def test_remove_not_favorited_returns_404(
+    async def test_remove_not_favorited_is_idempotent(
         self, client: AsyncClient, user_token: str, space: Space
     ) -> None:
         resp = await client.delete(
             f"/api/v1/spaces/{space.id}/favorite",
             headers={"Authorization": f"Bearer {user_token}"},
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 204
 
     async def test_remove_nonexistent_space_returns_404(
         self, client: AsyncClient, user_token: str
@@ -361,14 +361,14 @@ class TestRemoveFavoriteSeat:
         )
         assert list_resp.json() == []
 
-    async def test_remove_not_favorited_returns_404(
+    async def test_remove_not_favorited_is_idempotent(
         self, client: AsyncClient, user_token: str, seat: Seat
     ) -> None:
         resp = await client.delete(
             f"/api/v1/seats/{seat.id}/favorite",
             headers={"Authorization": f"Bearer {user_token}"},
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 204
 
     async def test_remove_nonexistent_seat_returns_404(
         self, client: AsyncClient, user_token: str

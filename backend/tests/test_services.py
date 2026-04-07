@@ -1198,13 +1198,13 @@ async def test_remove_favorite_space_success(
 
 
 @pytest.mark.asyncio
-async def test_remove_favorite_space_not_favorited_raises(
+async def test_remove_favorite_space_not_favorited_is_idempotent(
     db_session: AsyncSession, test_user: User, space_with_rules: Space
 ):
-    with pytest.raises(NotFoundError):
-        await favorite_service.remove_favorite_space(
-            db_session, test_user.id, space_with_rules.id
-        )
+    # Removing a non-existent favorite should silently succeed (idempotent)
+    await favorite_service.remove_favorite_space(
+        db_session, test_user.id, space_with_rules.id
+    )
 
 
 @pytest.mark.asyncio
@@ -1302,13 +1302,13 @@ async def test_remove_favorite_seat_success(
 
 
 @pytest.mark.asyncio
-async def test_remove_favorite_seat_not_favorited_raises(
+async def test_remove_favorite_seat_not_favorited_is_idempotent(
     db_session: AsyncSession, test_user: User, available_seat: Seat
 ):
-    with pytest.raises(NotFoundError):
-        await favorite_service.remove_favorite_seat(
-            db_session, test_user.id, available_seat.id
-        )
+    # Removing a non-existent favorite should silently succeed (idempotent)
+    await favorite_service.remove_favorite_seat(
+        db_session, test_user.id, available_seat.id
+    )
 
 
 @pytest.mark.asyncio
