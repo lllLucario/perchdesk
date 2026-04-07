@@ -12,6 +12,25 @@ import { useToggleFavoriteSpace } from "@/lib/hooks";
  * location-aware recommendation feeds.
  */
 
+const TYPE_VISUALS: Record<string, { gradient: string; emoji: string }> = {
+  library: {
+    gradient:
+      "radial-gradient(circle at top, rgba(137,179,116,0.22), transparent 56%), linear-gradient(135deg, #f4f8f1, #e7eee1)",
+    emoji: "📚",
+  },
+  office: {
+    gradient:
+      "radial-gradient(circle at top, rgba(116,155,179,0.22), transparent 56%), linear-gradient(135deg, #f1f5f8, #e1e8ee)",
+    emoji: "💼",
+  },
+};
+
+const DEFAULT_VISUAL = {
+  gradient:
+    "radial-gradient(circle at top, rgba(160,160,140,0.18), transparent 56%), linear-gradient(135deg, #f5f5f2, #eae9e4)",
+  emoji: "🪑",
+};
+
 interface SpaceCardProps {
   spaceId: string;
   name: string;
@@ -56,15 +75,30 @@ export default function SpaceCard({
     );
   };
 
+  const visual = TYPE_VISUALS[type] ?? DEFAULT_VISUAL;
+
   return (
     <div
-      className="relative cursor-pointer overflow-visible rounded-[1.8rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] px-4 py-4 shadow-[0_2px_4px_rgba(22,26,22,0.06),0_8px_16px_-4px_rgba(22,26,22,0.10),0_20px_40px_-8px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_4px_8px_rgba(22,26,22,0.06),0_12px_24px_-4px_rgba(22,26,22,0.12),0_28px_48px_-8px_rgba(22,26,22,0.10)]"
+      className="relative cursor-pointer rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] shadow-[0_1px_3px_rgba(22,26,22,0.06),0_4px_8px_-2px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_2px_6px_rgba(22,26,22,0.08),0_8px_16px_-4px_rgba(22,26,22,0.10)]"
       onClick={() => router.push(`/spaces/${spaceId}`)}
     >
+      {/* Visual placeholder header */}
+      <div
+        className="relative flex h-28 items-center justify-center overflow-hidden rounded-t-[1.65rem]"
+        style={{ background: visual.gradient }}
+      >
+        <span className="text-3xl">{visual.emoji}</span>
+        {ribbon && (
+          <div className="absolute bottom-2 left-0">
+            {ribbon}
+          </div>
+        )}
+      </div>
+
       {/* Favorite star */}
       <button
         aria-label={optimistic ? "Remove from favorites" : "Add to favorites"}
-        className="absolute right-3 top-3 rounded-full border border-transparent bg-transparent p-1.5 text-text-soft transition-colors hover:border-border hover:bg-surface/85 hover:text-accent"
+        className="absolute right-3 top-3 p-0.5 text-white/70 transition-colors hover:text-accent"
         onClick={handleStarClick}
         disabled={toggleFavorite.isPending}
       >
@@ -74,7 +108,7 @@ export default function SpaceCard({
           fill={optimistic ? "currentColor" : "none"}
           stroke="currentColor"
           strokeWidth={optimistic ? 0 : 1.5}
-          className={`h-4 w-4 ${optimistic ? "text-accent" : ""}`}
+          className={`h-5 w-5 ${optimistic ? "text-accent" : ""}`}
         >
           <path
             strokeLinecap="round"
@@ -84,19 +118,21 @@ export default function SpaceCard({
         </svg>
       </button>
 
-      {ribbon && <div className="-ml-4 -mt-4 mb-3">{ribbon}</div>}
-      <p className="line-clamp-1 pr-6 font-serif text-xl leading-tight text-foreground">{name}</p>
-      <p className="mt-1 text-xs capitalize text-text-muted">
-        {type} · {capacity} seats
-      </p>
-      {buildingName && (
-        <p className="mt-1 text-xs text-text-soft">{buildingName}</p>
-      )}
-      {supportingLine && (
-        <p className="mt-3 inline-flex rounded-full bg-[color:color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%)] px-2.5 py-1 text-[11px] font-semibold text-text-strong">
-          {supportingLine}
+      {/* Card content */}
+      <div className="px-4 pt-3 pb-4">
+        <p className="line-clamp-1 pr-6 font-serif text-xl leading-tight text-foreground">{name}</p>
+        <p className="mt-1 text-xs capitalize text-text-muted">
+          {type} · {capacity} seats
         </p>
-      )}
+        {buildingName && (
+          <p className="mt-1 text-xs text-text-soft">{buildingName}</p>
+        )}
+        {supportingLine && (
+          <p className="mt-2 inline-flex rounded-full bg-[color:color-mix(in_srgb,var(--color-accent-muted)_40%,white_60%)] px-2.5 py-1 text-[11px] font-semibold text-text-strong">
+            {supportingLine}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -22,11 +22,11 @@ export default function RecommendationRibbon({ reason }: RecommendationRibbonPro
 
   return (
     <span
-      className="inline-flex items-center bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-accent-soft)_84%,white_16%),color-mix(in_srgb,var(--color-accent)_82%,black_18%))] py-[5px] text-[8px] font-semibold uppercase tracking-[0.18em] text-accent-foreground shadow-[0_6px_12px_rgba(69,95,57,0.12),0_0_0_1px_color-mix(in_srgb,var(--color-accent)_85%,black_15%)]"
+      className="inline-flex items-center bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-accent-soft)_84%,white_16%),color-mix(in_srgb,var(--color-accent)_82%,black_18%))] py-[3px] text-[7px] font-semibold uppercase tracking-[0.18em] text-accent-foreground shadow-[0_4px_8px_rgba(69,95,57,0.10),0_0_0_1px_color-mix(in_srgb,var(--color-accent)_85%,black_15%)]"
       style={{
-        clipPath: "polygon(0 0, 100% 0, calc(100% - 8px) 50%, 100% 100%, 0 100%)",
-        paddingLeft: "0.78rem",
-        paddingRight: "0.95rem",
+        clipPath: "polygon(0 0, 100% 0, calc(100% - 6px) 50%, 100% 100%, 0 100%)",
+        paddingLeft: "0.6rem",
+        paddingRight: "0.75rem",
       }}
       aria-label={`Recommended: ${label}`}
     >
