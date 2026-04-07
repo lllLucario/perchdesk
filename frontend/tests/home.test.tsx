@@ -177,25 +177,37 @@ describe("HomePage — authenticated", () => {
     expect(screen.queryByText("No personalised spaces yet.")).not.toBeInTheDocument();
   });
 
-  test("renders space cards in Recent Spaces after load", async () => {
+  test("renders space cards in Recent Spaces from bookings and visits", async () => {
     mockApiResolved({
       spaces: [
-        { id: "s1", name: "Library A", type: "library", capacity: 20, building_id: null, description: null, layout_config: null, created_at: "" },
-        { id: "s2", name: "Office B", type: "office", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "" },
+        { id: "s1", name: "Library A", type: "library", capacity: 20, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+        { id: "s2", name: "Office B", type: "office", capacity: 10, building_id: null, description: null, layout_config: null, created_at: "", is_favorited: false },
+      ],
+      bookings: [
+        {
+          id: "bk1", space_id: "s1", space_name: "Library A", space_type: "library",
+          building_name: null, seat_id: "seat1", start_time: new Date().toISOString(),
+          end_time: new Date().toISOString(), status: "confirmed", user_id: "u1",
+          checked_in_at: null, created_at: new Date().toISOString(), seat_label: "A1",
+          seat_position: { x: 0, y: 0 }, space_layout_config: null, building_id: null,
+        },
+      ],
+      recentVisits: [
+        { id: "rv1", user_id: "u1", space_id: "s2", visited_at: new Date().toISOString() },
       ],
     });
     await renderHome();
     await waitFor(() => {
-      expect(screen.getByText("Library A")).toBeInTheDocument();
-      expect(screen.getByText("Office B")).toBeInTheDocument();
+      expect(screen.getAllByText("Library A").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Office B").length).toBeGreaterThan(0);
     });
   });
 
-  test("shows empty message when no spaces returned", async () => {
+  test("shows empty message when no recent activity", async () => {
     mockApiResolved();
     await renderHome();
     await waitFor(() => {
-      expect(screen.getByText("No spaces found.")).toBeInTheDocument();
+      expect(screen.getByText(/No recent activity yet/)).toBeInTheDocument();
     });
   });
 
@@ -249,7 +261,7 @@ describe("HomePage — authenticated", () => {
     });
     await renderHome();
     await waitFor(() => expect(screen.getAllByText("My Library").length).toBeGreaterThan(0));
-    expect(screen.getByText("Booked recently")).toBeInTheDocument();
+    expect(screen.getAllByText("Booked recently").length).toBeGreaterThan(0);
   });
 
   test("For You orders recent cards by created_at DESC, not start_time", async () => {
@@ -390,7 +402,7 @@ describe("HomePage — authenticated", () => {
     });
     await renderHome();
     await waitFor(() => expect(screen.getAllByText("Visited Space").length).toBeGreaterThan(0));
-    expect(screen.getByText("Visited recently")).toBeInTheDocument();
+    expect(screen.getAllByText("Visited recently").length).toBeGreaterThan(0);
   });
 
   test("For You deduplicates spaces across sources", async () => {
