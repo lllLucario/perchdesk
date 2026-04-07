@@ -196,7 +196,34 @@ export default function HomePage() {
     visitsLoading || (permission === "loading") ||
     (permission === "granted" && nearbyLoading);
 
-  const recentSpaces = spaces?.slice(0, 4) ?? [];
+  // Build deduplicated recent spaces: bookings first, then floorplan visits
+  const recentSpaces = (() => {
+    if (!isAuthenticated) return [];
+    const seen = new Set<string>();
+    const result: Array<Space & { supportingLine: string }> = [];
+    // 1. Recent bookings (confirmed / checked_in), newest first
+    const activeStatuses = new Set(["confirmed", "checked_in"]);
+    const sortedBookings = [...(bookings ?? [])]
+      .filter((b) => activeStatuses.has(b.status))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    for (const b of sortedBookings) {
+      if (seen.has(b.space_id) || result.length >= 4) break;
+      const space = spacesById.get(b.space_id);
+      if (!space) continue;
+      seen.add(b.space_id);
+      result.push({ ...space, supportingLine: "Booked recently" });
+    }
+    // 2. Recent floorplan visits, fill remaining slots
+    for (const v of recentVisits ?? []) {
+      if (seen.has(v.space_id) || result.length >= 4) break;
+      const space = spacesById.get(v.space_id);
+      if (!space) continue;
+      seen.add(v.space_id);
+      result.push({ ...space, supportingLine: "Visited recently" });
+    }
+    return result;
+  })();
+  const recentSpacesLoading = spacesLoading || bookingsLoading || visitsLoading;
 
   // Nearby buildings: use location-aware query when coordinates are available,
   // otherwise fall back to the generic building list.
@@ -344,14 +371,16 @@ export default function HomePage() {
               Sign in
             </Link>
           </div>
-        ) : spacesLoading ? (
+        ) : recentSpacesLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-20 animate-pulse rounded-[1.5rem] bg-surface-muted" />
             ))}
           </div>
         ) : recentSpaces.length === 0 ? (
-          <p className="text-sm text-text-soft">No spaces found.</p>
+          <p className="text-sm text-text-soft">
+            No recent activity yet. Book a space or visit a floorplan to see it here.
+          </p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {recentSpaces.map((space) => (
@@ -364,6 +393,7 @@ export default function HomePage() {
                 <p className="mt-1 text-xs capitalize text-text-muted">
                   {space.type} · {space.capacity} seats
                 </p>
+                <p className="mt-1 text-[11px] text-text-soft">{space.supportingLine}</p>
               </Link>
             ))}
           </div>
