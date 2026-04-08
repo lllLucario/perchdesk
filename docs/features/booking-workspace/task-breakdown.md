@@ -111,8 +111,11 @@ isolated
 
 ### Goal
 
-Implement the lightweight booking homepage shell described in
-`docs/wireframe.md`.
+Implement the lightweight booking homepage shell described by the current
+product-flow docs, especially:
+
+- `docs/architecture.md`
+- `docs/features/my-spaces/wireframe.md`
 
 ### Includes
 

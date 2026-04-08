@@ -10,8 +10,8 @@ It should be read together with:
 
 - `CLAUDE.md`
 - `docs/architecture.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 
 ## Feature Summary
 
@@ -132,9 +132,11 @@ When implementing this feature, agents should:
 
 - prefer the card/modal/CTA flow over extra pages
 - keep the booking path short and operational
-- avoid expanding unresolved ideas from `docs/booking_ux_open_questions.md`
-- reference `docs/booking_ux_decisions.md` for product rules
-- reference `docs/wireframe.md` for page and state structure
+- avoid reopening unresolved legacy UX ideas unless they are re-documented in
+  the current feature docs
+- reference `docs/features/booking-workspace/decision-log.md` for product rules
+- reference `docs/features/booking-workspace/wireframe.md` for page and state
+  structure
 
 If a task requires assumptions beyond these documents, the task should either:
 

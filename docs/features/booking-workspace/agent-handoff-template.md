@@ -19,8 +19,8 @@ Read first:
 - `docs/architecture.md`
 - `docs/features/booking-workspace/overview.md`
 - `docs/features/booking-workspace/task-breakdown.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 
 Scope:
 - Only implement Task <N>
@@ -50,14 +50,15 @@ Required references:
 - `docs/features/booking-workspace/frontend-scope.md`
 - `docs/features/booking-workspace/backend-impact.md`
 - `docs/features/booking-workspace/task-breakdown.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 
 Rules:
 - Stay within the defined task range
 - Follow the current card/modal/CTA flow
 - Do not introduce dedicated building/space detail pages
-- Do not implement unresolved ideas from `docs/booking_ux_open_questions.md`
+- Do not reintroduce unresolved legacy UX ideas unless they are explicitly
+  re-documented in the current feature docs
   unless explicitly required
 - Add or update relevant tests for changed behavior
 
@@ -77,8 +78,8 @@ Review the implementation for Task <N> in `docs/features/booking-workspace/task-
 Review against:
 - `docs/features/booking-workspace/overview.md`
 - `docs/features/booking-workspace/frontend-scope.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 
 Focus on:
 - behavioral mismatches
@@ -101,8 +102,8 @@ Read first:
 - `docs/features/booking-workspace/overview.md`
 - `docs/features/booking-workspace/frontend-scope.md`
 - `docs/features/booking-workspace/task-breakdown.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 
 Scope:
 - Build the `Buildings` page card list

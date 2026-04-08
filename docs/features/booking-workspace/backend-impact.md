@@ -161,6 +161,6 @@ The backend remains the final authority for:
 ## Source Documents
 
 - `docs/architecture.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 - `docs/features/booking-workspace/task-breakdown.md`
