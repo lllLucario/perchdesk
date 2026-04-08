@@ -2,7 +2,7 @@
  * Home page tests: layout, sections, auth states, and data wiring.
  */
 import React from "react";
-import { screen, waitFor, fireEvent } from "@testing-library/react";
+import { screen, waitFor, fireEvent, within } from "@testing-library/react";
 import { renderWithProviders } from "./test-utils";
 import { useLocationStore } from "@/store/locationStore";
 
@@ -426,11 +426,9 @@ describe("HomePage — authenticated", () => {
     });
     await renderHome();
     await waitFor(() => expect(screen.getAllByText("Dup Space").length).toBeGreaterThan(0));
-    // In the For You section (.flex-shrink-0 cards), the space should appear only once
-    const forYouCards = document.querySelectorAll(".flex-shrink-0");
-    const dupCount = Array.from(forYouCards).filter(
-      (c) => c.textContent?.includes("Dup Space")
-    ).length;
+    // In the For You rail, the space should appear only once
+    const forYouRail = screen.getByTestId("for-you-rail");
+    const dupCount = within(forYouRail).getAllByText("Dup Space").length;
     expect(dupCount).toBe(1);
     // Should appear as Favorite (higher priority than recent booking)
     expect(screen.getByText("Favorite")).toBeInTheDocument();

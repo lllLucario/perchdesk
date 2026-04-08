@@ -54,7 +54,7 @@ export default function BuildingsPage() {
 
       <div className="mb-6 flex flex-col gap-4 rounded-[2rem] px-2 py-2 md:flex-row md:items-end md:justify-between md:px-3">
         <div>
-          <p className="section-kicker mb-3">Browse buildings</p>
+          <p className="page-eyebrow mb-3">Browse buildings</p>
           <h1 className="text-4xl text-foreground">Buildings</h1>
           <p className="mt-2 text-sm text-text-muted">
             Browse the places where PerchDesk can guide you into rooms, desks, and quiet corners.

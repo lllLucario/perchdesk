@@ -37,9 +37,9 @@
   --color-text-soft: var(--text-soft);
   --color-text-strong: var(--text-strong);
   --color-danger: var(--danger);
-  --font-sans: var(--font-geist-sans);
-  --font-serif: var(--font-editorial-serif);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, "Times New Roman", Times, serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -75,7 +75,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), sans-serif;
+  font-family: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.6;
 }
 
@@ -96,15 +96,15 @@ select {
   background: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
-@layer base {
-  h1,
-  h2,
-  h3,
-  h4 {
-    font-family: var(--font-editorial-serif), Georgia, serif;
-    letter-spacing: -0.02em;
-  }
+h1,
+h2,
+h3,
+h4 {
+  font-family: Georgia, "Times New Roman", Times, serif;
+  letter-spacing: -0.02em;
+}
 
+@layer base {
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
@@ -169,7 +169,7 @@ select {
     background: var(--accent);
     color: var(--accent-foreground);
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 80%, black 20%);
-    font-family: var(--font-editorial-serif), Georgia, serif;
+    font-family: Georgia, "Times New Roman", Times, serif;
     font-size: 1rem;
     font-weight: 600;
   }
@@ -179,7 +179,7 @@ select {
     align-items: center;
     gap: 0.75rem;
     color: var(--foreground);
-    font-family: var(--font-editorial-serif), Georgia, serif;
+    font-family: Georgia, "Times New Roman", Times, serif;
     font-size: 1.75rem;
     font-weight: 500;
     line-height: 1;
@@ -282,10 +282,17 @@ select {
   }
 
   .section-kicker {
-    color: var(--text-strong);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.24em;
+    color: var(--accent);
+    font-size: 1.2rem;
+    font-weight: 100;
+    letter-spacing: 2.5px;
+  }
+
+  .page-eyebrow {
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 2.5px;
     text-transform: uppercase;
   }
 

@@ -95,7 +95,7 @@ async def remove_favorite_space(
     )
     favorite = result.scalar_one_or_none()
     if favorite is None:
-        raise NotFoundError("Space is not in your favorites.")
+        return  # Already removed — treat DELETE as idempotent
     await db.delete(favorite)
     await db.commit()
 
@@ -148,6 +148,6 @@ async def remove_favorite_seat(
     )
     favorite = result.scalar_one_or_none()
     if favorite is None:
-        raise NotFoundError("Seat is not in your favorites.")
+        return  # Already removed — treat DELETE as idempotent
     await db.delete(favorite)
     await db.commit()

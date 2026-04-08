@@ -82,7 +82,7 @@ export default function BuildingMapPage() {
       <div className="section-frame mb-5 flex flex-col gap-5 px-6 py-6 md:flex-row md:items-end md:justify-between md:px-8">
         <div>
           <Breadcrumb />
-          <p className="section-kicker mb-3 mt-4">Map discovery</p>
+          <p className="page-eyebrow mb-3 mt-4">Map discovery</p>
           <h1 className="text-4xl text-foreground">Buildings Map</h1>
           <p className="mt-2 max-w-2xl text-sm text-text-muted">
             Browse buildings spatially, scan nearby options, and jump into the right space faster.

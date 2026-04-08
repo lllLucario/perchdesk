@@ -243,18 +243,18 @@ export default function HomePage() {
   const buildings = isNearbyLocation
     ? (nearbyBuildingsData ?? [])
     : (buildingsData?.slice(0, 4) ?? []);
-  const compactCardClass = "panel-surface block rounded-[1.6rem] px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-accent-soft";
   const sectionTitleClass = "section-kicker";
   const sectionLinkClass = "text-sm font-medium text-accent hover:text-text-strong";
+  const railClass = "-mx-4 flex gap-4 overflow-x-auto px-4 py-6 -my-6";
 
   return (
     <div className="mx-auto max-w-6xl">
       <section className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] px-6 py-8 text-center md:px-10 md:py-12">
         <div className="mx-auto max-w-3xl">
-        <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-accent">
+        <p className="page-eyebrow mb-3">
           Find your next seat
         </p>
-        <h1 className="text-5xl leading-[0.95] text-foreground md:text-7xl">
+        <h1 className="font-[family-name:var(--font-display)] text-5xl leading-[0.95] text-foreground md:text-7xl">
           Quiet booking for focused spaces.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted md:text-lg">
@@ -291,17 +291,17 @@ export default function HomePage() {
           </div>
 
           {forYouLoading ? (
-            <div className="flex gap-3 overflow-x-auto pb-1">
+            <div className={railClass}>
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-32 w-40 flex-shrink-0 animate-pulse rounded-[1.6rem] bg-surface-muted" />
+                <div key={i} className="h-56 w-56 flex-shrink-0 animate-pulse rounded-[1.75rem] bg-surface-muted" />
               ))}
             </div>
           ) : (
             <>
               {forYouCards.length > 0 && (
-                <div className="-mx-2 flex gap-3 overflow-x-auto px-2 py-4 -my-4">
+                <div data-testid="for-you-rail" className={railClass}>
                   {forYouCards.map((card) => (
-                    <div key={card.spaceId} className="w-40 flex-shrink-0">
+                    <div key={card.spaceId} className="w-56 flex-shrink-0">
                       <SpaceCard
                         spaceId={card.spaceId}
                         name={card.name}
@@ -372,9 +372,9 @@ export default function HomePage() {
             </Link>
           </div>
         ) : recentSpacesLoading ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={railClass}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 animate-pulse rounded-[1.5rem] bg-surface-muted" />
+              <div key={i} className="h-56 w-56 flex-shrink-0 animate-pulse rounded-[1.75rem] bg-surface-muted" />
             ))}
           </div>
         ) : recentSpaces.length === 0 ? (
@@ -382,19 +382,18 @@ export default function HomePage() {
             No recent activity yet. Book a space or visit a floorplan to see it here.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div data-testid="recent-spaces-rail" className={railClass}>
             {recentSpaces.map((space) => (
-              <Link
-                key={space.id}
-                href={`/spaces/${space.id}`}
-                className={compactCardClass}
-              >
-                <p className="font-serif text-lg leading-tight text-foreground">{space.name}</p>
-                <p className="mt-1 text-xs capitalize text-text-muted">
-                  {space.type} · {space.capacity} seats
-                </p>
-                <p className="mt-1 text-[11px] text-text-soft">{space.supportingLine}</p>
-              </Link>
+              <div key={space.id} className="w-56 flex-shrink-0">
+                <SpaceCard
+                  spaceId={space.id}
+                  name={space.name}
+                  type={space.type}
+                  capacity={space.capacity}
+                  isFavorited={space.is_favorited}
+                  supportingLine={space.supportingLine}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -414,7 +413,7 @@ export default function HomePage() {
             .
           </p>
         ) : buildings.length === 0 ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={railClass}>
             {[
               { name: "Central Library", address: "123 Main Street" },
               { name: "Tech Hub", address: "456 Innovation Ave" },
@@ -424,23 +423,33 @@ export default function HomePage() {
               <Link
                 key={b.name}
                 href="/buildings"
-                className={compactCardClass}
+                className="w-56 flex-shrink-0 rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] shadow-[0_1px_3px_rgba(22,26,22,0.06),0_4px_8px_-2px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_2px_6px_rgba(22,26,22,0.08),0_8px_16px_-4px_rgba(22,26,22,0.10)]"
               >
-                <p className="font-serif text-lg leading-tight text-foreground">{b.name}</p>
-                <p className="mt-1 text-xs text-text-muted">{b.address}</p>
+                <div className="flex h-28 items-center justify-center overflow-hidden rounded-t-[1.65rem] bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
+                  <span className="text-3xl">🏛</span>
+                </div>
+                <div className="px-4 pt-3 pb-4">
+                  <p className="font-serif text-xl leading-tight text-foreground">{b.name}</p>
+                  <p className="mt-1 text-xs text-text-muted">{b.address}</p>
+                </div>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={railClass}>
             {buildings.map((building) => (
               <Link
                 key={building.id}
                 href={`/buildings/${building.id}`}
-                className={compactCardClass}
+                className="w-56 flex-shrink-0 rounded-[1.75rem] border border-[color:color-mix(in_srgb,var(--color-border)_22%,transparent)] bg-[color:color-mix(in_srgb,var(--color-surface)_98%,white_2%)] shadow-[0_1px_3px_rgba(22,26,22,0.06),0_4px_8px_-2px_rgba(22,26,22,0.08)] transition duration-200 hover:-translate-y-0.5 hover:border-[color:color-mix(in_srgb,var(--color-accent)_20%,transparent)] hover:shadow-[0_2px_6px_rgba(22,26,22,0.08),0_8px_16px_-4px_rgba(22,26,22,0.10)]"
               >
-                <p className="font-serif text-lg leading-tight text-foreground">{building.name}</p>
-                <p className="mt-1 text-xs text-text-muted">{building.address}</p>
+                <div className="flex h-28 items-center justify-center overflow-hidden rounded-t-[1.65rem] bg-[radial-gradient(circle_at_top,_rgba(137,179,116,0.22),_transparent_56%),linear-gradient(135deg,_#f4f8f1,_#e7eee1)]">
+                  <span className="text-3xl">🏛</span>
+                </div>
+                <div className="px-4 pt-3 pb-4">
+                  <p className="font-serif text-xl leading-tight text-foreground">{building.name}</p>
+                  <p className="mt-1 text-xs text-text-muted">{building.address}</p>
+                </div>
               </Link>
             ))}
           </div>

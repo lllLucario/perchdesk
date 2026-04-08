@@ -149,7 +149,7 @@ export default function AdminManagePage() {
   return (
     <div className="page-stack">
       <div className="section-frame mb-6 px-6 py-6 md:px-8">
-        <p className="section-kicker mb-3">Admin workspace</p>
+        <p className="page-eyebrow mb-3">Admin workspace</p>
         <h1 className="text-4xl text-foreground">Manage Spaces & Seats</h1>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Create spaces, upload floor plans, and edit seat layouts without leaving the design system.
