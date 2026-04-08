@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Building } from "@/lib/hooks";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 interface Props {
   building: Building;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function BuildingModal({ building, spaceCount, onClose }: Props) {
   const router = useRouter();
+  const modalRef = useModalA11y(onClose);
 
   function handleViewSpaces() {
     onClose();
@@ -21,8 +23,12 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(22,26,22,0.48)]"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="building-modal-title"
     >
       <div
+        ref={modalRef}
         className="relative mx-4 w-full max-w-md overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -40,7 +46,7 @@ export default function BuildingModal({ building, spaceCount, onClose }: Props) 
         </button>
 
         <div className="p-6">
-          <h2 className="mb-1 font-serif text-2xl leading-tight text-foreground">{building.name}</h2>
+          <h2 id="building-modal-title" className="mb-1 font-serif text-2xl leading-tight text-foreground">{building.name}</h2>
           <p className="mb-4 text-sm text-text-muted">{building.address}</p>
 
           {building.description && (

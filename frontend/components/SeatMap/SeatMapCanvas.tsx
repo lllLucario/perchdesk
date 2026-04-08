@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { Seat } from "@/lib/hooks";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -69,6 +69,54 @@ export default function SeatMapCanvas({
   onCanvasClick,
 }: SeatMapCanvasProps) {
   const [ghostPos, setGhostPos] = useState<{ x: number; y: number } | null>(null);
+  const [focusedSeatIndex, setFocusedSeatIndex] = useState<number>(-1);
+
+  // Sort seats spatially for keyboard navigation (top-to-bottom, left-to-right)
+  const sortedSeats = [...seats].sort((a, b) => {
+    const rowDiff = Math.round(a.position.y / gridSize) - Math.round(b.position.y / gridSize);
+    if (rowDiff !== 0) return rowDiff;
+    return a.position.x - b.position.x;
+  });
+
+  const handleSeatKeyDown = useCallback(
+    (e: React.KeyboardEvent<SVGSVGElement>) => {
+      if (mode !== "user" || seats.length === 0) return;
+
+      const moveFocus = (newIndex: number) => {
+        e.preventDefault();
+        const clamped = Math.max(0, Math.min(sortedSeats.length - 1, newIndex));
+        setFocusedSeatIndex(clamped);
+      };
+
+      switch (e.key) {
+        case "ArrowRight":
+        case "ArrowDown":
+          moveFocus(focusedSeatIndex < 0 ? 0 : focusedSeatIndex + 1);
+          break;
+        case "ArrowLeft":
+        case "ArrowUp":
+          moveFocus(focusedSeatIndex < 0 ? 0 : focusedSeatIndex - 1);
+          break;
+        case "Enter":
+        case " ": {
+          e.preventDefault();
+          if (focusedSeatIndex >= 0 && focusedSeatIndex < sortedSeats.length) {
+            const seat = sortedSeats[focusedSeatIndex];
+            if (isClickable(seat)) onSeatClick?.(seat);
+          }
+          break;
+        }
+        case "Home":
+          moveFocus(0);
+          break;
+        case "End":
+          moveFocus(sortedSeats.length - 1);
+          break;
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mode, seats.length, focusedSeatIndex, sortedSeats, onSeatClick]
+  );
 
   const bgUrl = backgroundImage
     ? backgroundImage.startsWith("http")
@@ -151,6 +199,10 @@ export default function SeatMapCanvas({
       onMouseMove={onMouseMove}
       onMouseLeave={onMouseLeave}
       onClick={onCanvasPointerClick}
+      onKeyDown={handleSeatKeyDown}
+      tabIndex={mode === "user" ? 0 : undefined}
+      role={mode === "user" ? "grid" : undefined}
+      aria-label={mode === "user" ? "Seat map — use arrow keys to navigate, Enter to select" : undefined}
     >
       <defs>
         <pattern id="map-grid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse">
@@ -191,16 +243,50 @@ export default function SeatMapCanvas({
           : seatOpacity(seat);
         const showCheckmark = !!draftInfo?.isActiveDraft;
 
+        // Keyboard focus state
+        const sortedIdx = sortedSeats.findIndex((s) => s.id === seat.id);
+        const isFocused = mode === "user" && sortedIdx === focusedSeatIndex;
+
+        // Accessibility label
+        const avail = availabilityMap?.[seat.id];
+        const seatStatus =
+          seat.status === "maintenance"
+            ? "maintenance"
+            : avail === "my_booking"
+            ? "your booking"
+            : avail === "booked"
+            ? "booked"
+            : draftInfo
+            ? "selected"
+            : "available";
+
         return (
           <g
             key={seat.id}
             style={{ cursor: clickable ? "pointer" : "default" }}
             opacity={opacity}
+            role={mode === "user" ? "gridcell" : undefined}
+            aria-label={mode === "user" ? `Seat ${seat.label}, ${seatStatus}` : undefined}
+            aria-selected={mode === "user" ? (!!draftInfo || isSelected) : undefined}
             onClick={(e) => {
               e.stopPropagation();
               if (clickable) onSeatClick?.(seat);
             }}
           >
+            {/* Keyboard focus ring */}
+            {isFocused && (
+              <rect
+                x={cx - SEAT_HALF - 3}
+                y={cy - SEAT_HALF - 3}
+                width={SEAT_SIZE + 6}
+                height={SEAT_SIZE + 6}
+                rx={6}
+                fill="none"
+                stroke="#2563EB"
+                strokeWidth={2}
+                strokeDasharray="4,2"
+              />
+            )}
             <rect
               x={cx - SEAT_HALF}
               y={cy - SEAT_HALF}
