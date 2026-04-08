@@ -19,6 +19,9 @@
   --danger: #a14b45;
   --shadow-whisper: 0 18px 40px rgba(22, 26, 22, 0.06);
   --shadow-ring: 0 0 0 1px var(--ring);
+  --font-sans: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: Georgia, "Times New Roman", Times, serif;
+  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 @theme inline {
@@ -37,10 +40,8 @@
   --color-text-soft: var(--text-soft);
   --color-text-strong: var(--text-strong);
   --color-danger: var(--danger);
-  --font-sans: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-serif: Georgia, "Times New Roman", Times, serif;
-  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
 
 @media (prefers-color-scheme: dark) {
   :root {
