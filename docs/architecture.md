@@ -1,818 +1,659 @@
-# PerchDesk — Architecture Document
-
-## 1. System Overview
-
-PerchDesk is a multi-scenario seat reservation platform. It supports two space
-types through a single unified data model — the `space_rules` table drives all
-scenario-specific behavior so that no business logic is hard-coded per space
-type.
-
-Time handling follows two explicit semantics:
-
-- persisted timestamps and absolute comparisons use UTC
-- booking calendar rules use `Australia/Sydney` local wall-clock semantics
-
-See `docs/time-semantics.md` for the full rule set.
-
-The product also includes cross-cutting discovery capabilities that are shared
-across feature areas rather than owned by one page or flow.
-
-Current examples include:
-
-- personalized space discovery through `My Spaces`
-- favorite spaces and future seat favorites
-- building-first browsing
-- a planned `location` domain for nearby discovery, recommendation, and map
-  experience
-
-### Supported scenarios
-
-**Library / Study Room** — High seat count, hourly bookings, 15-minute
-auto-release if user does not check in. Designed for walk-in and short-notice
-reservations.
-
-**Shared Office / Hot-Desk** — Fewer seats, half-day or full-day bookings, up
-to 7 days advance booking. No auto-release; cancellation must happen before the
-booking date.
-
----
-
-## 2. Architecture Diagram
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                    Frontend (Next.js)                     │
-│  ┌────────────┐  ┌────────────┐  ┌─────────────────────┐ │
-│  │  Seat Map   │  │  Booking   │  │  Admin Dashboard    │ │
-│  │  Component  │  │  Panel     │  │  (Phase 4)          │ │
-│  └────────────┘  └────────────┘  └─────────────────────┘ │
-│         Zustand (auth, UI state)                         │
-│         TanStack Query (API cache, refetching)           │
-└──────────────────────┬───────────────────────────────────┘
-                       │ HTTPS (REST JSON)
-                       ▼
-┌──────────────────────────────────────────────────────────┐
-│                  Backend (FastAPI)                        │
-│  ┌──────────┐  ┌──────────────┐  ┌────────────────────┐ │
-│  │ API v1   │  │  Service     │  │  Scheduler          │ │
-│  │ Routes   │──│  Layer       │  │  (APScheduler)      │ │
-│  └──────────┘  └──────┬───────┘  └────────┬───────────┘ │
-│                       │                    │              │
-│            ┌──────────▼────────────────────▼──────┐      │
-│            │  SQLAlchemy ORM (async sessions)     │      │
-│            └──────────────────┬───────────────────┘      │
-└───────────────────────────────┼──────────────────────────┘
-                                │
-                       ┌────────▼────────┐
-                       │   PostgreSQL    │
-                       └─────────────────┘
-
-Phase 3 additions:
-  Frontend ◄──WebSocket──► Backend ◄──pub/sub──► Redis
-```
-
----
-
-## 3. Database Schema
-
-### 3.1 Entity Relationship
-
-```
-users          1 ──── * bookings
-seats          1 ──── * bookings
-buildings      1 ──── * spaces
-spaces         1 ──── * seats
-spaces         1 ──── 1 space_rules
-users          1 ──── * favorite_spaces
-spaces         1 ──── * favorite_spaces
-users          1 ──── * favorite_seats
-seats          1 ──── * favorite_seats
-users          1 ──── * space_visits
-spaces         1 ──── * space_visits
-```
-
-### 3.2 Table Definitions
-
-#### users
-
-| Column          | Type        | Constraints               |
-|-----------------|-------------|---------------------------|
-| id              | UUID        | PK, default uuid4         |
-| email           | VARCHAR     | UNIQUE, NOT NULL, indexed |
-| name            | VARCHAR     | NOT NULL                  |
-| hashed_password | VARCHAR     | NOT NULL                  |
-| role            | ENUM        | 'admin' \| 'user'         |
-| created_at      | TIMESTAMPTZ | DEFAULT now()             |
-
-#### buildings
-
-| Column        | Type        | Constraints                        |
-|---------------|-------------|------------------------------------|
-| id            | UUID        | PK, default uuid4                  |
-| name          | VARCHAR     | NOT NULL                           |
-| address       | VARCHAR     | NOT NULL                           |
-| description   | VARCHAR     | Nullable                           |
-| opening_hours | JSONB       | Nullable                           |
-| facilities    | JSONB       | Nullable                           |
-| created_at    | TIMESTAMPTZ | DEFAULT now()                      |
-
-Current implementation note:
-
-- `buildings` is the primary physical grouping layer above `spaces`
-- space browsing and future map-oriented discovery should remain compatible
-  with building-first navigation
-- future location-aware capability work should treat `building` as the primary
-  physical anchor for coordinates
-
-#### spaces
-
-| Column        | Type        | Constraints                    |
-|---------------|-------------|--------------------------------|
-| id            | UUID        | PK, default uuid4              |
-| building_id   | UUID        | FK → buildings.id, nullable    |
-| name          | VARCHAR     | NOT NULL                       |
-| type          | ENUM        | 'library' \| 'office'          |
-| layout_config | JSONB       | Nullable (seat map layout)     |
-| capacity      | INTEGER     | NOT NULL                       |
-| created_at    | TIMESTAMPTZ | DEFAULT now()                  |
-
-`layout_config` stores the visual seat map configuration as JSON. The frontend
-reads this to render interactive seat layouts. Structure:
-
-```json
-{
-  "width": 800,
-  "height": 600,
-  "grid_size": 30,
-  "background_image": null,
-  "zones": [
-    { "id": "zone-a", "label": "Zone A", "x": 0, "y": 0, "width": 400, "height": 300 }
-  ]
-}
-```
-
-- `grid_size`: snap interval in pixels for the seat editor (default 30)
-- `background_image`: nullable — URL to uploaded floor plan image (Phase 3)
-- `zones`: optional grouping areas for organizing seats visually
-
-#### seats
-
-| Column     | Type    | Constraints                                |
-|------------|---------|--------------------------------------------|
-| id         | UUID    | PK, default uuid4                          |
-| space_id   | UUID    | FK → spaces.id, NOT NULL, indexed          |
-| label      | VARCHAR | NOT NULL (e.g. "A1", "B12")                |
-| position   | JSONB   | NOT NULL — `{ "x": 120, "y": 80 }`        |
-| status     | ENUM    | 'available' \| 'maintenance'                |
-| attributes | JSONB   | Nullable — `{ "power_outlet": true, ... }` |
-
-#### bookings
-
-| Column        | Type        | Constraints                                                 |
-|---------------|-------------|-------------------------------------------------------------|
-| id            | UUID        | PK, default uuid4                                           |
-| user_id       | UUID        | FK → users.id, NOT NULL, indexed                            |
-| seat_id       | UUID        | FK → seats.id, NOT NULL, indexed                            |
-| start_time    | TIMESTAMPTZ | NOT NULL                                                    |
-| end_time      | TIMESTAMPTZ | NOT NULL                                                    |
-| status        | ENUM        | 'confirmed' \| 'cancelled' \| 'checked_in' \| 'expired'     |
-| checked_in_at | TIMESTAMPTZ | Nullable                                                    |
-| created_at    | TIMESTAMPTZ | DEFAULT now()                                               |
-
-**Conflict prevention**: A database-level exclusion constraint (or application-
-level check) ensures no two active bookings (status = 'confirmed' or
-'checked_in') overlap on the same seat for the same time range.
-
-```sql
--- PostgreSQL exclusion constraint using btree_gist extension
-ALTER TABLE bookings ADD CONSTRAINT no_overlap
-  EXCLUDE USING gist (
-    seat_id WITH =,
-    tstzrange(start_time, end_time) WITH &&
-  )
-  WHERE (status IN ('confirmed', 'checked_in'));
-```
-
-#### space_rules
-
-| Column               | Type    | Constraints                              |
-|----------------------|---------|------------------------------------------|
-| id                   | UUID    | PK, default uuid4                        |
-| space_id             | UUID    | FK → spaces.id, UNIQUE, NOT NULL         |
-| max_duration_minutes | INTEGER | NOT NULL                                 |
-| max_advance_days     | INTEGER | NOT NULL                                 |
-| time_unit            | ENUM    | 'hourly' \| 'half_day' \| 'full_day'     |
-| auto_release_minutes | INTEGER | Nullable (null = no auto-release)        |
-| requires_approval    | BOOLEAN | DEFAULT false                            |
-| recurring_rules      | JSONB   | Nullable (future: recurring bookings)    |
-
-#### favorite_spaces
-
-| Column     | Type        | Constraints                                      |
-|------------|-------------|--------------------------------------------------|
-| id         | UUID        | PK, default uuid4                                |
-| user_id    | UUID        | FK → users.id, NOT NULL, indexed                 |
-| space_id   | UUID        | FK → spaces.id, NOT NULL, indexed                |
-| created_at | TIMESTAMPTZ | DEFAULT now()                                    |
-
-Recommended constraint:
-
-- unique pair on `(user_id, space_id)` to prevent duplicate favorites
-
-#### favorite_seats
-
-| Column     | Type        | Constraints                                      |
-|------------|-------------|--------------------------------------------------|
-| id         | UUID        | PK, default uuid4                                |
-| user_id    | UUID        | FK → users.id, NOT NULL, indexed                 |
-| seat_id    | UUID        | FK → seats.id, NOT NULL, indexed                 |
-| created_at | TIMESTAMPTZ | DEFAULT now()                                    |
-
-Recommended constraint:
-
-- unique pair on `(user_id, seat_id)` to prevent duplicate favorites
-
-#### space_visits
-
-| Column     | Type        | Constraints                                      |
-|------------|-------------|--------------------------------------------------|
-| id         | UUID        | PK, default uuid4                                |
-| user_id    | UUID        | FK → users.id, NOT NULL, indexed                 |
-| space_id   | UUID        | FK → spaces.id, NOT NULL, indexed                |
-| visited_at | TIMESTAMPTZ | NOT NULL, DEFAULT now()                          |
-
-Constraints:
-
-- unique pair on `(user_id, space_id)` — one row per user per space, upserted
-  on each visit
-- `visited_at` is updated on each successful floorplan page initialization
-- CASCADE delete on both foreign keys
-
-### 3.3 Scenario Rules (driven by space_rules values)
-
-| Rule                  | Library / Study Room       | Shared Office Hot-Desk       |
-|-----------------------|----------------------------|------------------------------|
-| type                  | library                    | office                       |
-| max_duration_minutes  | 480 (8 hours)              | 480 (8 hours)                |
-| max_advance_days      | 3                          | 7                            |
-| time_unit             | hourly                     | hourly (current phase)       |
-| auto_release_minutes  | 15                         | null (no auto-release)       |
-| requires_approval     | false                      | false                        |
-| Cancellation policy   | Before booking start_time  | Before booking date 00:00    |
-
-These values are seed data inserted at database initialization. Adding a new
-scenario in the future means inserting a new space + space_rules row — no code
-changes needed.
-
-Current implementation note:
-
-- `spaces` may belong to a `building` through `building_id`
-- building remains the preferred physical browse anchor, while `space` remains
-  the direct booking object
-- booking-time business rules such as daily caps and midnight cutoffs should be
-  interpreted using `Australia/Sydney` local calendar semantics, not raw UTC
-  duration
-- although the schema still supports `half_day` and `full_day`, the active
-  product direction for the booking workspace is to use one hourly slot-based
-  interaction model across both `library` and `office`
-- the current product decision is to align both default `library` and `office`
-  booking duration caps to `480` minutes (`8 hours`) per day; future
-  space-specific overrides remain an admin-configurable direction, but that is
-  not the active baseline yet
-- future admin-defined office booking modes remain possible, but are deferred
-  until after the current booking workspace flow is stable
-
----
-
-## 4. Backend Architecture
-
-### 4.1 Layer Separation
-
-```
-Request → Route Handler → Service Layer → ORM / Database
-                ↑                ↑
-          Pydantic schemas   Business logic,
-          (validation)       validation, rules
-```
-
-**Route handlers** (`/api/v1/`) parse requests, call service methods, and return
-responses. They should be thin — no business logic.
-
-**Service layer** (`/services/`) contains all business logic: booking conflict
-checks, rule enforcement, permission checks. Services receive ORM sessions via
-dependency injection.
-
-**Models** (`/models/`) are SQLAlchemy ORM classes. They define table structure
-only — no business methods.
-
-**Schemas** (`/schemas/`) are Pydantic models for request validation and
-response serialization. Separate Create/Update/Response schemas per resource.
-
-### 4.1.1 Cross-Domain Capability Tracks
-
-Not every product capability maps neatly to one page or one persisted table.
-
-The architecture should therefore distinguish between:
-
-- resource domains such as `buildings`, `spaces`, `seats`, and `bookings`
-- cross-domain capability tracks such as personalized discovery and location
-
-Current direction:
-
-- `My Spaces` is the personalized discovery consumer surface
-- `location` is a shared capability domain for:
-  - building coordinates
-  - user location access rules
-  - nearby discovery
-  - location-aware recommendation inputs
-  - future map experience
-
-These capability tracks should reuse core resource models rather than creating
-parallel ownership of `spaces` or `bookings`.
-
-### 4.2 Authentication Flow
-
-1. User registers → password hashed with bcrypt → stored in users table
-2. User logs in with email + password → server returns JWT access token + refresh token
-3. Frontend stores tokens (httpOnly cookie or Zustand + localStorage)
-4. Every API request includes `Authorization: Bearer <access_token>`
-5. FastAPI dependency `get_current_user` decodes JWT, loads user from DB
-6. Admin-only endpoints additionally check `user.role == 'admin'`
-
-Token configuration:
-- Access token: 30 minutes expiry
-- Refresh token: 7 days expiry
-- Algorithm: HS256
-- Secret: loaded from environment variable `JWT_SECRET_KEY`
-
-### 4.3 Booking Flow
-
-```
-User selects seat + time range
+# PerchDesk Architecture
+
+## 1. Purpose
+
+This document is the architecture source of truth for the current PerchDesk
+codebase.
+
+It intentionally separates three things:
+
+- current implemented architecture
+- credible deferred directions
+- older planned directions that no longer match the product trajectory closely
+  enough to be treated as defaults
+
+The goal is to stop stale planning assumptions from leaking into code changes.
+
+## 2. Product State Snapshot
+
+PerchDesk currently operates as a booking product with four connected surfaces:
+
+- structured browsing through `Buildings -> Spaces in Building`
+- booking execution through the floorplan workspace
+- personalized discovery through `Home / For You` and `My Spaces`
+- post-booking management through `My Bookings`
+
+The current user flow baseline is:
+
+`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm -> Result`
+
+Supporting alternative flows also exist:
+
+- `Home -> For You -> Space -> Floorplan`
+- `Buildings -> Map -> Building -> Spaces`
+- `My Spaces -> Space -> Floorplan`
+- `My Bookings -> Detail modal`
+
+## 3. Stable Product Decisions
+
+These directions should be treated as active architecture, not open questions.
+
+### 3.1 Resource ownership
+
+- `building` is the primary physical browse and map anchor
+- `space` is the direct booking object
+- `seat` is the concrete reservable unit
+- `booking` remains the persisted reservation entity
+- frontend booking drafts are planning artifacts, not new backend entities
+
+### 3.2 Scenario model
+
+The system still models multiple scenarios through `space.type` and
+`space_rules`, but the active UX no longer diverges heavily by scenario.
+
+Current active baseline:
+
+- `library` and `office` both use hourly booking interaction
+- both default to an `8 hour` daily-cap baseline
+- differences currently come from:
+  - `max_advance_days`
+  - `auto_release_minutes`
+  - cancellation policy
+
+This means the old "library = hourly, office = half-day/full-day" product
+story is no longer a reliable implementation assumption.
+
+### 3.3 Discovery model
+
+PerchDesk now has two parallel but coordinated access models:
+
+- structured browse: `Buildings -> Spaces`
+- personalized access: `For You` and `My Spaces`
+
+Neither replaces the other.
+
+### 3.4 Location model
+
+Location is now a real cross-domain capability, not just a future concept.
+
+Implemented scope:
+
+- building coordinates
+- browser location permission handling
+- nearby building discovery
+- nearby space discovery
+- map-based building browsing
+
+Location improves ranking and wayfinding, but does not gate booking.
+
+## 4. Time Semantics
+
+PerchDesk uses two time semantics:
+
+- UTC instant semantics for storage, ordering, overlap checks, and scheduler
+  timing
+- `Australia/Sydney` wall-clock semantics for booking rules tied to local
+  calendar meaning
+
+Examples of Sydney wall-clock rules already implemented:
+
+- hourly slot alignment
+- half-day / full-day validation helpers in service logic
+- office cancellation cutoff at local midnight
+- daily cap accumulation within the same Sydney day
+
+See [time-semantics.md](/Users/kkkadoya/Desktop/perchdesk/docs/time-semantics.md).
+
+## 5. System Architecture
+
+```text
+Frontend (Next.js App Router)
+  ├─ public and authenticated route segments
+  ├─ Zustand for local interaction state
+  ├─ TanStack Query for server state
+  ├─ Leaflet map browsing
+  └─ shared SVG seat map canvas
+        │
+        │ HTTPS / JSON
+        ▼
+Backend (FastAPI)
+  ├─ /api/v1 routes
+  ├─ service layer
+  ├─ async SQLAlchemy ORM
+  ├─ custom exception handling
+  └─ APScheduler auto-release job
         │
         ▼
-Frontend: POST /api/v1/bookings
-        │
-        ▼
-Backend: BookingService.create_booking()
-        │
-        ├─ Validate seat exists and status == 'available'
-        ├─ Load space_rules for the seat's space
-        ├─ Validate time range against rules:
-        │    ├─ Duration <= max_duration_minutes?
-        │    ├─ Start time <= now + max_advance_days?
-        │    └─ Time unit alignment (hourly / half_day / full_day)?
-        ├─ Check for overlapping bookings (conflict detection)
-        │    └─ DB exclusion constraint + application-level pre-check
-        ├─ If requires_approval → set status = 'pending' (future)
-        └─ Else → set status = 'confirmed'
-        │
-        ▼
-Return booking object with status
+PostgreSQL (intended runtime)
+
+Testing runtime:
+  backend tests use SQLite-compatible fallbacks where possible
 ```
 
-### 4.3A Personalized Space Access
+## 6. Frontend Architecture
 
-The product includes a personalized discovery layer on top of the structured
-building browse flow.
+### 6.1 Route structure
 
-Surfaces (v1 complete):
+Current meaningful route groups:
 
-- `For You` on `Home` — mixed deduplicated stream of favorite, recent, and
-  recommended spaces
-- `My Spaces` page at `/my-spaces` — sectioned display with `Favorite Spaces`,
-  `Recent Spaces`, and `Recommended Spaces`
+- `/(public)/page.tsx`
+  - product home
+  - personalized `For You`
+  - nearby buildings summary
+- `/(auth)`
+  - login
+  - register
+- `/(dashboard)/buildings/page.tsx`
+  - building list
+- `/(dashboard)/buildings/map/page.tsx`
+  - Leaflet map browse
+- `/(dashboard)/buildings/[id]/page.tsx`
+  - spaces scoped to a building
+- `/(dashboard)/spaces/[id]/page.tsx`
+  - booking workspace / floorplan
+- `/(dashboard)/confirm/page.tsx`
+  - checkout confirmation
+- `/(dashboard)/result/page.tsx`
+  - checkout results
+- `/(dashboard)/my-spaces/page.tsx`
+  - personalized spaces surface
+- `/(dashboard)/bookings/page.tsx`
+  - `My Bookings`
+- `/(admin)/spaces/manage/page.tsx`
+  - space and seat management
 
-Signals implemented:
+### 6.2 Frontend state split
 
-- `Favorite Spaces` — backed by `favorite_spaces` table; star toggle on
-  `SpaceCard` with optimistic UI
-- `Recent Spaces` — combines successful bookings (`confirmed` / `checked_in`)
-  and floorplan-entry visits (`space_visits`); bookings take priority;
-  deduplicated by `space`
-- `Recommended Spaces` — consumes `GET /api/v1/spaces/nearby` for `Near you`
-  candidates; full recommendation pipeline (PopularityScore,
-  PreferenceLiteScore, reranking) is future backend work
+#### Zustand
 
-Implementation notes:
+- `authStore`
+  - user metadata
+  - access token
+  - persisted login state
+- `bookingStore`
+  - workspace date
+  - active seat
+  - active slots
+  - booking drafts
+  - checkout results
+- `locationStore`
+  - location permission lifecycle
+  - coordinates
 
-- `favorite_seats` exists at the backend level for future expansion; no
-  frontend UI yet
-- `is_favorited` is enriched on all space GET endpoints per requesting user
-- `Buildings` remains the systemized browse surface
-- `Space` remains the concrete booking object, not the sole global discovery
-  layer
+#### TanStack Query
 
-### 4.4 Auto-Release Scheduler (APScheduler)
+Owns server-backed data such as:
 
-Runs as a background task inside the FastAPI process (Phase 1 & 2).
+- buildings
+- building spaces
+- spaces
+- space rules
+- availability
+- bookings
+- favorites
+- nearby results
+- recent space visits
 
-```
-Every 1 minute:
-  1. Query all bookings WHERE:
-     - status = 'confirmed'
-     - start_time < now()
-     - checked_in_at IS NULL
-     - The seat's space has auto_release_minutes IS NOT NULL
-     - start_time + auto_release_minutes < now()
-  2. Set matching bookings to status = 'expired'
-  3. (Phase 3) Publish seat status update via Redis pub/sub
-```
+### 6.3 Auth implementation reality
 
----
+Current implementation:
 
-## 5. Frontend Booking UX Model
+- backend issues `access_token` and `refresh_token`
+- frontend stores the access token in `localStorage`
+- Zustand persists session metadata
+- API requests read Bearer token from `localStorage`
 
-The current user-facing booking flow is intentionally task-oriented and should
-avoid unnecessary detail pages between selection steps.
+Not current reality:
 
-### 5.1 Page hierarchy
+- httpOnly cookie auth
+- automatic refresh-token rotation in frontend
 
-Primary flow:
+Those may be future hardening tasks, but they are not current architecture.
 
-`Home -> Buildings -> Spaces in Building -> Floorplan -> Confirm Modal -> Result`
+### 6.4 Booking workspace model
 
-Page intent:
+The floorplan page is the main booking execution surface.
 
-- `Home`: product homepage for user booking entry
-- `Buildings`: building card list
-- `Spaces in Building`: space card list scoped to one building
-- `Floorplan`: booking workspace
-- `Confirm Modal`: pre-checkout confirmation inside the floorplan flow
-- `Result`: post-checkout submission outcome
+Desktop mental model:
 
-### 5.2 Selection model
+- left column: date and hourly slot selection
+- center: seat map
+- right column: booking drafts
 
-Building and space discovery should be card-based:
-
-- clicking a card body opens a modal with supporting detail
-- clicking the card CTA advances the main booking flow
-
-This keeps detail available without inserting extra full pages into the booking
-path.
-
-Current modal direction:
-
-- building modal supports `View Spaces`
-- space modal supports `Book a Seat`
-
-### 5.3 Floorplan workspace model
-
-The floorplan page is a three-column workspace:
-
-- left: date and slot controls
-- center: floorplan interaction area
-- right: `Booking Drafts`
-
-The center floorplan remains the primary workspace and should occupy roughly
-half of the available width in desktop layouts.
-
-### 5.4 Booking draft model
-
-`Booking Drafts` are frontend planning containers used before checkout.
-
-Current behavior:
+Important current behavior:
 
 - one draft binds one seat
-- one draft may contain one or more selected slots
-- selected slots may be continuous or discrete
-- when selected slots contain gaps, one draft may expand into multiple real
-  bookings at checkout
+- one draft may contain discontinuous slot selections
+- discontinuous slots are split into multiple real bookings at checkout
+- current daily planning cap on the frontend is aligned to 8 total hours
 
-This model allows the booking workspace to support planning multiple bookings in
-one session without redefining the backend booking entity itself.
+### 6.5 Seat map
 
-### 5.5 Current scope boundaries
+`SeatMapCanvas` is a shared SVG rendering/editing engine used in two modes:
 
-- cross-day booking is not supported for now
-- building and space details should remain modal-based in the primary flow
-- detailed page behavior, state transitions, and wireframes should stay in the
-  dedicated UX documents
+- user mode
+  - availability display
+  - seat selection
+- admin mode
+  - add / delete / edit seat interactions
+  - optional background floor plan
 
-See also:
+Current implementation path is intentionally manual:
 
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- background images are visual references only
+- admins still place seats manually
+- there is no AI-assisted seat detection or computer-vision pipeline
 
-### 4.5 Error Handling
+## 7. Backend Architecture
 
-Custom exceptions in `backend/app/core/exceptions.py`:
+### 7.1 Layering
 
-```python
-class PerchDeskError(Exception):
-    """Base exception for all application errors."""
-    status_code: int = 500
-    error_code: str = "INTERNAL_ERROR"
+```text
+Route handler
+  -> dependency/auth checks
+  -> service call
+  -> schema serialization
 
-class BookingConflictError(PerchDeskError):
-    status_code = 409
-    error_code = "BOOKING_CONFLICT"
+Service layer
+  -> business rules
+  -> validation
+  -> conflict checks
+  -> persistence orchestration
 
-class BookingRuleViolationError(PerchDeskError):
-    status_code = 400
-    error_code = "RULE_VIOLATION"
-
-class SeatUnavailableError(PerchDeskError):
-    status_code = 400
-    error_code = "SEAT_UNAVAILABLE"
-
-class UnauthorizedError(PerchDeskError):
-    status_code = 401
-    error_code = "UNAUTHORIZED"
-
-class ForbiddenError(PerchDeskError):
-    status_code = 403
-    error_code = "FORBIDDEN"
-
-class NotFoundError(PerchDeskError):
-    status_code = 404
-    error_code = "NOT_FOUND"
+ORM models
+  -> table mappings
 ```
 
-Global exception handler in `backend/app/main.py` catches `PerchDeskError`
-subclasses and returns the standard JSON response format.
+Current service modules map closely to domain operations:
 
----
+- `auth`
+- `building`
+- `space`
+- `seat`
+- `booking`
+- `favorite`
+- `space_visit`
+- `space_rules`
 
-## 5. Frontend Architecture
+### 7.2 Exception model
 
-### 5.1 Page Structure (App Router)
+Backend uses custom domain exceptions:
 
-```
-/app
-  /page.tsx                    — Landing / redirect to dashboard
-  /(auth)
-    /login/page.tsx            — Login form
-    /register/page.tsx         — Registration form
-  /(dashboard)
-    /layout.tsx                — Authenticated layout with nav
-    /spaces/page.tsx           — List all spaces
-    /spaces/[id]/page.tsx      — Space detail with seat map
-    /bookings/page.tsx         — My bookings list
-    /bookings/[id]/page.tsx    — Booking detail
-  /(admin)
-    /layout.tsx                — Admin-only layout guard
-    /spaces/manage/page.tsx    — CRUD spaces and seats
-    /analytics/page.tsx        — Usage analytics (Phase 4)
-```
+- `BookingConflictError`
+- `BookingRuleViolationError`
+- `SeatUnavailableError`
+- `UnauthorizedError`
+- `ForbiddenError`
+- `NotFoundError`
+- `DuplicateError`
 
-### 5.2 State Management
+`main.py` registers a global handler for `PerchDeskError`.
 
-**Zustand stores** (synchronous, client-side):
-- `useAuthStore` — current user, tokens, login/logout actions
-- `useBookingStore` — selected seat, selected time range (transient UI state)
+### 7.3 Scheduler
 
-**TanStack Query** (async, server state):
-- `useSpaces()` — GET /api/v1/spaces
-- `useSpace(id)` — GET /api/v1/spaces/:id (includes seats)
-- `useBookings()` — GET /api/v1/bookings (current user's bookings)
-- `useCreateBooking()` — POST /api/v1/bookings (mutation)
-- `useCancelBooking()` — PATCH /api/v1/bookings/:id/cancel (mutation)
-- `useCheckIn()` — PATCH /api/v1/bookings/:id/check-in (mutation)
+APScheduler runs inside the FastAPI process and executes every minute.
 
-Mutations invalidate related queries on success (e.g. creating a booking
-invalidates both `useBookings` and `useSpace` to refresh seat availability).
+Current job:
 
-### 5.3 Seat Map — Phased Implementation
+- expire confirmed, unchecked bookings after `auto_release_minutes`
 
-The seat map has two views sharing the same SVG rendering engine:
-- **Admin editor** (`/admin/spaces/manage`): editable — place, move, delete seats
-- **User view** (`/spaces/[id]`): read-only — view availability, click to book
+Important limit:
 
-#### Phase 1 & 2: Grid-based seat editor (no background image)
+- there is no Redis pub/sub fan-out or real-time client sync yet
 
-Admin creates seats by clicking on a grid canvas. Coordinates snap to grid
-intersections for clean alignment. No floor plan image needed.
+### 7.4 Geo capability
 
-```
-Admin editor UI:
-┌─────────────────────────────────────────────────┐
-│ Toolbar: [+ Add seat] [Remove] [Edit] [Toggle grid] │
-│          Label prefix: [A]  Grid size: [30px]   │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·   │
-│  · [A1] ·  · [A2] ·  ·  ·  ·  ·  ·  ·  ·  ·   │
-│  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·   │
-│  · [A3] ·  · [A4] ·  ·  · [B1] · [B2] ·  ·   │
-│  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·  ·   │
-│                                                 │
-└─────────────────────────────────────────────────┘
+Location queries are currently application-level, not database-spatial.
+
+Implemented approach:
+
+- Haversine calculation in Python
+- coordinate filtering in SQLAlchemy
+- bounds querying through simple lat/lng range filtering
+
+This is intentionally lightweight and PostGIS-free for current scope.
+
+## 8. Database Model
+
+### 8.1 Entity relationships
+
+```text
+users          1 ── * bookings
+seats          1 ── * bookings
+buildings      1 ── * spaces
+spaces         1 ── * seats
+spaces         1 ── 1 space_rules
+users          1 ── * favorite_spaces
+spaces         1 ── * favorite_spaces
+users          1 ── * favorite_seats
+seats          1 ── * favorite_seats
+users          1 ── * space_visits
+spaces         1 ── * space_visits
 ```
 
-Implementation details:
-- SVG canvas with configurable viewBox (default 800×600)
-- Grid rendered as SVG `<pattern>` with `grid_size` from `layout_config`
-- Click event → `snap(x, y)` → POST /api/v1/spaces/:id/seats with `{ label, position: { x, y } }`
-- Each seat rendered as colored `<rect>` + `<text>` label
-- Tool modes: add (click to place), delete (click to remove), edit (click to change attributes)
-- User view: same SVG renderer but read-only, seats color-coded by booking status
+### 8.2 Core tables
 
-Seat colors (both admin and user views):
-- Green (#1D9E75): available
-- Red (#E24B4A): booked for the selected time range
-- Gray (#B4B2A9): maintenance / disabled
-- Blue (#378ADD): user's own booking (user view only)
+#### `users`
 
-#### Phase 3: Floor plan background image
+- UUID primary key
+- unique email
+- role enum: `admin | user`
 
-Enhances the editor by allowing admins to upload a real floor plan image as
-the canvas background. Seats are placed on top of the image for accurate
-positioning.
+#### `buildings`
 
-```
-Admin editor with background:
-┌─────────────────────────────────────────────────┐
-│ Toolbar: [Upload floor plan] [+ Add] [Remove]  │
-├─────────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────────────┐ │
-│ │  ╔══════╗        ╔══════╗   <- real image   │ │
-│ │  ║ Desk ║  aisle ║ Desk ║   background      │ │
-│ │  ║[A1]  ║        ║[A2]  ║                   │ │
-│ │  ╚══════╝        ╚══════╝                   │ │
-│ │         ╔══════╗                            │ │
-│ │         ║ Desk ║                            │ │
-│ │         ║[A3]  ║                            │ │
-│ │         ╚══════╝                            │ │
-│ └─────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────┘
-```
+- UUID primary key
+- physical browse anchor
+- optional `latitude` / `longitude`
 
-Implementation:
-- Admin uploads PNG/JPG via POST /api/v1/spaces/:id/floor-plan
-- Image stored locally (dev) or S3 (production), URL saved in `layout_config.background_image`
-- SVG renders image as `<image>` element at z-index 0, seats render on top
-- Grid overlay toggleable (can be turned off when using background image)
-- Seat placement still uses click-to-place — the image is purely visual reference
-- No AI or computer vision involved: admin places seats manually on top of the image
+#### `spaces`
 
-#### Shared SVG component structure
+- UUID primary key
+- nullable `building_id`
+- `type: library | office`
+- `layout_config` for seat-map rendering metadata
 
-```
-<SeatMapCanvas>              — shared wrapper
-  <SeatMapBackground />      — grid pattern OR floor plan image
-  <SeatMapSeats />           — renders all seats as colored rects
-  <SeatMapToolbar />         — admin only: tool selection
-  <SeatMapBookingPanel />    — user only: time picker + confirm button
-</SeatMapCanvas>
-```
+#### `seats`
 
-One component, two modes (editable vs read-only), passed via props.
-Phase 1 & 2 render grid background; Phase 3 adds image background option.
+- UUID primary key
+- `position` stored as JSON
+- status enum: `available | maintenance`
 
----
+#### `bookings`
 
-## 6. API Endpoints
+- UUID primary key
+- status enum:
+  - `confirmed`
+  - `cancelled`
+  - `checked_in`
+  - `expired`
 
-### 6.1 Auth
+Important correction:
 
-| Method | Endpoint                | Description         | Auth |
-|--------|-------------------------|---------------------|------|
-| POST   | /api/v1/auth/register   | Register new user   | No   |
-| POST   | /api/v1/auth/login      | Login, return JWT   | No   |
-| POST   | /api/v1/auth/refresh    | Refresh access token| Yes  |
-| GET    | /api/v1/auth/me         | Get current user    | Yes  |
+- booking status does not include `pending`
+- therefore `requires_approval` is not an active workflow despite existing on
+  `space_rules`
 
-### 6.2 Spaces
+#### `space_rules`
 
-| Method | Endpoint                | Description              | Auth  |
-|--------|-------------------------|--------------------------|-------|
-| GET    | /api/v1/spaces          | List all spaces          | Yes   |
-| GET    | /api/v1/spaces/:id      | Get space with seats     | Yes   |
-| POST   | /api/v1/spaces          | Create space             | Admin |
-| PUT    | /api/v1/spaces/:id      | Update space             | Admin |
-| DELETE | /api/v1/spaces/:id      | Delete space             | Admin |
+- scenario/rule configuration for a space
+- fields include:
+  - `max_duration_minutes`
+  - `max_advance_days`
+  - `time_unit`
+  - `auto_release_minutes`
+  - `requires_approval`
+  - `recurring_rules`
 
-### 6.3 Seats
+Current architecture stance:
 
-| Method | Endpoint                         | Description          | Auth  |
-|--------|----------------------------------|----------------------|-------|
-| GET    | /api/v1/spaces/:id/seats         | List seats in space  | Yes   |
-| POST   | /api/v1/spaces/:id/seats         | Add seat to space    | Admin |
-| POST   | /api/v1/spaces/:id/seats/batch   | Add multiple seats at once | Admin |
-| PUT    | /api/v1/seats/:id                | Update seat          | Admin |
-| DELETE | /api/v1/seats/:id                | Delete seat          | Admin |
-| GET    | /api/v1/spaces/:id/availability  | Seat availability for time range | Yes |
-| POST   | /api/v1/spaces/:id/floor-plan    | Upload floor plan image (Phase 3) | Admin |
-| DELETE | /api/v1/spaces/:id/floor-plan    | Remove floor plan image | Admin |
+- `requires_approval` and `recurring_rules` are schema headroom, not active
+  baseline features
 
-### 6.4 Bookings
+#### `favorite_spaces`
 
-| Method | Endpoint                          | Description             | Auth  |
-|--------|-----------------------------------|-------------------------|-------|
-| GET    | /api/v1/bookings                  | List my bookings        | Yes   |
-| POST   | /api/v1/bookings                  | Create booking          | Yes   |
-| GET    | /api/v1/bookings/:id              | Get booking detail      | Yes   |
-| PATCH  | /api/v1/bookings/:id/cancel       | Cancel booking          | Yes   |
-| PATCH  | /api/v1/bookings/:id/check-in     | Check in to booking     | Yes   |
-| GET    | /api/v1/admin/bookings            | List all bookings       | Admin |
+- active product feature
+- unique `(user_id, space_id)`
 
-### 6.5 Space Rules (Admin)
+#### `favorite_seats`
 
-| Method | Endpoint                          | Description              | Auth  |
-|--------|-----------------------------------|--------------------------|-------|
-| GET    | /api/v1/spaces/:id/rules          | Get rules for a space    | Yes   |
-| PUT    | /api/v1/spaces/:id/rules          | Update rules for a space | Admin |
+- backend-ready only
+- no active user-facing frontend surface yet
 
----
+#### `space_visits`
 
-## 7. Deployment Architecture
+- one row per `(user_id, space_id)`
+- `visited_at` updated on repeat visit
+- used as a recency signal for personalized discovery
 
-### 7.1 Local Development (Docker Compose)
+## 9. Booking Rules
 
-```yaml
-services:
-  frontend:
-    build: ./frontend
-    ports: ["3000:3000"]
-    depends_on: [backend]
+### 9.1 Current baseline rules by scenario
 
-  backend:
-    build: ./backend
-    ports: ["8000:8000"]
-    depends_on: [db]
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://perchdesk:password@db:5432/perchdesk
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+| Rule | Library | Office |
+|---|---|---|
+| time unit | hourly | hourly |
+| default max duration | 480 min | 480 min |
+| default advance window | 3 days | 7 days |
+| auto release | 15 min | none |
+| check-in model | active | active |
+| cancellation rule | before start time | before local booking-date midnight |
 
-  db:
-    image: postgres:15
-    volumes: [pgdata:/var/lib/postgresql/data]
-    environment:
-      - POSTGRES_DB=perchdesk
-      - POSTGRES_USER=perchdesk
-      - POSTGRES_PASSWORD=password
+### 9.2 Conflict handling
 
-  # Phase 3+
-  # redis:
-  #   image: redis:7-alpine
-  #   ports: ["6379:6379"]
+Conflict prevention currently has two layers:
 
-volumes:
-  pgdata:
-```
+- application-level overlap checks in `booking` service
+- PostgreSQL migration-level exclusion constraint for seat overlap
 
-### 7.2 CI/CD Pipeline (GitHub Actions)
+Architecture guidance:
 
-```
-Push to any branch:
-  1. Lint (ruff + eslint)
-  2. Test (pytest + jest)
-  3. Build check (docker compose build)
+- do not rely solely on the DB exclusion constraint as the only authoritative
+  protection, because tests run on SQLite and service-layer checks are already
+  part of the real behavior contract
 
-Push/merge to main:
-  4. Build Docker images
-  5. Push to AWS ECR (or Docker Hub)
-  6. Deploy to AWS EC2/ECS (Phase 4)
-```
+### 9.3 User-level constraints
 
-### 7.3 AWS Target Architecture (Phase 4)
+Implemented checks include:
 
-```
-                    ┌────────────────┐
-                    │  Route 53      │
-                    │  (DNS)         │
-                    └───────┬────────┘
-                            │
-                    ┌───────▼────────┐
-                    │  ALB           │
-                    │  (Load Balancer)│
-                    └───┬────────┬───┘
-                        │        │
-               ┌────────▼──┐ ┌──▼────────┐
-               │  ECS Task  │ │  ECS Task  │
-               │  Frontend  │ │  Backend   │
-               └────────────┘ └──┬─────────┘
-                                 │
-                        ┌────────▼────────┐
-                        │  RDS PostgreSQL  │
-                        │  (Free tier)     │
-                        └─────────────────┘
-```
+- no overlapping active bookings for the same user in the same space
+- same-day per-space daily cap accumulation
+- time-unit alignment enforcement
 
-Use AWS Free Tier where possible: t2.micro EC2 or Fargate spot for ECS,
-RDS db.t3.micro for PostgreSQL.
+## 10. Discovery Architecture
 
----
+### 10.1 Structured discovery
 
-## 8. Security Considerations
+Owned by:
 
-- Passwords hashed with bcrypt (via passlib)
-- JWT tokens signed with HS256, secrets loaded from environment variables
-- CORS configured to allow only the frontend origin
-- Rate limiting on auth endpoints (Phase 2+)
-- SQL injection prevented by SQLAlchemy parameterized queries
-- Input validation by Pydantic schemas on all endpoints
-- Admin endpoints protected by role-based middleware
-- Environment variables managed via `.env` file (not committed to git)
+- buildings list
+- building detail-to-spaces flow
+- buildings map
 
----
+### 10.2 Personalized discovery
 
-## 9. Future Considerations (out of scope for v1)
+Owned by:
 
-- Meeting room scenario (third space type — add space_rules row, no code change)
-- Recurring bookings (use `recurring_rules` JSON field in space_rules)
-- Email/push notifications for booking reminders
-- SSO integration (Google OAuth)
-- Mobile responsive PWA
-- Multi-tenancy (multiple organizations sharing one deployment)
+- `Home / For You`
+- `My Spaces`
+
+Current signals:
+
+- favorite spaces
+- recent bookings
+- recent floorplan visits
+- nearby spaces
+
+Important correction:
+
+- advanced recommendation pipeline documents exist, but the real implemented
+  recommendation source is explainable nearby discovery
+- do not design against an assumed hidden scoring engine that is not present
+
+### 10.3 Location capability
+
+Location owns:
+
+- coordinates
+- nearby ranking inputs
+- map browse behavior
+- permission/fallback behavior
+
+Location does not own:
+
+- booking validation
+- overall personalized ranking strategy
+- global browse information architecture
+
+## 11. Current API Surface
+
+### 11.1 Auth
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `GET /api/v1/auth/me`
+
+### 11.2 Buildings
+
+- `GET /api/v1/buildings`
+- `GET /api/v1/buildings/nearby`
+- `GET /api/v1/buildings/within-bounds`
+- `GET /api/v1/buildings/{id}`
+- `GET /api/v1/buildings/{id}/spaces`
+- `POST /api/v1/buildings`
+- `PUT /api/v1/buildings/{id}`
+
+### 11.3 Spaces and seats
+
+- `GET /api/v1/spaces`
+- `GET /api/v1/spaces/nearby`
+- `GET /api/v1/spaces/{id}`
+- `PUT /api/v1/spaces/{id}`
+- `DELETE /api/v1/spaces/{id}`
+- `GET /api/v1/spaces/{id}/rules`
+- `PUT /api/v1/spaces/{id}/rules`
+- `GET /api/v1/spaces/{id}/availability`
+- `POST /api/v1/spaces/{id}/floor-plan`
+- `DELETE /api/v1/spaces/{id}/floor-plan`
+- seat CRUD endpoints also exist and support the admin editor
+
+### 11.4 Bookings
+
+- `GET /api/v1/bookings`
+- `POST /api/v1/bookings`
+- `GET /api/v1/bookings/{id}`
+- `PATCH /api/v1/bookings/{id}/cancel`
+- `PATCH /api/v1/bookings/{id}/check-in`
+- `GET /api/v1/admin/bookings`
+
+### 11.5 Personalized signals
+
+- `GET /api/v1/me/favorite-spaces`
+- `POST /api/v1/spaces/{space_id}/favorite`
+- `DELETE /api/v1/spaces/{space_id}/favorite`
+- `GET /api/v1/me/favorite-seats`
+- `POST /api/v1/seats/{seat_id}/favorite`
+- `DELETE /api/v1/seats/{seat_id}/favorite`
+- `POST /api/v1/spaces/{space_id}/visit`
+- `GET /api/v1/me/recent-spaces`
+
+## 12. Deployment Reality
+
+### 12.1 Implemented today
+
+- local Dockerfiles
+- local `docker compose` workflow
+- GitHub Actions CI:
+  - backend lint
+  - backend tests with coverage
+  - frontend lint + typecheck
+  - frontend tests
+  - Docker build check
+
+### 12.2 Not implemented today
+
+- S3-backed uploads
+- Redis
+- WebSockets
+- production AWS infrastructure
+- ECR/ECS deployment pipeline
+
+### 12.3 Architecture guidance
+
+It is acceptable to keep cloud deployment notes as a future direction, but they
+must not be described as if they are already present or implied by the running
+system.
+
+Current floor plan uploads are stored on local disk under `uploads/`.
+
+## 13. Credible Future Directions
+
+These are still aligned enough with the current codebase to keep as deferred
+directions.
+
+### 13.1 Production hardening
+
+- env-driven CORS
+- stronger auth token lifecycle
+- upload storage abstraction
+- deployment automation
+
+### 13.2 Real-time updates
+
+- Redis-backed pub/sub
+- live seat availability refresh
+
+This is credible, but currently unstarted.
+
+### 13.3 Better recommendations
+
+- stronger ranking on top of current favorites/recents/nearby signals
+- more explainable recommendation reasons
+
+### 13.4 Spatial optimization
+
+- PostGIS or spatial indexing if the location domain expands materially
+
+## 14. Directions That Should No Longer Be Treated As Baseline
+
+These may still be theoretically possible, but they are no longer trustworthy
+default assumptions for implementation.
+
+### 14.1 Office-specific half-day/full-day booking as the primary UX
+
+Why this is no longer baseline:
+
+- migrations already moved office defaults to hourly
+- booking workspace is designed around hourly slot selection
+- frontend interaction model is hourly-first across both scenarios
+
+Implication:
+
+- do not design new work assuming office returns to a separate half-day/full-day
+  picker unless product direction explicitly changes
+
+### 14.2 "Adding a new scenario is just seed data, no code change"
+
+Why this is misleading now:
+
+- `space.type` is still a closed enum: `library | office`
+- frontend copy, icons, and affordances assume those two values
+- multiple services and views contain scenario-specific interpretation
+
+Implication:
+
+- a third scenario is no longer a pure data-only extension
+
+### 14.3 Approval workflow via `requires_approval`
+
+Why this is not baseline:
+
+- bookings do not have a `pending` status
+- create-booking service always confirms successful bookings
+- frontend has no approval-review flow
+
+Implication:
+
+- do not plan around approval as an existing architecture path
+
+### 14.4 Recurring bookings via `recurring_rules`
+
+Why this is not baseline:
+
+- field exists only as schema headroom
+- no API contract or UI flow exists
+- no scheduler, expansion, or editing model exists for recurring instances
+
+Implication:
+
+- recurring booking should be treated as a new feature, not a partially built one
+
+## 15. Document Relationships
+
+Use this document together with:
+
+- [time-semantics.md](/Users/kkkadoya/Desktop/perchdesk/docs/time-semantics.md)
+- [features/booking-workspace/overview.md](/Users/kkkadoya/Desktop/perchdesk/docs/features/booking-workspace/overview.md)
+- [features/location/overview.md](/Users/kkkadoya/Desktop/perchdesk/docs/features/location/overview.md)
+- [features/my-spaces/overview.md](/Users/kkkadoya/Desktop/perchdesk/docs/features/my-spaces/overview.md)
+- [features/my-bookings/overview.md](/Users/kkkadoya/Desktop/perchdesk/docs/features/my-bookings/overview.md)

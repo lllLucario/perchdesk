@@ -9,8 +9,8 @@ Read together with:
 
 - `docs/features/booking-workspace/overview.md`
 - `docs/features/booking-workspace/task-breakdown.md`
-- `docs/booking_ux_decisions.md`
-- `docs/wireframe.md`
+- `docs/features/booking-workspace/decision-log.md`
+- `docs/features/booking-workspace/wireframe.md`
 
 ## Page Scope
 

@@ -219,7 +219,8 @@ no action buttons for history items.
 
 ## Delivery Notes
 
-- Keep user-facing status names aligned with `booking_ux_decisions.md`
+- Keep user-facing status names aligned with
+  `docs/features/booking-workspace/decision-log.md`
 - Do not split active/history into separate full pages — this is a deliberate
   product decision documented in `overview.md`
 - Preserve a lightweight page structure; avoid dashboard drift
