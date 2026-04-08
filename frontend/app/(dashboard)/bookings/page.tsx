@@ -469,7 +469,7 @@ export default function BookingsPage() {
   return (
     <div className="page-stack">
       <div className="mb-5 rounded-[2rem] px-2 py-2 md:px-3">
-        <p className="section-kicker mb-3">Booking journal</p>
+        <p className="page-eyebrow mb-3">Booking journal</p>
         <h1 className="mb-2 text-4xl text-foreground">My Bookings</h1>
         <p className="text-sm text-text-muted">
           Track what is booked, what needs check-in, and what has already finished.

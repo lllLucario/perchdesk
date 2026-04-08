@@ -251,10 +251,10 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl">
       <section className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] px-6 py-8 text-center md:px-10 md:py-12">
         <div className="mx-auto max-w-3xl">
-        <p className="mb-3 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-accent">
+        <p className="page-eyebrow mb-3">
           Find your next seat
         </p>
-        <h1 className="text-5xl leading-[0.95] text-foreground md:text-7xl">
+        <h1 className="font-[family-name:var(--font-display)] text-5xl leading-[0.95] text-foreground md:text-7xl">
           Quiet booking for focused spaces.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted md:text-lg">

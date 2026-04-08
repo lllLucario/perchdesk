@@ -42,7 +42,7 @@ export default function LoginPage() {
       <div className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="hidden lg:block">
           <div className="max-w-xl">
-            <p className="section-kicker mb-4">Quiet booking</p>
+            <p className="page-eyebrow mb-4">Quiet booking</p>
             <h1 className="text-6xl leading-[0.95] text-foreground">
               Quiet booking for focused spaces.
             </h1>
