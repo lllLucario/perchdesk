@@ -19,9 +19,6 @@
   --danger: #a14b45;
   --shadow-whisper: 0 18px 40px rgba(22, 26, 22, 0.06);
   --shadow-ring: 0 0 0 1px var(--ring);
-  --font-sans: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-serif: Georgia, "Times New Roman", Times, serif;
-  --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 @theme inline {
@@ -40,6 +37,9 @@
   --color-text-soft: var(--text-soft);
   --color-text-strong: var(--text-strong);
   --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-geist-mono);
 }
 
 
@@ -76,7 +76,7 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-sans), Arial, system-ui, -apple-system, "Segoe UI", sans-serif;
   line-height: 1.6;
 }
 
@@ -97,15 +97,16 @@ select {
   background: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
-h1,
-h2,
-h3,
-h4 {
-  font-family: Georgia, "Times New Roman", Times, serif;
-  letter-spacing: -0.02em;
-}
-
 @layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-serif), Georgia, "Times New Roman", Times, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
   button:focus-visible,
   a:focus-visible,
   input:focus-visible,
@@ -250,19 +251,13 @@ h4 {
 
   .button-primary {
     border-radius: 0.9rem;
-    background: linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--accent-soft) 82%, white 18%),
-      color-mix(in srgb, var(--accent) 86%, black 14%)
-    );
+    background: var(--accent);
     color: var(--accent-foreground);
-    box-shadow:
-      0 14px 26px rgba(69, 95, 57, 0.15),
-      0 0 0 1px color-mix(in srgb, var(--accent) 80%, black 20%);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 82%, black 18%);
   }
 
   .button-primary:hover {
-    background: color-mix(in srgb, var(--accent) 92%, black 8%);
+    background: color-mix(in srgb, var(--accent) 88%, black 12%);
   }
 
   .button-secondary {
@@ -284,8 +279,8 @@ h4 {
 
   .section-kicker {
     color: var(--accent);
-    font-size: 1.2rem;
-    font-weight: 100;
+    font-size: 0.875rem;
+    font-weight: 500;
     letter-spacing: 2.5px;
   }
 

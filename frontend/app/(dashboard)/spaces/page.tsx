@@ -18,7 +18,7 @@ export default function SpacesPage() {
         <span className="font-medium text-foreground">Spaces</span>
       </nav>
       <div className="mb-6">
-        <h1 className="text-4xl text-foreground">Available Spaces</h1>
+          <h1 className="font-serif text-4xl text-foreground">Available Spaces</h1>
         <p className="mt-2 text-sm text-text-muted">
           A quieter list view for spaces across the network.
         </p>

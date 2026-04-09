@@ -83,7 +83,7 @@ export default function BuildingMapPage() {
         <div>
           <Breadcrumb />
           <p className="page-eyebrow mb-3 mt-4">Map discovery</p>
-          <h1 className="text-4xl text-foreground">Buildings Map</h1>
+          <h1 className="font-serif text-4xl text-foreground">Buildings Map</h1>
           <p className="mt-2 max-w-2xl text-sm text-text-muted">
             Browse buildings spatially, scan nearby options, and jump into the right space faster.
           </p>
