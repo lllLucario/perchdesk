@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useBookingStore, type Booking, type BookingResult } from "@/store/bookingStore";
 import { api } from "@/lib/api";
 import { slotRanges, toISO } from "@/lib/booking";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +52,7 @@ interface ConfirmModalProps {
 
 export default function ConfirmModal({ bookings, onClose }: ConfirmModalProps) {
   const router = useRouter();
+  const modalRef = useModalA11y(onClose);
   const { setCheckoutResults } = useBookingStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -110,7 +112,7 @@ export default function ConfirmModal({ bookings, onClose }: ConfirmModalProps) {
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
     >
-      <div className="mx-4 flex w-full max-w-md flex-col rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]">
+      <div ref={modalRef} className="mx-4 flex w-full max-w-md flex-col rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2

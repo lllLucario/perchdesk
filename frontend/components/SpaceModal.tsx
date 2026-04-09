@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Space, useSpaceRules } from "@/lib/hooks";
+import { useModalA11y } from "@/lib/useModalA11y";
 
 interface Props {
   space: Space;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function SpaceModal({ space, buildingName, onClose }: Props) {
   const router = useRouter();
+  const modalRef = useModalA11y(onClose);
   const { data: rules } = useSpaceRules(space.id);
 
   function handleBookSeat() {
@@ -25,8 +27,12 @@ export default function SpaceModal({ space, buildingName, onClose }: Props) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(22,26,22,0.48)]"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="space-modal-title"
     >
       <div
+        ref={modalRef}
         className="relative mx-4 w-full max-w-md overflow-hidden rounded-[1.75rem] border border-border bg-surface shadow-[0_24px_56px_rgba(22,26,22,0.16)]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -44,7 +50,7 @@ export default function SpaceModal({ space, buildingName, onClose }: Props) {
         </button>
 
         <div className="p-6">
-          <h2 className="mb-0.5 font-serif text-2xl leading-tight text-foreground">{space.name}</h2>
+          <h2 id="space-modal-title" className="mb-0.5 font-serif text-2xl leading-tight text-foreground">{space.name}</h2>
           <div className="mb-4 flex items-center gap-2 text-sm text-text-muted">
             {buildingName && <span>{buildingName}</span>}
             {buildingName && <span>·</span>}

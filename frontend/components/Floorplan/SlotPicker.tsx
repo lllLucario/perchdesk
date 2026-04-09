@@ -145,7 +145,11 @@ export default function SlotPicker({
 
       {/* Removed slots feedback */}
       {removedSlotsFeedback && (
-        <p className="rounded-xl border border-[color:#dec78e] bg-[color:#f6efdc] px-3 py-2 text-xs text-[color:#8e6b1f]">
+        <p
+          className="rounded-xl border border-[color:#dec78e] bg-[color:#f6efdc] px-3 py-2 text-xs text-[color:#8e6b1f]"
+          role="alert"
+          aria-live="assertive"
+        >
           {removedSlotsFeedback}
         </p>
       )}

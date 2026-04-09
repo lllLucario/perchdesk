@@ -140,6 +140,8 @@ export default function ResultPage() {
             ? "border-[color:color-mix(in_srgb,var(--color-danger)_22%,white_78%)] bg-[color:color-mix(in_srgb,var(--color-danger)_8%,white_92%)]"
             : "border-[color:#dec78e] bg-[color:#f6efdc]",
         ].join(" ")}
+        role="status"
+        aria-live="polite"
       >
         <h1
           className={[

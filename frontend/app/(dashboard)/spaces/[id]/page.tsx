@@ -388,8 +388,12 @@ export default function SpaceFloorplanPage({
             onSeatClick={handleSeatClick}
           />
 
-          {/* Seat selection hint */}
-          <p className="rounded-xl bg-surface-muted px-3 py-2 text-xs text-text-muted shadow-[0_0_0_1px_var(--color-border)]">
+          {/* Seat selection hint (live region for screen readers) */}
+          <p
+            className="rounded-xl bg-surface-muted px-3 py-2 text-xs text-text-muted shadow-[0_0_0_1px_var(--color-border)]"
+            role="status"
+            aria-live="polite"
+          >
             {activeSeatId
               ? `Seat ${activeSeatLabel} selected — click to deselect`
               : "Click a seat on the map to include it in this booking"}
