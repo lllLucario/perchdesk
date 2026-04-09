@@ -21,7 +21,7 @@ export default function BuildingsPage() {
           <span>/</span>
           <span className="font-medium text-foreground">Buildings</span>
         </nav>
-        <h1 className="mb-6 text-4xl text-foreground">Buildings</h1>
+        <h1 className="mb-6 font-serif text-4xl text-foreground">Buildings</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-56 animate-pulse rounded-[1.75rem] bg-surface-muted" />
@@ -55,7 +55,7 @@ export default function BuildingsPage() {
       <div className="mb-6 flex flex-col gap-4 rounded-[2rem] px-2 py-2 md:flex-row md:items-end md:justify-between md:px-3">
         <div>
           <p className="page-eyebrow mb-3">Browse buildings</p>
-          <h1 className="text-4xl text-foreground">Buildings</h1>
+            <h1 className="font-serif text-4xl text-foreground">Buildings</h1>
           <p className="mt-2 text-sm text-text-muted">
             Browse the places where PerchDesk can guide you into rooms, desks, and quiet corners.
           </p>

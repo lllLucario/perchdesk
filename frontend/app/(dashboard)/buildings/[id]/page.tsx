@@ -60,9 +60,9 @@ export default function SpacesInBuildingPage({ params }: { params: Promise<{ id:
         <span className="font-medium text-foreground">{buildingName}</span>
       </nav>
 
-      <h1 className="mb-1 text-4xl text-foreground">
-        Spaces in {buildingName}
-      </h1>
+          <h1 className="mb-1 font-serif text-4xl text-foreground">
+            Spaces in {buildingName}
+          </h1>
       <p className="mb-6 text-sm text-text-muted">
         Choose a space to start booking
       </p>

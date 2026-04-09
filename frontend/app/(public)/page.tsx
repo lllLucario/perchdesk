@@ -254,7 +254,7 @@ export default function HomePage() {
         <p className="page-eyebrow mb-3">
           Find your next seat
         </p>
-        <h1 className="font-[family-name:var(--font-display)] text-5xl leading-[0.95] text-foreground md:text-7xl">
+        <h1 className="font-serif text-5xl leading-[0.95] text-foreground md:text-7xl">
           Quiet booking for focused spaces.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-base text-text-muted md:text-lg">

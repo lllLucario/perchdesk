@@ -277,7 +277,7 @@ export default function MySpacesPage() {
 
       <div className="mb-6 rounded-[2rem] px-2 py-2 md:px-3">
         <p className="page-eyebrow mb-3">Personalized access</p>
-        <h1 className="text-4xl text-foreground">My Spaces</h1>
+          <h1 className="font-serif text-4xl text-foreground">My Spaces</h1>
         <p className="mt-2 max-w-2xl text-sm text-text-muted">
           Personalized access to spaces you use most
         </p>
